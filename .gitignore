@@ -27,3 +27,6 @@ $RECYCLE.BIN/
 queries/
 c_input.py
 runtime/
+
+# VSCode
+.vscode/

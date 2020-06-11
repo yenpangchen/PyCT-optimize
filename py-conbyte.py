@@ -89,12 +89,13 @@ def main():
     inputs_space = {}
     if options.from_stdin:
         exec(sys.stdin.read(), inputs_space)
-    else:
-        inputs_file = options.inputs
-        inputs_file_full = os.path.abspath(options.inputs)
-        exec(open(inputs_file_full).read(), inputs_space)
+    # else:
+        # inputs_file = options.inputs
+        # inputs_file_full = os.path.abspath(options.inputs)
+        # exec(open(inputs_file_full).read(), inputs_space)
 
-    engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
+    # engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
+    engine = ExplorationEngine(path, filename, module, options.entry, eval(options.inputs), query, options.solver_type, options.ss)
 
     if options.extract:
         engine.extract()
