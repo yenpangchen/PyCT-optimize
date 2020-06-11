@@ -28,6 +28,7 @@ def print_inst(obj):
 
 class ExplorationEngine:
     mem_stack = Stack()
+    call_stack = Stack()
 
     def __init__(self, path, filename, module, entry, ini_vars, query_store, solver_type, ss):
         # Set up import environment
@@ -54,7 +55,6 @@ class ExplorationEngine:
 
         self.global_execution_coverage = coverage.CoverageData()
 
-        self.call_stack = Stack()
         
 
         self.path = PathToConstraint(lambda c: self.add_constraint(c))
@@ -125,7 +125,7 @@ class ExplorationEngine:
             else:
                 log.debug("** Pure counter control")
                 log.debug("- instr %s %s %s %s" % (instruct.offset, instruct.opname, instruct.argval, instruct.argrepr))
-                re = self.executor.execute_instr(self.call_stack, instruct, func_name)
+                re = self.executor.execute_instr(instruct, func_name)
                 if re:
                     return re
 
@@ -138,21 +138,21 @@ class ExplorationEngine:
             instruct = instructs.pop()
             log.debug("- instr %s %s %s %s" % (instruct.offset, instruct.opname, instruct.argval, instruct.argrepr))
             if instruct.opname == "CALL_FUNCTION":
-                re = self.executor.execute_instr(self.call_stack, instruct, func_name)
+                re = self.executor.execute_instr(instruct, func_name)
                 if re is None:
                     return
             elif instruct.opname == "CALL_METHOD":
-                re = self.executor.execute_instr(self.call_stack, instruct, func_name)
+                re = self.executor.execute_instr(instruct, func_name)
                 if re is None:
                     return
             else:
-                re = self.executor.execute_instr(self.call_stack, instruct, func_name)
+                re = self.executor.execute_instr(instruct, func_name)
         return re
 
     def execute_frame(self, func_name=None):
-        if self.call_stack.is_empty():
+        if ExplorationEngine.call_stack.is_empty():
             return
-        current_frame = self.call_stack.top()
+        current_frame = ExplorationEngine.call_stack.top()
         return self.execute_instructs(current_frame, func_name)
 
 
@@ -186,9 +186,9 @@ class ExplorationEngine:
 
         instructions = self.get_line_instructions(line_no, dis.get_instructions(co))
 
-        if self.call_stack.is_empty():
+        if ExplorationEngine.call_stack.is_empty():
             return
-        c_frame = self.call_stack.top()
+        c_frame = ExplorationEngine.call_stack.top()
         for instruct in instructions:
             c_frame.instructions_store.push(instruct)
             # print("   push", instruct.opname, instruct.argval, instruct.argrepr)
@@ -196,7 +196,7 @@ class ExplorationEngine:
         is_return = self.execute_frame(func_name)
 
         while is_return:
-            self.call_stack.pop()
+            ExplorationEngine.call_stack.pop()
             is_return = self.execute_frame(func_name)
 
     def trace_calls(self, frame, event, arg):
@@ -207,7 +207,7 @@ class ExplorationEngine:
         if "/python3." in co.co_filename :
             return
         current_frame = Frame(frame)
-        if not self.call_stack.is_empty():
+        if not ExplorationEngine.call_stack.is_empty():
             if func_name == "__init__":
                 current_frame.set_locals(True)
             else:
@@ -216,7 +216,7 @@ class ExplorationEngine:
             self.symbolic_inputs = current_frame.init_locals()
             self.solver.set_variables(self.symbolic_inputs)
         # current_frame.set_local()
-        self.call_stack.push(current_frame)
+        ExplorationEngine.call_stack.push(current_frame)
         return self.trace_lines
 
     def _is_exploration_complete(self):
@@ -294,7 +294,7 @@ class ExplorationEngine:
         log.info("Inputs: " + str(init_vars))
         copy_vars = copy.deepcopy(init_vars)
 
-        self.call_stack.sanitize()
+        ExplorationEngine.call_stack.sanitize()
         ExplorationEngine.mem_stack.sanitize()
         self.path.reset(expected_path)
 

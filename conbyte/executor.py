@@ -123,9 +123,9 @@ class Executor:
 
         return ConcolicType(expr, value)
 
-    def execute_instr(self, call_stack, instruct, func_name=None):
+    def execute_instr(self, instruct, func_name=None):
         #time.sleep(.5)
-        c_frame = call_stack.top()
+        c_frame = explore.ExplorationEngine.call_stack.top()
         variables = c_frame.variables
         g_variables = c_frame.g_variables
 
