@@ -10,6 +10,7 @@ from .concolic_types.concolic_list import *
 from .concolic_types.concolic_map import * 
 from .concolic_types.concolic_iter import * 
 
+from . import explore # from .explore import ExplorationEngine
 from .regex import *
 import re
 import time
@@ -52,10 +53,10 @@ class Executor:
         """
     
     # Implement builtin range()
-    def _do_range(self, argv, mem_stack):
+    def _do_range(self, argv):
         args = []
         for i in range(argv):
-            var = mem_stack.pop()
+            var = explore.ExplorationEngine.mem_stack.pop()
             args.append(var)
         args.reverse()
         r_list = Concolic_range(*args)
@@ -125,7 +126,6 @@ class Executor:
     def execute_instr(self, call_stack, instruct, func_name=None):
         #time.sleep(.5)
         c_frame = call_stack.top()
-        mem_stack = c_frame.mem_stack
         variables = c_frame.variables
         g_variables = c_frame.g_variables
 
@@ -141,33 +141,33 @@ class Executor:
             return
 
         elif instruct.opname is "POP_TOP":
-            mem_stack.pop()
+            explore.ExplorationEngine.mem_stack.pop()
 
         elif instruct.opname is "ROT_TWO":
-            fir = mem_stack.pop()
-            sec = mem_stack.pop()
-            mem_stack.push(fir)
-            mem_stack.push(sec)
+            fir = explore.ExplorationEngine.mem_stack.pop()
+            sec = explore.ExplorationEngine.mem_stack.pop()
+            explore.ExplorationEngine.mem_stack.push(fir)
+            explore.ExplorationEngine.mem_stack.push(sec)
 
         elif instruct.opname is "ROT_THREE":
-            fir = mem_stack.pop()
-            sec = mem_stack.pop()
-            thi = mem_stack.pop()
-            mem_stack.push(fir)
-            mem_stack.push(thi)
-            mem_stack.push(sec)
+            fir = explore.ExplorationEngine.mem_stack.pop()
+            sec = explore.ExplorationEngine.mem_stack.pop()
+            thi = explore.ExplorationEngine.mem_stack.pop()
+            explore.ExplorationEngine.mem_stack.push(fir)
+            explore.ExplorationEngine.mem_stack.push(thi)
+            explore.ExplorationEngine.mem_stack.push(sec)
 
         elif instruct.opname is "DUP_TOP":
-            top = mem_stack.top()
-            mem_stack.push(top)
+            top = explore.ExplorationEngine.mem_stack.top()
+            explore.ExplorationEngine.mem_stack.push(top)
 
         elif instruct.opname is "DUP_TOP_TWO":
-            fir = mem_stack.pop()
-            sec = mem_stack.pop()
-            mem_stack.push(sec)
-            mem_stack.push(fir)
-            mem_stack.push(sec)
-            mem_stack.push(fir)
+            fir = explore.ExplorationEngine.mem_stack.pop()
+            sec = explore.ExplorationEngine.mem_stack.pop()
+            explore.ExplorationEngine.mem_stack.push(sec)
+            explore.ExplorationEngine.mem_stack.push(fir)
+            explore.ExplorationEngine.mem_stack.push(sec)
+            explore.ExplorationEngine.mem_stack.push(fir)
 
         #
         # Unary operations
@@ -177,25 +177,25 @@ class Executor:
             return
 
         elif instruct.opname is "UNARY_NEGATIVE":
-            target = mem_stack.pop()
+            target = explore.ExplorationEngine.mem_stack.pop()
             target.negate()
-            mem_stack.push(target)
+            explore.ExplorationEngine.mem_stack.push(target)
 
         elif instruct.opname is "UNARY_NOT":
-            target = mem_stack.pop()
+            target = explore.ExplorationEngine.mem_stack.pop()
             target.negate()
-            mem_stack.push(target)
+            explore.ExplorationEngine.mem_stack.push(target)
 
         elif instruct.opname is "UNARY_INTERT":
             # TODO: maybe?
-            target = mem_stack.pop()
+            target = explore.ExplorationEngine.mem_stack.pop()
             target.negate()
-            mem_stack.push(target)
+            explore.ExplorationEngine.mem_stack.push(target)
 
         elif instruct.opname is "GET_ITER":
             # Get a queue
-            tos = mem_stack.pop()
-            mem_stack.push(ConcolicIter(tos))
+            tos = explore.ExplorationEngine.mem_stack.pop()
+            explore.ExplorationEngine.mem_stack.push(ConcolicIter(tos))
             return
 
         elif instruct.opname is "GET_YIELD_FROM_ITER":
@@ -212,14 +212,14 @@ class Executor:
             return
 
         elif instruct.opname is "BINARY_MULTIPLY":
-            tos = mem_stack.pop()
-            tos1 = mem_stack.pop()
+            tos = explore.ExplorationEngine.mem_stack.pop()
+            tos1 = explore.ExplorationEngine.mem_stack.pop()
             if isinstance(tos1, ConcolicList):
-                mem_stack.push(tos1.multiply(tos))
+                explore.ExplorationEngine.mem_stack.push(tos1.multiply(tos))
 
             else:
                 result = tos1 * tos
-                mem_stack.push(result)
+                explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_MATRIX_MULTIPLY":
             # TODO: 
@@ -227,82 +227,82 @@ class Executor:
             return
 
         elif instruct.opname is "BINARY_FLOOR_DIVIDE":
-            divisor = mem_stack.pop()
-            dividend = mem_stack.pop()
+            divisor = explore.ExplorationEngine.mem_stack.pop()
+            dividend = explore.ExplorationEngine.mem_stack.pop()
             result = dividend // divisor
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_TRUE_DIVIDE":
-            divisor = mem_stack.pop()
-            dividend = mem_stack.pop()
+            divisor = explore.ExplorationEngine.mem_stack.pop()
+            dividend = explore.ExplorationEngine.mem_stack.pop()
             result = dividend / divisor
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_MODULO":
-            divisor = mem_stack.pop()
-            dividend = mem_stack.pop()
+            divisor = explore.ExplorationEngine.mem_stack.pop()
+            dividend = explore.ExplorationEngine.mem_stack.pop()
             result = dividend % divisor
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_ADD":
-            tos = mem_stack.pop()
-            tos1 = mem_stack.pop()
+            tos = explore.ExplorationEngine.mem_stack.pop()
+            tos1 = explore.ExplorationEngine.mem_stack.pop()
             result = tos1 + tos
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_SUBTRACT":
-            subtrahend = mem_stack.pop()
-            minuend = mem_stack.pop()
+            subtrahend = explore.ExplorationEngine.mem_stack.pop()
+            minuend = explore.ExplorationEngine.mem_stack.pop()
             result = minuend - subtrahend
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_SUBSCR":
             if self.build_slice is True:
                 self.build_slice = False
                 return
-            tos = mem_stack.pop()
+            tos = explore.ExplorationEngine.mem_stack.pop()
             if isinstance(tos, ConcolicInteger) or \
                isinstance(tos, ConcolicStr):
                 index = tos.value
-                target_list = mem_stack.pop()
-                mem_stack.push(target_list.get_index(index))
+                target_list = explore.ExplorationEngine.mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.push(target_list.get_index(index))
             elif isinstance(tos, int):
                 index = tos
-                target_list = mem_stack.pop()
-                mem_stack.push(target_list.get_index(index))
+                target_list = explore.ExplorationEngine.mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.push(target_list.get_index(index))
             else:
                 # Sliced object (Hopefully)
-                mem_stack.push(tos)
+                explore.ExplorationEngine.mem_stack.push(tos)
 
         elif instruct.opname is "BINARY_LSHIFT":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 << to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_RSHIFT":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 >> to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_AND":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 & to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_XOR":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 ^ to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "BINARY_OR":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 | to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         #
         # In-place operations
@@ -314,10 +314,10 @@ class Executor:
             return
 
         elif instruct.opname is "INPLACE_MULTIPLY":
-            multiplicand = mem_stack.pop()
-            multiplier = mem_stack.pop()
+            multiplicand = explore.ExplorationEngine.mem_stack.pop()
+            multiplier = explore.ExplorationEngine.mem_stack.pop()
             result = multiplicand * multiplier
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_MATRIX_MULTIPLY":
             # TODO: 
@@ -325,34 +325,34 @@ class Executor:
             return
 
         elif instruct.opname is "INPLACE_FLOOR_DIVIDE":
-            divisor = mem_stack.pop()
-            dividend = mem_stack.pop()
+            divisor = explore.ExplorationEngine.mem_stack.pop()
+            dividend = explore.ExplorationEngine.mem_stack.pop()
             result = dividend // divisor
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_TRUE_DIVIDE":
-            divisor = mem_stack.pop()
-            dividend = mem_stack.pop()
+            divisor = explore.ExplorationEngine.mem_stack.pop()
+            dividend = explore.ExplorationEngine.mem_stack.pop()
             result = dividend / divisor
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_MODULO":
-            divisor = mem_stack.pop()
-            dividend = mem_stack.pop()
+            divisor = explore.ExplorationEngine.mem_stack.pop()
+            dividend = explore.ExplorationEngine.mem_stack.pop()
             result = dividend % divisor
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_ADD":
-            addend = mem_stack.pop()
-            augend = mem_stack.pop()
+            addend = explore.ExplorationEngine.mem_stack.pop()
+            augend = explore.ExplorationEngine.mem_stack.pop()
             result = augend + addend
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_SUBTRACT":
-            subtrahend = mem_stack.pop()
-            minuend = mem_stack.pop()
+            subtrahend = explore.ExplorationEngine.mem_stack.pop()
+            minuend = explore.ExplorationEngine.mem_stack.pop()
             result = minuend - subtrahend
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_SUBSCR":
             # TODO: 
@@ -360,47 +360,47 @@ class Executor:
             return
 
         elif instruct.opname is "INPLACE_LSHIFT":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 << to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_RSHIFT":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 >> to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_AND":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 & to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_XOR":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 ^ to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "INPLACE_OR":
-            to = mem_stack.pop()
-            to1 = mem_stack.pop()
+            to = explore.ExplorationEngine.mem_stack.pop()
+            to1 = explore.ExplorationEngine.mem_stack.pop()
             result = to1 | to
-            mem_stack.push(result)
+            explore.ExplorationEngine.mem_stack.push(result)
 
         elif instruct.opname is "STORE_SUBSCR":
-            tos = mem_stack.pop()
+            tos = explore.ExplorationEngine.mem_stack.pop()
             if isinstance(tos, ConcolicInteger) or \
                isinstance(tos, ConcolicStr):
                 tos = tos.value
-            tos1 = mem_stack.pop()
-            tos2 = mem_stack.pop()
+            tos1 = explore.ExplorationEngine.mem_stack.pop()
+            tos2 = explore.ExplorationEngine.mem_stack.pop()
             tos1.store(tos, tos2)
 
         elif instruct.opname is "DELETE_SUBSCR":
-            tos = mem_stack.pop()
-            tos1 = mem_stack.pop()
+            tos = explore.ExplorationEngine.mem_stack.pop()
+            tos1 = explore.ExplorationEngine.mem_stack.pop()
             tos1.do_del(tos)
             log.debug(" List after deleted:")
             log.debug(tos1)
@@ -463,11 +463,11 @@ class Executor:
             return
 
         elif instruct.opname is "RETURN_VALUE":
-            ret_value = mem_stack.pop()
+            ret_value = explore.ExplorationEngine.mem_stack.pop()
             if ret_value is None or ret_value is 0:
                 if func_name is "__init__":
                     ret_value = variables["self"]
-            mem_stack.push(ret_value)
+            explore.ExplorationEngine.mem_stack.push(ret_value)
             log.debug("    Return: %s" % ret_value)
             c_frame.instructions.sanitize()
             return True
@@ -529,7 +529,7 @@ class Executor:
 
         elif instruct.opname is "UNPACK_SEQUENCE":
             size = instruct.argval
-            seqs = mem_stack.pop()
+            seqs = explore.ExplorationEngine.mem_stack.pop()
             tmp_l = []
             if isinstance(seqs, ConcolicList):
                 for value in seqs.value:
@@ -554,7 +554,7 @@ class Executor:
                     tmp_l.append(value)
             tmp_l.reverse()
             for val in tmp_l:
-                mem_stack.push(val)
+                explore.ExplorationEngine.mem_stack.push(val)
             return
 
         elif instruct.opname is "UNPACK_EX":
@@ -564,8 +564,8 @@ class Executor:
 
         elif instruct.opname is "STORE_ATTR":
             attr_name = instruct.argval
-            object_var = mem_stack.pop() 
-            object_var.store_attr(attr_name, mem_stack.pop())
+            object_var = explore.ExplorationEngine.mem_stack.pop() 
+            object_var.store_attr(attr_name, explore.ExplorationEngine.mem_stack.pop())
 
         elif instruct.opname is "DELETE_ATTR":
             # TODO
@@ -602,7 +602,7 @@ class Executor:
                 value = Concolic_tuple(load_value)
             else:
                 value = load_value
-            mem_stack.push(value)
+            explore.ExplorationEngine.mem_stack.push(value)
 
         elif instruct.opname is "LOAD_NAME":
             # TODO
@@ -613,10 +613,10 @@ class Executor:
             size = instruct.argval
             tmp_list = []
             for i in range(size):
-                tmp_list.append(mem_stack.pop())
+                tmp_list.append(explore.ExplorationEngine.mem_stack.pop())
             tmp_list.reverse()
             t = ConcolicList(tmp_list)
-            mem_stack.push(t)
+            explore.ExplorationEngine.mem_stack.push(t)
             return
 
         elif instruct.opname is "BUILD_LIST":
@@ -624,29 +624,29 @@ class Executor:
             new_list = ConcolicList()
             while size > 0:
                 size -= 1
-                new_list.append(mem_stack.pop())
+                new_list.append(explore.ExplorationEngine.mem_stack.pop())
             log.debug("     List build reverse")
             new_list.value.reverse()
-            mem_stack.push(new_list)
+            explore.ExplorationEngine.mem_stack.push(new_list)
 
         elif instruct.opname is "BUILD_MAP":
             size = instruct.argval
             new_map = ConcolicMap()
             while size > 0:
                 size -= 1
-                tos = mem_stack.pop()
-                tos1 = mem_stack.pop()
+                tos = explore.ExplorationEngine.mem_stack.pop()
+                tos1 = explore.ExplorationEngine.mem_stack.pop()
                 new_map.store(tos1, tos)
-            mem_stack.push(new_map)
+            explore.ExplorationEngine.mem_stack.push(new_map)
             return
 
         elif instruct.opname is "BUILD_CONST_KEY_MAP":
-            names = mem_stack.pop()
+            names = explore.ExplorationEngine.mem_stack.pop()
             size = instruct.argval
             build_map = ConcolicMap()
             for i in range(size):
-                build_map.store(names[i], mem_stack.pop())
-            mem_stack.push(build_map)
+                build_map.store(names[i], explore.ExplorationEngine.mem_stack.pop())
+            explore.ExplorationEngine.mem_stack.push(build_map)
             return
 
         elif instruct.opname is "BUILD_STRING":
@@ -686,22 +686,22 @@ class Executor:
 
         elif instruct.opname is "LOAD_ATTR":
             load_name = instruct.argval
-            object_var = mem_stack.pop() 
+            object_var = explore.ExplorationEngine.mem_stack.pop() 
             if isinstance(object_var, str) and object_var == "re":
                 load_attr = getattr(re, load_name)
-                mem_stack.push(load_attr)
+                explore.ExplorationEngine.mem_stack.push(load_attr)
             elif object_var.has_attr(load_name):
                 load_attr = object_var.get_attr(load_name)
-                mem_stack.push(load_attr)
+                explore.ExplorationEngine.mem_stack.push(load_attr)
             else:
                 # Probally is calling a function
                 # Store the object back, passing to the function as self
-                mem_stack.push(object_var)
+                explore.ExplorationEngine.mem_stack.push(object_var)
 
         elif instruct.opname is "COMPARE_OP":
             op = instruct.argval
-            tos = mem_stack.pop()
-            tos1 = mem_stack.pop()
+            tos = explore.ExplorationEngine.mem_stack.pop()
+            tos1 = explore.ExplorationEngine.mem_stack.pop()
 
             # Handle tuple case patch
             if isinstance(tos, Concolic_tuple):
@@ -717,15 +717,15 @@ class Executor:
 
 
             if op == "in":
-                mem_stack.push(tos.contains(tos1))
+                explore.ExplorationEngine.mem_stack.push(tos.contains(tos1))
             elif op == "not in":
-                mem_stack.push(tos.not_contains(tos1))
+                explore.ExplorationEngine.mem_stack.push(tos.not_contains(tos1))
             else:
                 if isinstance(tos1, ConcolicInteger) or \
                    isinstance(tos1, ConcolicStr):
-                    mem_stack.push(tos1.compare_op(str(op), tos))
+                    explore.ExplorationEngine.mem_stack.push(tos1.compare_op(str(op), tos))
                 else:
-                    mem_stack.push(self.constant_compare(op, tos1, tos))
+                    explore.ExplorationEngine.mem_stack.push(self.constant_compare(op, tos1, tos))
 
         elif instruct.opname is "IMPORT_NAME":
             # TODO
@@ -743,7 +743,7 @@ class Executor:
             return
 
         elif instruct.opname is "POP_JUMP_IF_TRUE":
-            condition = mem_stack.pop()
+            condition = explore.ExplorationEngine.mem_stack.pop()
             if condition.value:
                 self._handle_jump(c_frame, instruct)
             if condition is not None:
@@ -751,7 +751,7 @@ class Executor:
             return
 
         elif instruct.opname is "POP_JUMP_IF_FALSE":
-            condition = mem_stack.pop()
+            condition = explore.ExplorationEngine.mem_stack.pop()
             if condition is None or not condition.value:
                 self._handle_jump(c_frame, instruct)
             if condition is not None:
@@ -761,22 +761,22 @@ class Executor:
         elif instruct.opname is "JUMP_IF_TRUE_OR_POP":
             # TODO
             log.warning("%s Not checked" % instruct.opname)
-            condition = mem_stack.top()
+            condition = explore.ExplorationEngine.mem_stack.top()
             self.path.which_branch(condition)
             if condition.value:
                 self._handle_jump(c_frame, instruct)
             else:
-                mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.pop()
 
         elif instruct.opname is "JUMP_IF_FALSE_OR_POP":
             # TODO
             log.warning("%s Not checked" % instruct.opname)
-            condition = mem_stack.top()
+            condition = explore.ExplorationEngine.mem_stack.top()
             self.path.which_branch(condition)
             if not condition.value:
                 self._handle_jump(c_frame, instruct)
             else:
-                mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.pop()
 
         elif instruct.opname is "JUMP_ABSOLUTE":
             self._handle_jump(c_frame, instruct)
@@ -784,13 +784,13 @@ class Executor:
 
         elif instruct.opname is "FOR_ITER":
             next_offset = instruct.argval
-            condition, next_iter = mem_stack.top().next_iter()
+            condition, next_iter = explore.ExplorationEngine.mem_stack.top().next_iter()
             self.path.which_branch(condition)
             if condition.value:
                 log.debug("Iter: %s" % next_iter)
-                mem_stack.push(next_iter)
+                explore.ExplorationEngine.mem_stack.push(next_iter)
             else:
-                mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.pop()
                 self._handle_jump(c_frame, instruct, True)
             return
 
@@ -798,9 +798,9 @@ class Executor:
             # TODO
             if instruct.argval in g_variables:
                 load_var = instruct.argval
-                mem_stack.push(g_variables[load_var])
+                explore.ExplorationEngine.mem_stack.push(g_variables[load_var])
             else:
-                mem_stack.push(instruct.argval)
+                explore.ExplorationEngine.mem_stack.push(instruct.argval)
             return
 
         elif instruct.opname is "SETUP_LOOP":
@@ -819,12 +819,12 @@ class Executor:
         elif instruct.opname is "LOAD_FAST":
             load_name = instruct.argval
             load_var = variables[load_name]
-            mem_stack.push(load_var)
+            explore.ExplorationEngine.mem_stack.push(load_var)
             log.debug("     Load: %s" % load_var)
 
         elif instruct.opname is "STORE_FAST":
             store_name = instruct.argval
-            var = mem_stack.pop() 
+            var = explore.ExplorationEngine.mem_stack.pop() 
             variables[store_name] = var
             log.debug("     Store: %s" % var)
 
@@ -866,10 +866,10 @@ class Executor:
             argv = instruct.argval
             args = Stack()
             for i in range(argv):
-                args.push(mem_stack.pop())
-            func = mem_stack.pop()
+                args.push(explore.ExplorationEngine.mem_stack.pop())
+            func = explore.ExplorationEngine.mem_stack.pop()
             for i in range(argv):
-                mem_stack.push(args.pop())
+                explore.ExplorationEngine.mem_stack.push(args.pop())
 
             log.debug("Call function: %s" % func)
 
@@ -877,53 +877,53 @@ class Executor:
             # Overwrite: implemented in classes
             overwrite = ["len", "int", "join"]
             if func in overwrite:
-                target = mem_stack.pop()
+                target = explore.ExplorationEngine.mem_stack.pop()
                 if isinstance(target, ConcolicMap):
-                    mem_stack.push(ConcolicInteger(target.size))
+                    explore.ExplorationEngine.mem_stack.push(ConcolicInteger(target.size))
                 function_to_call = getattr(target, func)
-                mem_stack.push(function_to_call())
+                explore.ExplorationEngine.mem_stack.push(function_to_call())
                 if func == "int":
                     self.path.which_branch(target.is_number(), False)
 
             elif func == "str":
-                target = mem_stack.pop()
+                target = explore.ExplorationEngine.mem_stack.pop()
                 if isinstance(target, ConcolicInteger):
-                    mem_stack.push(ConcolicStr(*target.get_str()))
+                    explore.ExplorationEngine.mem_stack.push(ConcolicStr(*target.get_str()))
                 else:
-                    mem_stack.push(str(target))
+                    explore.ExplorationEngine.mem_stack.push(str(target))
             elif func == "dict":
                 if argv == 0:
                     new_list = ConcolicMap()
-                    mem_stack.push(new_list)
+                    explore.ExplorationEngine.mem_stack.push(new_list)
                 else:
-                    mem_stack.push(mem_stack.pop())
+                    explore.ExplorationEngine.mem_stack.push(explore.ExplorationEngine.mem_stack.pop())
             elif func == "list":
                 if argv == 0:
                     new_list = ConcolicList()
-                    mem_stack.push(new_list)
+                    explore.ExplorationEngine.mem_stack.push(new_list)
                 else:
-                    mem_stack.push(mem_stack.pop())
+                    explore.ExplorationEngine.mem_stack.push(explore.ExplorationEngine.mem_stack.pop())
 
             elif func == "range":
-                range_object = self._do_range(argv, mem_stack)
-                mem_stack.push(range_object)
+                range_object = self._do_range(argv)
+                explore.ExplorationEngine.mem_stack.push(range_object)
             elif func == "sum":
-                value = self._do_sum(mem_stack.pop())
-                mem_stack.push(value)
+                value = self._do_sum(explore.ExplorationEngine.mem_stack.pop())
+                explore.ExplorationEngine.mem_stack.push(value)
             elif func == "max":
-                b = mem_stack.pop()
-                a = mem_stack.pop()
-                mem_stack.push(self._do_max(a, b))
+                b = explore.ExplorationEngine.mem_stack.pop()
+                a = explore.ExplorationEngine.mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.push(self._do_max(a, b))
             elif func == "min":
-                b = mem_stack.pop()
-                a = mem_stack.pop()
-                mem_stack.push(self._do_min(a, b))
+                b = explore.ExplorationEngine.mem_stack.pop()
+                a = explore.ExplorationEngine.mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.push(self._do_min(a, b))
             elif func == "abs":
-                t = mem_stack.pop()
-                mem_stack.push(t.do_abs())
+                t = explore.ExplorationEngine.mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.push(t.do_abs())
             elif func == "reversed":
-                t = mem_stack.pop()
-                mem_stack.push(self._do_reversed(t))
+                t = explore.ExplorationEngine.mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.push(self._do_reversed(t))
             else:
                 return
             return False
@@ -940,7 +940,7 @@ class Executor:
 
         elif instruct.opname is "LOAD_METHOD":
             method = instruct.argrepr
-            target = mem_stack.pop()
+            target = explore.ExplorationEngine.mem_stack.pop()
             if isinstance(target, ConcolicInteger) or \
                isinstance(target, ConcolicStr) or \
                isinstance(target, ConcolicMap) or \
@@ -950,7 +950,7 @@ class Executor:
                 if method == "split" or method == "splitlines":
                     self.collect_extend = True
                 method_to_call = getattr(target, method)
-                mem_stack.push(method_to_call)
+                explore.ExplorationEngine.mem_stack.push(method_to_call)
                 self.overwrite_method = True
                 log.debug("Load overwite: %s" % method)
             elif isinstance(target, str) and target == "re":
@@ -958,18 +958,18 @@ class Executor:
                 if method == "compile":
                     pattern = RegexPattern()
                     method_to_call = getattr(pattern, method)
-                    mem_stack.push(method_to_call)
+                    explore.ExplorationEngine.mem_stack.push(method_to_call)
                     self.overwrite_method = True
                 else:
                     target = RegexWrap()
                     method_to_call = getattr(target, method)
-                    mem_stack.push(method_to_call)
+                    explore.ExplorationEngine.mem_stack.push(method_to_call)
                     self.overwrite_method = True
 
             else:
                 # Pass in as self
                 if isinstance(target, ConcolicObject):
-                    mem_stack.push(target)
+                    explore.ExplorationEngine.mem_stack.push(target)
                 self.overwrite_method = False
                 log.debug("Load outside: %s" % method)
             return
@@ -979,14 +979,14 @@ class Executor:
                 argv = instruct.argval
                 args = []
                 for i in range(argv):
-                    args.append(mem_stack.pop())
+                    args.append(explore.ExplorationEngine.mem_stack.pop())
                 args.reverse()
-                method_to_call = mem_stack.pop()
-                mem_stack.push(method_to_call(*args))
+                method_to_call = explore.ExplorationEngine.mem_stack.pop()
+                explore.ExplorationEngine.mem_stack.push(method_to_call(*args))
                 self.overwrite_method = False
 
                 if self.collect_extend:
-                    t_list = mem_stack.top()
+                    t_list = explore.ExplorationEngine.mem_stack.top()
                     for val in t_list.value:
                         var_name = "_EXTEND_VAR_%s" % self.extend_cnt
                         if isinstance(val, ConcolicStr):
@@ -1013,12 +1013,12 @@ class Executor:
                 log.error("Does not support step yet")
             args = []
             while argv > 0:
-                var = mem_stack.pop()
+                var = explore.ExplorationEngine.mem_stack.pop()
                 args.append(var)
                 argv -= 1
             args.reverse()
-            target = mem_stack.pop()
-            mem_stack.push(target.get_slice(*args))
+            target = explore.ExplorationEngine.mem_stack.pop()
+            explore.ExplorationEngine.mem_stack.push(target.get_slice(*args))
             self.build_slice = True
 
         elif instruct.opname is "EXTENDED_ARG":

@@ -27,6 +27,7 @@ def print_inst(obj):
         log.debug(line)
 
 class ExplorationEngine:
+    mem_stack = Stack()
 
     def __init__(self, path, filename, module, entry, ini_vars, query_store, solver_type, ss):
         # Set up import environment
@@ -54,7 +55,7 @@ class ExplorationEngine:
         self.global_execution_coverage = coverage.CoverageData()
 
         self.call_stack = Stack()
-        self.mem_stack = Stack()
+        
 
         self.path = PathToConstraint(lambda c: self.add_constraint(c))
         self.executor = Executor(self.path)
@@ -205,12 +206,12 @@ class ExplorationEngine:
         func_name = co.co_name
         if "/python3." in co.co_filename :
             return
-        current_frame = Frame(frame, self.mem_stack)
+        current_frame = Frame(frame)
         if not self.call_stack.is_empty():
             if func_name == "__init__":
-                current_frame.set_locals(self.call_stack.top().mem_stack, True)
+                current_frame.set_locals(True)
             else:
-                current_frame.set_locals(self.call_stack.top().mem_stack, False)
+                current_frame.set_locals(False)
         else:
             self.symbolic_inputs = current_frame.init_locals()
             self.solver.set_variables(self.symbolic_inputs)
@@ -294,7 +295,7 @@ class ExplorationEngine:
         copy_vars = copy.deepcopy(init_vars)
 
         self.call_stack.sanitize()
-        self.mem_stack.sanitize()
+        ExplorationEngine.mem_stack.sanitize()
         self.path.reset(expected_path)
 
         execute = getattr(self.t_module, self.entry)

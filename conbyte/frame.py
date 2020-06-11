@@ -9,7 +9,7 @@ import dis
 log = logging.getLogger("ct.frame")
 
 class Frame:
-    def __init__(self, frame, mem_stack):
+    def __init__(self, frame):
         log.debug("New Frame")
         """
         print("locals")
@@ -25,7 +25,6 @@ class Frame:
         self.all_instructs = []
         self.variables = dict()
         self.g_variables = dict()
-        self.mem_stack = mem_stack
         self.enter_object = None
         self.next_offset = None            # For JUMP
 
@@ -73,11 +72,11 @@ class Frame:
         self._set_globals()
         return symbolic_inputs
 
-    def set_locals(self, mem_stack, is_init_object):
+    def set_locals(self, is_init_object):
         for local in reversed(list(self.locals.keys())):
             log.debug("   local: %s" % local)
             if local != "self":
-                var = mem_stack.pop()
+                var = ExplorationEngine.mem_stack.pop()
                 self.variables[local] = var
                 log.debug("        : %s" % var)
             else:
@@ -85,7 +84,7 @@ class Frame:
                     self.variables[local] = ConcolicObject()
                     log.debug("        : Init" )
                 else:
-                    var = mem_stack.pop()
+                    var = ExplorationEngine.mem_stack.pop()
                     self.variables[local] = var
                     log.debug("        : %s" % var)
         self._set_globals()
