@@ -79,39 +79,7 @@ class ExplorationEngine:
     def add_constraint(self, constraint):
         self.new_constraints.append(constraint)
 
-    # Legacy
-    def get_members(self, target_module):
-        for name, obj in inspect.getmembers(target_module):
-            """
-            if inspect.ismodule(obj):
-                print("module", name)
-                self.get_members(obj)
-            """
-
-            if inspect.isclass(obj):
-                """
-                print("class", name)
-                for name_o, obj_o in inspect.getmembers(obj):
-                    if inspect.isfunction(obj_o):
-                        print( "function ", name_o)
-                        #print_inst(obj_o)
-                dis.dis(obj)
-                """
-            if inspect.ismethod(obj):
-                """
-                # print("method", name)
-                #dis.dis(obj)
-                # print_inst(obj)
-                """
-            if inspect.isfunction(obj):
-                # dis.dis(obj)
-                # print_inst(obj)
-                self.trace_into.append(name)
-                self.functions[name] = Function(obj)
-                # print("function ", name)
-                # dis.dis(obj)
-
-    def execute_instructs(self, frame, func_name=None):
+    def execute_instructs(self, frame):
         # Handle previous jump first
         re = None
         while frame.next_offset != None:
@@ -125,7 +93,7 @@ class ExplorationEngine:
             else:
                 log.debug("** Pure counter control")
                 log.debug("- instr %s %s %s %s" % (instruct.offset, instruct.opname, instruct.argval, instruct.argrepr))
-                re = self.executor.execute_instr(instruct, func_name)
+                re = self.executor.execute_instr(instruct)
                 if re:
                     return re
 
@@ -138,23 +106,16 @@ class ExplorationEngine:
             instruct = instructs.pop()
             log.debug("- instr %s %s %s %s" % (instruct.offset, instruct.opname, instruct.argval, instruct.argrepr))
             if instruct.opname == "CALL_FUNCTION":
-                re = self.executor.execute_instr(instruct, func_name)
+                re = self.executor.execute_instr(instruct)
                 if re is None:
                     return
             elif instruct.opname == "CALL_METHOD":
-                re = self.executor.execute_instr(instruct, func_name)
+                re = self.executor.execute_instr(instruct)
                 if re is None:
                     return
             else:
-                re = self.executor.execute_instr(instruct, func_name)
+                re = self.executor.execute_instr(instruct)
         return re
-
-    def execute_frame(self, func_name=None):
-        if ExplorationEngine.call_stack.is_empty():
-            return
-        current_frame = ExplorationEngine.call_stack.top()
-        return self.execute_instructs(current_frame, func_name)
-
 
     def get_line_instructions(self, lineno, instructions):
         instructs = []
@@ -180,24 +141,22 @@ class ExplorationEngine:
             return
 
         co = frame.f_code
-        func_name = co.co_name
         line_no = frame.f_lineno
-        log.debug('+ %s line %s' % (func_name, line_no))
+        
 
-        instructions = self.get_line_instructions(line_no, dis.get_instructions(co))
-
-        if ExplorationEngine.call_stack.is_empty():
-            return
         c_frame = ExplorationEngine.call_stack.top()
-        for instruct in instructions:
+        log.debug('+ %s line %s' % (c_frame.func_name, line_no))
+        for instruct in self.get_line_instructions(line_no, dis.get_instructions(co)):
             c_frame.instructions_store.push(instruct)
-            # print("   push", instruct.opname, instruct.argval, instruct.argrepr)
 
-        is_return = self.execute_frame(func_name)
-
+        is_return = self.execute_instructs(c_frame)
         while is_return:
             ExplorationEngine.call_stack.pop()
-            is_return = self.execute_frame(func_name)
+            if not ExplorationEngine.call_stack.is_empty():
+                c_frame = ExplorationEngine.call_stack.top()
+                is_return = self.execute_instructs(c_frame)
+            else:
+                break
 
     def trace_calls(self, frame, event, arg):
         if event != 'call':
@@ -206,7 +165,7 @@ class ExplorationEngine:
         func_name = co.co_name
         if "/python3." in co.co_filename :
             return
-        current_frame = Frame(frame)
+        current_frame = Frame(frame, func_name)
         if not ExplorationEngine.call_stack.is_empty():
             if func_name == "__init__":
                 current_frame.set_locals(True)

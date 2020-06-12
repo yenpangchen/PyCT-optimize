@@ -123,7 +123,7 @@ class Executor:
 
         return ConcolicType(expr, value)
 
-    def execute_instr(self, instruct, func_name=None):
+    def execute_instr(self, instruct):
         #time.sleep(.5)
         c_frame = explore.ExplorationEngine.call_stack.top()
         variables = c_frame.variables
@@ -465,7 +465,7 @@ class Executor:
         elif instruct.opname is "RETURN_VALUE":
             ret_value = explore.ExplorationEngine.mem_stack.pop()
             if ret_value is None or ret_value is 0:
-                if func_name is "__init__":
+                if c_frame.func_name is "__init__":
                     ret_value = variables["self"]
             explore.ExplorationEngine.mem_stack.push(ret_value)
             log.debug("    Return: %s" % ret_value)

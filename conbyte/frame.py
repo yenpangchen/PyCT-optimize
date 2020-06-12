@@ -9,7 +9,7 @@ import dis
 log = logging.getLogger("ct.frame")
 
 class Frame:
-    def __init__(self, frame):
+    def __init__(self, frame, func_name):
         log.debug("New Frame")
         """
         print("locals")
@@ -18,6 +18,7 @@ class Frame:
             print(" ", g_name)
         """
         self.frame = frame
+        self.func_name = func_name
         self.globals = frame.f_globals
         self.locals = frame.f_locals
         self.instructions = Queue()
