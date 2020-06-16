@@ -18,6 +18,7 @@ from .path_to_constraint import *
 
 from .concolic_types import concolic_type
 from .solver import Solver 
+import global_var
 
 log = logging.getLogger("ct.explore")
 
@@ -58,7 +59,7 @@ class ExplorationEngine:
         
 
         self.path = PathToConstraint(lambda c: self.add_constraint(c))
-        self.executor = Executor(self.path)
+        self.executor = Executor() #self.path)
 
         """
         # Append builtin in trace_into
@@ -165,18 +166,31 @@ class ExplorationEngine:
         func_name = co.co_name
         if "/python3." in co.co_filename :
             return
-        current_frame = Frame(frame, func_name)
-        if not ExplorationEngine.call_stack.is_empty():
-            if func_name == "__init__":
-                current_frame.set_locals(True)
-            else:
-                current_frame.set_locals(False)
-        else:
-            self.symbolic_inputs = current_frame.init_locals()
+        # current_frame = Frame(frame, func_name)
+        # if not ExplorationEngine.call_stack.is_empty():
+        #     if func_name == "__init__":
+        #         current_frame.set_locals(True)
+        #     else:
+        #         current_frame.set_locals(False)
+        # else:
+        # self.symbolic_inputs = current_frame.init_locals()
+        if not global_var.inputs_processed:
+            global_var.inputs_processed = True
+            self.symbolic_inputs = dict() #{'a': 'Int', 'b': 'Int'}
+            import ctypes
+            for (k,v) in frame.f_locals.items():
+                if isinstance(v, int):
+                    self.symbolic_inputs[k] = 'Int'
+                    frame.f_locals.update({k: ConcolicInteger(k, v)})
+                else:
+                    log.error('Not implemented')
+                    sys.exit(0)
+                ctypes.pythonapi.PyFrame_LocalsToFast(ctypes.py_object(frame), ctypes.c_int(0))
+                # Magic: https://stackoverflow.com/questions/34650744/modify-existing-variable-in-locals-or-frame-f-locals
             self.solver.set_variables(self.symbolic_inputs)
         # current_frame.set_local()
-        ExplorationEngine.call_stack.push(current_frame)
-        return self.trace_lines
+        # ExplorationEngine.call_stack.push(current_frame)
+        # return self.trace_lines
 
     def _is_exploration_complete(self):
         num_constr = self.constraints_to_solve.q_size()
@@ -259,6 +273,7 @@ class ExplorationEngine:
 
         execute = getattr(self.t_module, self.entry)
         sys.settrace(self.trace_calls)
+        global_var.inputs_processed = False
         ret = execute(*copy_vars)
         sys.settrace(None)
         log.info("Return: %s" % ret)

@@ -1,5 +1,6 @@
 # Copyright: copyright.txt
 from .concolic_type import *
+import global_var
 
 log = logging.getLogger("ct.con.int")
 
@@ -9,57 +10,69 @@ Classes:
     Concolic_range
 """
 
-class ConcolicInteger(ConcolicType):
-    def __init__(self, expr, value=None):
-        if value is None:
-            if isinstance(expr, int):
-                self.value = expr
-            else:
-                self.value = int(expr)
+class ConcolicInteger(int):
+    def __new__(cls, expr, value=None):
+        if value is not None:
+            return int.__new__(cls, value)
         else:
-            self.value = value
+            return int.__new__(cls, int(expr))
+
+    def __init__(self, expr, value=None):
         self.expr = expr
-        log.debug("  ConInt, value: %s, expr: %s" % (self.value, self.expr))
+        log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
 
-    def __int__(self):
-        return self.value
+    def __ge__(self, other):
+        if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        expr = [">=", self.expr, other.expr]
+        value = int(self) >= int(other)
+        return ConcolicType(expr, value)
 
-    def __str__(self):
-        return "{ConInt, value: %s, expr: %s)" % (self.value, self.expr)
+    def __gt__(self, other):
+        if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        expr = [">", self.expr, other.expr]
+        value = int(self) > int(other)
+        return ConcolicType(expr, value)
 
-    def negate(self):
-        self.value = -self.value
-        self.expr = ["-", 0, self.expr]
+    def __lt__(self, other):
+        if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        expr = ["<", self.expr, other.expr]
+        value = int(self) < int(other)
+        return ConcolicType(expr, value)
 
-    def get_str(self):
-        value = str(self.value)
-        expr = ["int.to.str", self.expr]
-        return expr, value
+    # def __int__(self):
+    #     return self.value
 
-    def do_abs(self):
-        value = abs(self.value)
+    # def __str__(self):
+        # return "{ConInt, value: %s, expr: %s)" % (int(self), self.expr)
+
+    # def negate(self):
+    #     self.value = -self.value
+    #     self.expr = ["-", 0, self.expr]
+
+    # def get_str(self):
+    #     value = str(self.value)
+    #     expr = ["int.to.str", self.expr]
+    #     return expr, value
+
+    def __abs__(self):
+        value = abs(int(self))
         expr = ["ite", [">=", self.expr, 0], self.expr, ["-", 0, self.expr]]
         return ConcolicInteger(expr, value)
 
-    def int(self):
-        return self
+    # def int(self):
+    #     return self.value
 
-    def is_number(self):
-        value = True
-        expr = ["=", 1, 1]
-        #return ConcolicType(expr, value)
-        return ConcolicType(True, "true")
+    # def is_number(self):
+    #     value = True
+    #     expr = ["=", 1, 1]
+    #     #return ConcolicType(expr, value)
+    #     return ConcolicType(True, "true")
 
 ops = [("add", "+", "+"),
        ("sub", "-", "-"),
        ("mul", "*", "*"),
        ("mod", "%", "mod"),
        ("truediv", "/", "div"),
-       ("radd", "+", "+"),
-       ("rsub", "-", "-"),
-       ("rmul", "*", "*"),
-       ("rmod", "%", "mod"),
-       ("rtruediv", "/", "div"),
        ("floordiv", "//", "div"),
        ("and", "&", "&"),
        ("or", "|", "|"),
@@ -69,9 +82,9 @@ ops = [("add", "+", "+"),
 
 def make_method(method, op, op_smt):
     code = "def %s(self, other):\n" % method
-    code += "   if isinstance(other, int):\n"
+    code += "   if not isinstance(other, ConcolicInteger):\n"
     code += "      other = ConcolicInteger(other)\n"
-    code += "   value = int(self.value %s other.value)\n" % op
+    code += "   value = int(self) %s int(other)\n" % op
     code += "   expr = [\"%s\", self.expr, other.expr]\n" % op_smt
     code += "   return ConcolicInteger(expr, value)"
     locals_dict = {}
@@ -81,9 +94,29 @@ def make_method(method, op, op_smt):
 for (name, op, op_smt) in ops:
     method = "__%s__" % name
     make_method(method, op, op_smt)
-    rmethod = "__r%s__" % name
-    make_method(rmethod, op, op_smt)
+    # rmethod = "__r%s__" % name
+    # make_method(rmethod, op, op_smt)
 
+rops = [("radd", "+", "+"),
+       ("rsub", "-", "-"),
+       ("rmul", "*", "*"),
+       ("rmod", "%", "mod"),
+       ("rtruediv", "/", "div")]
+
+def make_rmethod(method, op, op_smt):
+    code = "def %s(self, other):\n" % method
+    code += "   if not isinstance(other, ConcolicInteger):\n"
+    code += "      other = ConcolicInteger(other)\n"
+    code += "   value = int(other) %s int(self)\n" % op
+    code += "   expr = [\"%s\", other.expr, self.expr]\n" % op_smt
+    code += "   return ConcolicInteger(expr, value)"
+    locals_dict = {}
+    exec(code, globals(), locals_dict)
+    setattr(ConcolicInteger, method, locals_dict[method])
+
+for (name, op, op_smt) in rops:
+    method = "__%s__" % name
+    make_rmethod(method, op, op_smt)
 
 class Concolic_range():
     def __init__(self, start, end=None, step=None):

@@ -6,6 +6,8 @@ import functools
 import logging
 import sys
 
+import global_var
+
 log = logging.getLogger("ct.con.type")
 
 class ConcolicType(object):
@@ -112,3 +114,8 @@ class ConcolicType(object):
 
     def __str__(self):
         return "{ConType, value: %s, expr: %s)" % (self.value, self.expr)
+
+    def __bool__(self):
+        if global_var.engine is not None:
+            global_var.engine.path.which_branch(self)
+        return self.value

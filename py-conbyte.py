@@ -12,6 +12,7 @@ from conbyte.function import *
 from conbyte.explore import *
 
 import warnings
+import global_var
 
 with warnings.catch_warnings():
     warnings.simplefilter('ignore', SyntaxWarning)
@@ -95,13 +96,13 @@ def main():
         # exec(open(inputs_file_full).read(), inputs_space)
 
     # engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
-    engine = ExplorationEngine(path, filename, module, options.entry, eval(options.inputs), query, options.solver_type, options.ss)
+    global_var.engine = ExplorationEngine(path, filename, module, options.entry, eval(options.inputs), query, options.solver_type, options.ss)
 
     if options.extract:
-        engine.extract()
+        global_var.engine.extract()
         return
 
-    engine.explore(int(options.iteration), options.timeout)
+    global_var.engine.explore(int(options.iteration), options.timeout)
 
     if options.quiet:
         return
@@ -109,19 +110,19 @@ def main():
     if not options.get_json:
         print()
         print("Generated inputs")
-        for inputs in engine.input_sets:
+        for inputs in global_var.engine.input_sets:
             print(inputs)
-        if len(engine.error_sets) != 0:
+        if len(global_var.engine.error_sets) != 0:
             print()
             print("Error inputs")
-            for inputs in engine.error_sets:
+            for inputs in global_var.engine.error_sets:
                 print(inputs)
         print()
-        engine.print_coverage()
+        global_var.engine.print_coverage()
     else:
-        print(engine.result_to_json())
+        print(global_var.engine.result_to_json())
 
-    print(engine.in_ret_sets)
+    print(global_var.engine.in_ret_sets)
 
     
 

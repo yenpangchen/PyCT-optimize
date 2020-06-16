@@ -18,8 +18,8 @@ import time
 log = logging.getLogger("ct.executor")
 
 class Executor:
-    def __init__(self, path):
-        self.path = path
+    def __init__(self): #, path):
+        # self.path = path
         self.overwrite_method = False
         self.build_slice = False
 
