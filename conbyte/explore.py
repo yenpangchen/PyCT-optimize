@@ -182,9 +182,11 @@ class ExplorationEngine:
                 if isinstance(v, int):
                     self.symbolic_inputs[k] = 'Int'
                     frame.f_locals.update({k: ConcolicInteger(k, v)})
+                elif isinstance(v, str):
+                    self.symbolic_inputs[k] = 'String'
+                    frame.f_locals.update({k: ConcolicStr(k, v)})
                 else:
-                    log.error('Not implemented')
-                    sys.exit(0)
+                    raise NotImplementedError
                 ctypes.pythonapi.PyFrame_LocalsToFast(ctypes.py_object(frame), ctypes.c_int(0))
                 # Magic: https://stackoverflow.com/questions/34650744/modify-existing-variable-in-locals-or-frame-f-locals
             self.solver.set_variables(self.symbolic_inputs)

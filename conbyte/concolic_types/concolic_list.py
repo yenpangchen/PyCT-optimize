@@ -10,26 +10,34 @@ Classes:
     Concolic_tuple
 """
 
-class ConcolicList(ConcolicType):
+class ConcolicList(list): #(ConcolicType):
+    def __new__(cls, value=None):
+        if value is None:
+            return [] # list.__new__(cls, [])
+        elif isinstance(value, ConcolicList):
+            return list(value) # list.__new__(cls, list(value))
+        else:
+            return value # list.__new__(cls, value)
+
     def __init__(self, value=None):
         self.expr = "LIST"
         if value is None:
-            self.value = []
-            self.size = 0
+            # self.value = []
+            # self.size = 0
             log.debug("  List: empty")
             return
-        elif isinstance(value, ConcolicList):
-            self.value = value.value
-            self.size = value.size
-        else:
-            self.value = value
-            self.size = len(value)
-        log.debug("  List: %s" % ",".join(val.__str__() for val in self.value))
+        # elif isinstance(value, ConcolicList):
+            # self.value = value.value
+            # self.size = value.size
+        # else:
+            # self.value = value
+            # self.size = len(value)
+        log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
 
     def append(self, element):
         self.value.append(element)
-        self.size += 1
+        # self.size += 1
         log.debug("  List append: %s" % element)
 
     def get_index(self, index=0):
@@ -70,27 +78,27 @@ class ConcolicList(ConcolicType):
         value = not value
         return ConcolicType(expr, value)
 
-    def __str__(self):
-        if self.size == 0:
-            return "  List: nil"
-        return "  List: %s" % ",".join(val.__str__() for val in self.value)
+    # def __str__(self):
+    #     if self.size == 0:
+    #         return "  List: nil"
+    #     return "  List: %s" % ",".join(val.__str__() for val in self.value)
         
     def __add__(self, other):
         self.value += other.value
-        self.size += other .size
+        # self.size += other .size
         log.debug(self)
         return self
 
     def __radd__(self, other):
         self.value += other.value
-        self.size += other .size
+        # self.size += other .size
         return self
 
-    def __len__(self):
-        return self.size
+    # def __len__(self):
+    #     return self.size
 
-    def len(self):
-        return ConcolicInteger(self.size)
+    # def len(self):
+    #     return ConcolicInteger(self.size)
     
     def multiply(self, mul):
         if isinstance(mul, ConcolicInteger):
@@ -112,7 +120,7 @@ class ConcolicList(ConcolicType):
         self.value = reversed(self.value)
 
     def insert(self, index, value):
-        self.size += 1
+        # self.size += 1
         if isinstance(index, ConcolicInteger):
             index = index.value
         self.value.insert(index, value)
@@ -120,7 +128,7 @@ class ConcolicList(ConcolicType):
     def do_del(self, index):
         value = index.value
         del self.value[value]
-        self.size -= 1
+        # self.size -= 1
 
     def index(self, target):
         index = 0
@@ -137,7 +145,7 @@ class ConcolicList(ConcolicType):
 
     def add(self, other):
         self.value += other.value
-        self.size += other.size
+        # self.size += other.size
         return self
 
     def remove(self, target):
@@ -145,20 +153,20 @@ class ConcolicList(ConcolicType):
         for val in self.value:
             if val.value == target.value:
                 self.value.pop(index)
-                self.size -= 1
+                # self.size -= 1
                 break
             index += 1
     
-    def pop(self, index=None):
-        if index is None:
-            self.size -= 1
-            return self.value.pop()
-        else:
-            if index.value < self.size:
-                self.size -= 1
-                return self.value.pop(index.value)
-            else:
-                return None
+    # def pop(self, index=None):
+    #     if index is None:
+    #         # self.size -= 1
+    #         return self.value.pop()
+    #     else:
+    #         if index.value < self.size:
+    #             self.size -= 1
+    #             return self.value.pop(index.value)
+    #         else:
+    #             return None
 
     def reverse(self):
         self.value.reverse()
