@@ -333,7 +333,7 @@ class ConcolicStr(str): #(ConcolicType):
 
     def __contains__(self, other):
         assert isinstance(other, ConcolicStr)
-        value = str.__str__(other) in str.__str__(self)
+        value = str.__str__(self).__contains__(str.__str__(other))
         expr = ["str.contains", self.expr, other.expr]
         return ConcolicType(expr, value)
 

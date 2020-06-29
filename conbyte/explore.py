@@ -19,6 +19,7 @@ from .path_to_constraint import *
 from .concolic_types import concolic_type
 from .solver import Solver 
 import global_var
+import multiprocessing
 
 log = logging.getLogger("ct.explore")
 
@@ -34,14 +35,14 @@ class ExplorationEngine:
     def __init__(self, path, filename, module, entry, ini_vars, query_store, solver_type, ss):
         # Set up import environment
         sys.path.append(path)
-        self.t_module = __import__(module)
+        self.t_module = module # 先用字串替代，等到要真正 import 的時候再去做 # __import__(module)
         if entry == None:
             self.entry = module
         else:
             self.entry = entry
 
-        self.trace_into = []
-        self.functions = dict()
+        # self.trace_into = []
+        # self.functions = dict()
 
         self.ini_vars = ini_vars
         self.symbolic_inputs = None 
@@ -49,30 +50,25 @@ class ExplorationEngine:
         self.constraints_to_solve = Queue()
         self.solved_constraints = Queue()
         self.finished_constraints = []
-        self.num_processed_constraints = 0
+        # self.num_processed_constraints = 0
         self.input_sets = []
         self.error_sets = []
         self.in_ret_sets = []
-
-        # self.cov = coverage.Coverage(branch=True)#,
-#                                     omit=['/mnt/d/ALAN_FOLDER/2020_研究工作/1_CODE_py-conbyte/conbyte/**',
-#                                           '/mnt/d/ALAN_FOLDER/2020_研究工作/1_CODE_py-conbyte/py-conbyte.py'])
         self.global_execution_coverage = coverage.CoverageData()
 
-        
         self.path = PathToConstraint() #lambda c: self.add_constraint(c))
         # self.executor = Executor() #self.path)
 
-        """
-        # Append builtin in trace_into
-        """
-        self.trace_into.append("__init__")
-        self.trace_into.append("__str__")
+        # """
+        # # Append builtin in trace_into
+        # """
+        # self.trace_into.append("__init__")
+        # self.trace_into.append("__str__")
 
-        self.query_store = query_store
-        if self.query_store is not None:
-            if not os.path.isdir(self.query_store):
-                raise IOError("Query folder {} not found".format(self.query_store))
+        # self.query_store = query_store
+        if query_store is not None:
+            if not os.path.isdir(query_store):
+                raise IOError("Query folder {} not found".format(query_store))
 
         self.solver = Solver(query_store, solver_type, ss)
 
@@ -146,57 +142,74 @@ class ExplorationEngine:
             return False
 
     def explore(self, max_iterations, timeout=None):
-        # First Execution
-        self._one_execution(self.ini_vars)
-        # self.executor.extend_prune()
-        iterations = 1
+        p1, p2 = multiprocessing.Pipe()
+        pid = os.fork()
+        if pid == 0: # child process
+            import concolic_upgrader
+            assert isinstance(self.t_module, str)
+            self.t_module = __import__(self.t_module)
+            # First Execution
+            self._one_execution(self.ini_vars)
+            # self.executor.extend_prune()
+            iterations = 1
 
-        # TODO: Currently single thread
-        while not self._is_exploration_complete():
-            if iterations >= max_iterations:
-                break
-                
-            if not self.solved_constraints.is_empty():
-                selected_id, result, model = self.solved_constraints.pop()
+            # TODO: Currently single thread
+            while not self._is_exploration_complete():
+                if iterations >= max_iterations:
+                    break
+                    
+                if not self.solved_constraints.is_empty():
+                    selected_id, result, model = self.solved_constraints.pop()
 
-                if selected_id in self.finished_constraints:
+                    if selected_id in self.finished_constraints:
+                        continue
+
+                    selected_constraint = self.path.find_constraint(selected_id)
+                else:
+                    cnt = 0
+                    while not self.constraints_to_solve.is_empty():
+                        target, extend_var, extend_queries = self.constraints_to_solve.pop()
+                        log.debug("Solving: %s" % target)
+                        asserts, query = target.get_asserts_and_query()
+
+                        ret, model = self.solver.find_counter_example(asserts, query, extend_var, extend_queries, timeout)
+
+                        self.solved_constraints.push((target.id, ret, model))
+                        # Every 4 solve check if any new inputs
+                        cnt += 1
+                        if cnt == 4:
+                            break
                     continue
 
-                selected_constraint = self.path.find_constraint(selected_id)
-            else:
-                cnt = 0
-                while not self.constraints_to_solve.is_empty():
-                    target, extend_var, extend_queries = self.constraints_to_solve.pop()
-                    log.debug("Solving: %s" % target)
-                    asserts, query = target.get_asserts_and_query()
+                if model is not None:
+                    log.info("=== Iterations: %s ===" % iterations)
+                    iterations += 1
+                    args = self._recordInputs(model)
+                    try:
+                        ret = func_timeout(5, self._one_execution, args=(args, selected_constraint))
+                    except FunctionTimedOut:
+                        log.error("Execution Timeout: %s" % args)
+                    except Exception as e: 
+                        log.error("Execution exception for: %s" % args)
+                        traceback.print_exc()
+                    # self.executor.extend_prune()
+                    if args not in self.input_sets:
+                        self.error_sets.append(args)
+                    # self.num_processed_constraints += 1
+                self.finished_constraints.append(selected_id)
 
-                    ret, model = self.solver.find_counter_example(asserts, query, extend_var, extend_queries, timeout)
+            p1.send(self.in_ret_sets)
+            p1.send(self.input_sets)
+            p1.send(self.error_sets)
+            sys.exit(0)
 
-                    self.solved_constraints.push((target.id, ret, model))
-                    # Every 4 solve check if any new inputs
-                    cnt += 1
-                    if cnt == 4:
-                        break
-                continue
+        else: # parent process
+            os.waitpid(pid, 0)
+            self.in_ret_sets = p2.recv()
+            self.input_sets = p2.recv()
+            self.error_sets = p2.recv()
 
-            if model is not None:
-                log.info("=== Iterations: %s ===" % iterations)
-                iterations += 1
-                args = self._recordInputs(model)
-                try:
-                    ret = func_timeout(5, self._one_execution, args=(args, selected_constraint))
-                except FunctionTimedOut:
-                    log.error("Execution Timeout: %s" % args)
-                except Exception as e: 
-                    log.error("Execution exception for: %s" % args)
-                    traceback.print_exc()
-                # self.executor.extend_prune()
-                if args not in self.input_sets:
-                    self.error_sets.append(args)
-                self.num_processed_constraints += 1
-            self.finished_constraints.append(selected_id)
-
-        # self.execute_coverage()
+        self.execute_coverage()
 
     def _getInputs(self):
         return self.symbolic_inputs.copy()
@@ -212,11 +225,9 @@ class ExplorationEngine:
     def _one_execution(self, init_vars, expected_path=None):
         log.info("Inputs: " + str(init_vars))
         copy_vars = copy.deepcopy(init_vars)
-
         # ExplorationEngine.call_stack.sanitize()
         # ExplorationEngine.mem_stack.sanitize()
         self.path.reset(expected_path)
-
         execute = getattr(self.t_module, self.entry)
         # sys.settrace(self.trace_calls)
         # global_var.inputs_processed = True #False
@@ -237,13 +248,8 @@ class ExplorationEngine:
                 raise NotImplementedError
         self.solver.set_variables(self.symbolic_inputs)
         ###################################################
-        # self.cov = coverage.Coverage(branch=True)
-        # self.cov.start()
         ret = execute(*copy_vars)
-        # self.cov.stop()
-        # self.global_execution_coverage.update(self.cov.get_data())
         log.info("Return: %s" % ret)
-        # log.info("Return: %s" % ret.expr)
 
         while len(self.new_constraints) > 0:
             constraint = self.new_constraints.pop()
@@ -254,25 +260,17 @@ class ExplorationEngine:
         self.input_sets.append(init_vars)
         self.in_ret_sets.append({"input": init_vars, "result": ret})
 
-        # with open('global_exploration_engine.pkl', 'wb') as w:
-        #     dill.dump(self.__dict__, w)
-        # sys.exit(0)
-
-        # else: # parent process
-        #     os.waitpid(pid, 0)
-        #     with open('global_exploration_engine.pkl', 'rb') as r:
-        #         self.__dict__.update(dill.load(r))
-        #     os.remove('global_exploration_engine.pkl')
-
-    # def execute_coverage(self):
-    #     execute = getattr(self.t_module, self.entry)
-    #     cov = coverage.Coverage(branch=True)
-    #     for args in self.input_sets:
-    #         cov.start()
-    #         copy_args = copy.deepcopy(args)
-    #         ret = execute(*copy_args)
-    #         cov.stop()
-    #         self.global_execution_coverage.update(cov.get_data())
+    def execute_coverage(self):
+        assert isinstance(self.t_module, str)
+        self.t_module = __import__(self.t_module)
+        execute = getattr(self.t_module, self.entry)
+        cov = coverage.Coverage(branch=True)
+        for args in self.input_sets:
+            cov.start()
+            copy_args = copy.deepcopy(args)
+            ret = execute(*copy_args)
+            cov.stop()
+            self.global_execution_coverage.update(cov.get_data())
 
 
     def print_coverage(self):
@@ -287,26 +285,26 @@ class ExplorationEngine:
 
 
     def coverage_statistics(self):
-        # cov = coverage.Coverage(branch=True)
+        cov = coverage.Coverage(branch=True)
         total_lines = 0
         executed_lines = 0
         executed_branches = 0
         missing_lines = {}
-        # for file in self.global_execution_coverage.measured_files():
-        #     _, executable_lines, _, _ = cov.analysis(file)
+        for file in self.global_execution_coverage.measured_files():
+            _, executable_lines, _, _ = cov.analysis(file)
 
-        #     # total_lines -1 to discard the 'def xx():' line
-        #     total_lines += (len(set(executable_lines)) - 1)
-        #     executed_lines += len(set(self.global_execution_coverage.lines(file)))
-        #     executed_branches += len(set(self.global_execution_coverage.arcs(file)))
+            # total_lines -1 to discard the 'def xx():' line
+            total_lines += (len(set(executable_lines)) - 1)
+            executed_lines += len(set(self.global_execution_coverage.lines(file)))
+            executed_branches += len(set(self.global_execution_coverage.arcs(file)))
 
-        #     # executable_lines starting from 1 do discard the 'def xx():' line
-        #     m_lines = []
-        #     for line in set(executable_lines[1:]):
-        #         if line not in self.global_execution_coverage.lines(file):
-        #             m_lines.append(line)
-        #     if len(m_lines) > 0:
-        #         missing_lines[file] = m_lines
+            # executable_lines starting from 1 do discard the 'def xx():' line
+            m_lines = []
+            for line in set(executable_lines[1:]):
+                if line not in self.global_execution_coverage.lines(file):
+                    m_lines.append(line)
+            if len(m_lines) > 0:
+                missing_lines[file] = m_lines
         return total_lines, executed_lines, missing_lines, executed_branches
 
     def result_to_json(self):

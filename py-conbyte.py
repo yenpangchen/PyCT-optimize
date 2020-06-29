@@ -22,8 +22,6 @@ with warnings.catch_warnings():
 import builtins
 builtins.len = lambda x: x.__len__()
 
-import concolic_upgrader
-
 def main():
     usage = "usage: %prog [options] <path to (target).py file>"
     parser = OptionParser(usage=usage)
