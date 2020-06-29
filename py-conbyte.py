@@ -3,7 +3,7 @@
 import sys
 import os
 import logging
-import dis
+# import dis
 import inspect
 from optparse import OptionParser
 from optparse import OptionGroup
@@ -19,7 +19,10 @@ with warnings.catch_warnings():
     # simulate import of module giving SyntaxWarning
     warnings.warn('bad', SyntaxWarning)
 
+import builtins
+builtins.len = lambda x: x.__len__()
 
+import concolic_upgrader
 
 def main():
     usage = "usage: %prog [options] <path to (target).py file>"

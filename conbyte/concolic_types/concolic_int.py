@@ -22,22 +22,38 @@ class ConcolicInteger(int):
         log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
 
     def __ge__(self, other):
-        if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        assert isinstance(other, ConcolicInteger)
         expr = [">=", self.expr, other.expr]
         value = int(self) >= int(other)
         return ConcolicType(expr, value)
 
     def __gt__(self, other):
-        if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        assert isinstance(other, ConcolicInteger)
         expr = [">", self.expr, other.expr]
         value = int(self) > int(other)
         return ConcolicType(expr, value)
 
     def __lt__(self, other):
-        if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        assert isinstance(other, ConcolicInteger)
         expr = ["<", self.expr, other.expr]
         value = int(self) < int(other)
         return ConcolicType(expr, value)
+
+    def __eq__(self, other):
+        # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        assert isinstance(other, ConcolicInteger)
+        expr = ["=", self.expr, other.expr]
+        value = int(self) == int(other)
+        return ConcolicType(expr, value)
+
+    def __hash__(self):
+        return hash(int.__int__(self))
+
+    # def __index__(self):
+    #     return int.__int__(self) #.value
 
     # def __int__(self):
     #     return self.value
@@ -82,8 +98,9 @@ ops = [("add", "+", "+"),
 
 def make_method(method, op, op_smt):
     code = "def %s(self, other):\n" % method
-    code += "   if not isinstance(other, ConcolicInteger):\n"
-    code += "      other = ConcolicInteger(other)\n"
+    # code += "   if not isinstance(other, ConcolicInteger):\n"
+    # code += "      other = ConcolicInteger(other)\n"
+    code += "   assert isinstance(other, ConcolicInteger)\n"
     code += "   value = int(self) %s int(other)\n" % op
     code += "   expr = [\"%s\", self.expr, other.expr]\n" % op_smt
     code += "   return ConcolicInteger(expr, value)"
@@ -105,11 +122,13 @@ rops = [("radd", "+", "+"),
 
 def make_rmethod(method, op, op_smt):
     code = "def %s(self, other):\n" % method
-    code += "   if not isinstance(other, ConcolicInteger):\n"
-    code += "      other = ConcolicInteger(other)\n"
-    code += "   value = int(other) %s int(self)\n" % op
-    code += "   expr = [\"%s\", other.expr, self.expr]\n" % op_smt
-    code += "   return ConcolicInteger(expr, value)"
+    code += "   return NotImplemented\n"
+    # code += "   raise NotImplementedError\n"
+    # code += "   if not isinstance(other, ConcolicInteger):\n"
+    # code += "      other = ConcolicInteger(other)\n"
+    # code += "   value = int(other) %s int(self)\n" % op
+    # code += "   expr = [\"%s\", other.expr, self.expr]\n" % op_smt
+    # code += "   return ConcolicInteger(expr, value)"
     locals_dict = {}
     exec(code, globals(), locals_dict)
     setattr(ConcolicInteger, method, locals_dict[method])

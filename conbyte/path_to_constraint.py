@@ -1,5 +1,6 @@
 # Copyright: see copyright.txt
 import logging
+import global_var
 
 from .predicate import Predicate
 from .constraint import Constraint
@@ -8,12 +9,12 @@ from .constraint import Constraint
 log = logging.getLogger("ct.pathconstraint")
 
 class PathToConstraint:
-    def __init__(self, add):
+    def __init__(self): #, add):
         self.constraints = []
         self.root_constraint = Constraint(None, None)
         self.current_constraint = self.root_constraint
         self.expected_path = None
-        self.add = add
+        # self.add = add
 
     def reset(self, expected):
         self.current_constraint = self.root_constraint
@@ -38,7 +39,7 @@ class PathToConstraint:
         p = Predicate(concolic_type, concolic_type.value)
         c = self.current_constraint.find_child(p)
         pneg = p.negate()
-        cneg = self.current_constraint.find_child(p)
+        cneg = self.current_constraint.find_child(pneg)
 
         if c is None and cneg is None:
             c = self.current_constraint.add_child(p)
@@ -48,7 +49,8 @@ class PathToConstraint:
             else:
                 cneg = self.current_constraint.add_child(pneg)
                 # we add the new constraint to the queue of the engine for later processing
-                self.add(cneg)
+                # self.add(cneg)
+                global_var.engine.add_constraint(cneg)
                 log.debug("Cur constraint %s" % c)
                 log.debug("Add constraint %s" % cneg)
 
