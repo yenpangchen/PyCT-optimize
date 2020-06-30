@@ -1,6 +1,5 @@
 # Copyright: copyright.txt
 from .concolic_type import *
-import global_var
 
 log = logging.getLogger("ct.con.int")
 
@@ -11,72 +10,158 @@ Classes:
 """
 
 class ConcolicInteger(int):
-    def __new__(cls, expr, value=None):
+    def __new__(cls, expr, value=None): # maybe decorator required?
         if value is not None:
             return int.__new__(cls, value)
         else:
             return int.__new__(cls, int(expr))
 
-    def __init__(self, expr, value=None):
+    def __init__(self, expr, value=None): # maybe decorator required?
         self.expr = expr
         log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
+
+    def __abs__(self):
+        value = int.__int__(self).__abs__()
+        expr = ["ite", [">=", self.expr, 0], self.expr, ["-", 0, self.expr]]
+        return ConcolicInteger(expr, value)
+
+    def __bool__(self):
+        raise NotImplementedError
+
+    def __ceil__(self):
+        return self
+
+    def __divmod__(self, value):
+        raise NotImplementedError
+
+    def __eq__(self, other):
+        # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        assert isinstance(other, ConcolicInteger)
+        expr = ["=", self.expr, other.expr]
+        value = int.__int__(self) == int.__int__(other)
+        return ConcolicType(expr, value)
+
+    def __float__(self):
+        raise NotImplementedError
+
+    def __floor__(self):
+        return self
+
+    def __floordiv__(self, value):
+        raise NotImplementedError
+
+    def __format__(self, format_spec):
+        raise NotImplementedError
 
     def __ge__(self, other):
         # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
         assert isinstance(other, ConcolicInteger)
         expr = [">=", self.expr, other.expr]
-        value = int(self) >= int(other)
+        value = int.__int__(self) >= int.__int__(other)
         return ConcolicType(expr, value)
 
     def __gt__(self, other):
         # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
         assert isinstance(other, ConcolicInteger)
         expr = [">", self.expr, other.expr]
-        value = int(self) > int(other)
+        value = int.__int__(self) > int.__int__(other)
+        return ConcolicType(expr, value)
+
+    def __hash__(self):
+        return hash(int.__int__(self))
+
+    def __index__(self):
+        raise NotImplementedError
+        # return int.__int__(self) #.value
+
+    def __int__(self):
+        raise NotImplementedError
+        # return self.value
+
+    def __invert__(self):
+        raise NotImplementedError
+
+    def __le__(self, other):
+        # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
+        assert isinstance(other, ConcolicInteger)
+        expr = ["<=", self.expr, other.expr]
+        value = int.__int__(self) <= int.__int__(other)
         return ConcolicType(expr, value)
 
     def __lt__(self, other):
         # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
         assert isinstance(other, ConcolicInteger)
         expr = ["<", self.expr, other.expr]
-        value = int(self) < int(other)
+        value = int.__int__(self) < int.__int__(other)
         return ConcolicType(expr, value)
 
-    def __eq__(self, other):
-        # if not isinstance(other, ConcolicInteger): other = ConcolicInteger(other)
-        assert isinstance(other, ConcolicInteger)
-        expr = ["=", self.expr, other.expr]
-        value = int(self) == int(other)
-        return ConcolicType(expr, value)
+    def __ne__(self, other):
+        raise NotImplementedError
 
-    def __hash__(self):
-        return hash(int.__int__(self))
-
-    # def __index__(self):
-    #     return int.__int__(self) #.value
-
-    # def __int__(self):
-    #     return self.value
-
-    # def __str__(self):
-        # return "{ConInt, value: %s, expr: %s)" % (int(self), self.expr)
-
-    # def negate(self):
-    #     self.value = -self.value
-    #     self.expr = ["-", 0, self.expr]
-
-    # def get_str(self):
-    #     value = str(self.value)
-    #     expr = ["int.to.str", self.expr]
-    #     return expr, value
-
-    def __abs__(self):
-        value = abs(int(self))
-        expr = ["ite", [">=", self.expr, 0], self.expr, ["-", 0, self.expr]]
+    def __neg__(self):
+        expr = ["-", 0, self.expr]
+        value = -int.__int__(self)
         return ConcolicInteger(expr, value)
 
-    # def int(self):
-    #     return self.value
+    def __pos__(self):
+        raise NotImplementedError
+
+    def __pow__(self, value, mod=None):
+        raise NotImplementedError
+
+    def __rand__(self, value):
+        raise NotImplementedError
+
+    def __rdivmod__(self, value):
+        raise NotImplementedError
+
+    def __rfloordiv__(self, value):
+        raise NotImplementedError
+
+    def __rlshift__(self, value):
+        raise NotImplementedError
+
+    def __ror__(self, value):
+        raise NotImplementedError
+
+    def __round__(self):
+        raise NotImplementedError
+
+    def __rpow__(self, value, mod=None):
+        raise NotImplementedError
+
+    def __rrshift__(self, value):
+        raise NotImplementedError
+
+    def __rxor__(self, value):
+        raise NotImplementedError
+
+    def __sizeof__(self):
+        return NotImplemented
+
+    # def __str__(self): # 還沒解決 circular import ConcolicStr 的問題 ...
+    #     expr = ["int.to.str", self.expr]
+    #     value = str(int.__int__(self))
+    #     return ConcolicStr(expr, value)
+
+    def __trunc__(self):
+        raise NotImplementedError
+
+    def as_integer_ratio(self):
+        raise NotImplementedError
+
+    def bit_length(self):
+        raise NotImplementedError
+
+    def conjugate(self):
+        raise NotImplementedError
+
+    @classmethod
+    def from_bytes(cls, bytes, byteorder, signed=False):
+        raise NotImplementedError
+
+    def to_bytes(self, length, byteorder, signed=False):
+        raise NotImplementedError
 
     # def is_number(self):
     #     value = True
@@ -122,8 +207,8 @@ rops = [("radd", "+", "+"),
 
 def make_rmethod(method, op, op_smt):
     code = "def %s(self, other):\n" % method
-    code += "   return NotImplemented\n"
-    # code += "   raise NotImplementedError\n"
+    # code += "   return NotImplemented\n"
+    code += "   raise NotImplementedError\n"
     # code += "   if not isinstance(other, ConcolicInteger):\n"
     # code += "      other = ConcolicInteger(other)\n"
     # code += "   value = int(other) %s int(self)\n" % op
