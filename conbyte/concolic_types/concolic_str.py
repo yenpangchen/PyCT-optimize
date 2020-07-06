@@ -434,6 +434,10 @@ class ConcolicStr(str): #(ConcolicType):
     # Other helper methods are implemented in the following section.
     ################################################################
 
+    # custom method to get the primitive value
+    def parent(self):
+        return str.__str__(self)
+
     def get_slice(self, start=None, stop=None):
         if stop is None:
             stop = len(self)

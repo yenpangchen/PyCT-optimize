@@ -8,20 +8,30 @@ if 'added' not in locals():
     added = []
 
     from ast import NodeTransformer, Num, Call, Name, Load, Constant, parse, ImportFrom, alias, \
-                    fix_missing_locations
+                    fix_missing_locations, Attribute
     import builtins
     import inspect
     import traceback
 
     class ConcolicUpgrader(NodeTransformer):
-        def visit_Constant(self, node: Num):
-            if isinstance(node.value, int):
+        def visit_Constant(self, node: Constant):
+            if type(node.value) == int:
                 return Call(func=Name(id='ConcolicInteger', ctx=Load()),
                             args=[Constant(value=node.value, kind=None)],
                             keywords=[])
-            if isinstance(node.value, str):
+            if type(node.value) == str:
                 return Call(func=Name(id='ConcolicStr', ctx=Load()),
                             args=[Constant(value=node.value, kind=None)],
+                            keywords=[])
+            return node
+    class ConcolicUpgrader2(NodeTransformer):
+        def visit_Call(self, node: Call):
+            #############################################################
+            # TODO: We've not considered the case int('...', base=N) yet.
+            #############################################################
+            if type(node.func) == Name and node.func.id == 'int':
+                return Call(func=Attribute(value=node.args[0], attr='__int__', ctx=Load()),
+                            args=[],
                             keywords=[])
             return node
 
@@ -65,6 +75,7 @@ if 'added' not in locals():
         # if module not in added and \
             # module.__name__ in ['make_server', 'pydoc']: # in XSS testing
         if module not in added and \
+            not (module.__spec__.origin and module.__spec__.origin.startswith('/usr/lib/python3.8/')) and \
             module.__name__ not in ['conbyte.concolic_types.concolic_int',
                                     'conbyte.concolic_types.concolic_str']: # in simple testing
             added.append(module)
@@ -77,6 +88,7 @@ if 'added' not in locals():
                                                names=[alias(name='ConcolicStr', asname=None)],
                                                level=0))
                 tree = ConcolicUpgrader().visit(tree)
+                tree = ConcolicUpgrader2().visit(tree)
                 fix_missing_locations(tree)
                 exec(compile(tree, module.__spec__.origin, 'exec'), vars(module))
             except Exception as exception:

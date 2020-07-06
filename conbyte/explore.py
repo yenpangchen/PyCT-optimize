@@ -29,8 +29,8 @@ log = logging.getLogger("ct.explore")
 #         log.debug(line)
 
 class ExplorationEngine:
-    mem_stack = Stack()
-    call_stack = Stack()
+    # mem_stack = Stack()
+    # call_stack = Stack()
 
     def __init__(self, path, filename, module, entry, ini_vars, query_store, solver_type, ss):
         # Set up import environment
@@ -53,7 +53,7 @@ class ExplorationEngine:
         # self.num_processed_constraints = 0
         self.input_sets = []
         self.error_sets = []
-        self.in_ret_sets = []
+        self.in_ret_sets = dict() #[]
         self.global_execution_coverage = coverage.CoverageData()
 
         self.path = PathToConstraint() #lambda c: self.add_constraint(c))
@@ -71,6 +71,7 @@ class ExplorationEngine:
                 raise IOError("Query folder {} not found".format(query_store))
 
         self.solver = Solver(query_store, solver_type, ss)
+        self.coverage_omit = ['py-conbyte.py']
 
     # def extract(self):
     #     dis.dis(self.t_module)
@@ -258,18 +259,24 @@ class ExplorationEngine:
             self.constraints_to_solve.push((constraint, extend_var, extend_queries))
 
         self.input_sets.append(init_vars)
-        self.in_ret_sets.append({"input": init_vars, "result": ret})
+        if hasattr(ret, 'parent'):
+            self.in_ret_sets[tuple(init_vars)] = ret.parent()
+        else:
+            self.in_ret_sets[tuple(init_vars)] = ret
 
     def execute_coverage(self):
         assert isinstance(self.t_module, str)
         self.t_module = __import__(self.t_module)
         execute = getattr(self.t_module, self.entry)
-        cov = coverage.Coverage(branch=True)
+        cov = coverage.Coverage(branch=True, omit=self.coverage_omit)
         for args in self.input_sets:
             cov.start()
             copy_args = copy.deepcopy(args)
             ret = execute(*copy_args)
             cov.stop()
+            if self.in_ret_sets[tuple(args)] != ret:
+                print('Input:', args, 'My answer:', self.in_ret_sets[tuple(args)], 'Correct answer:', ret)
+            assert self.in_ret_sets[tuple(args)] == ret
             self.global_execution_coverage.update(cov.get_data())
 
 
@@ -285,7 +292,7 @@ class ExplorationEngine:
 
 
     def coverage_statistics(self):
-        cov = coverage.Coverage(branch=True)
+        cov = coverage.Coverage(branch=True, omit=self.coverage_omit)
         total_lines = 0
         executed_lines = 0
         executed_branches = 0

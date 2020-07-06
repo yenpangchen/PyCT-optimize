@@ -119,3 +119,7 @@ class ConcolicType(object):
         if global_var.engine is not None:
             global_var.engine.path.which_branch(self)
         return self.value
+
+    # custom method to get the primitive value
+    def parent(self):
+        return self.value
