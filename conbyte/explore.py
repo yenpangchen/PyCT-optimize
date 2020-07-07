@@ -239,13 +239,13 @@ class ExplorationEngine:
         copy_vars = []
         self.symbolic_inputs = dict()
         for v in para.values():
-            if isinstance(v.default, int):
+            if type(v.default) == int:
                 copy_vars.append(ConcolicInteger(v.name, v.default))
                 self.symbolic_inputs[v.name] = 'Int'
-            elif isinstance(v.default, str):
+            elif type(v.default) == str:
                 copy_vars.append(ConcolicStr(v.name, v.default))
                 self.symbolic_inputs[v.name] = 'String'
-            else:
+            elif v.default != None:
                 raise NotImplementedError
         self.solver.set_variables(self.symbolic_inputs)
         ###################################################

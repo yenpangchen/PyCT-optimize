@@ -155,7 +155,7 @@ class ConcolicStr(str): #(ConcolicType):
     # Return a new string, no continued expr
     # TODO: Temp
     def lower(self):
-        raise NotImplementedError
+        # raise NotImplementedError
         return ConcolicStr(str.__str__(self).lower())
 
     # TODO: Temp
@@ -183,15 +183,14 @@ class ConcolicStr(str): #(ConcolicType):
 
     # TODO: Temp
     def replace(self, old, new, count=-1):
-        raise NotImplementedError
-        if not isinstance(old, ConcolicStr): old = ConcolicStr(old)
-        # assert isinstance(old, ConcolicStr)
-        if not isinstance(new, ConcolicStr): new = ConcolicStr(new)
-        # assert isinstance(new, ConcolicStr)
+        # if not isinstance(old, ConcolicStr): old = ConcolicStr(old)
+        assert isinstance(old, ConcolicStr)
+        # if not isinstance(new, ConcolicStr): new = ConcolicStr(new)
+        assert isinstance(new, ConcolicStr)
         value = str.__str__(self) #.value
         expr = self.expr
         # if isinstance(count, ConcolicInteger):
-        # assert isinstance(count, ConcolicInteger)
+        assert isinstance(count, ConcolicInteger)
         count = int.__int__(count) #.value
         if count == 0:
             return ConcolicStr(expr, value)
@@ -316,8 +315,8 @@ class ConcolicStr(str): #(ConcolicType):
     #############################################################################################
 
     def __add__(self, other):
-        # assert isinstance(other, ConcolicStr)
-        if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
+        assert isinstance(other, ConcolicStr)
+        # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         value = str.__str__(self) + str.__str__(other)
         expr = ["str.++", self.expr, other.expr]
         return ConcolicStr(expr, value)
@@ -338,8 +337,8 @@ class ConcolicStr(str): #(ConcolicType):
         return ConcolicType(expr, value)
 
     def __eq__(self, other):
-        if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        # assert isinstance(other, ConcolicStr)
+        # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
+        assert isinstance(other, ConcolicStr)
         return self.compare_op("==", other)
 
     def __ge__(self, other):
@@ -495,7 +494,6 @@ class ConcolicStr(str): #(ConcolicType):
     #     expr = ["str.len", self.expr]
     #     return ConcolicInteger(expr, value)
     def __int__(self):
-        raise NotImplementedError
         value = int(self, 10)
         expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
                 ["-", ["str.to.int",
