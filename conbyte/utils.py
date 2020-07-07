@@ -1,42 +1,42 @@
 
-class Stack:
-    def __init__(self):
-        self.stack = []
+# class Stack:
+#     def __init__(self):
+#         self.stack = []
 
-    def pop(self):
-        return self.stack.pop(0)
-    
-    def push(self, item):
-        self.stack.insert(0, item)
+#     def pop(self):
+#         return self.stack.pop(0)
 
-    def top(self):
-        if len(self.stack) == 0:
-            return None
-        return self.stack[0]
+#     def push(self, item):
+#         self.stack.insert(0, item)
 
-    def s_size(self):
-        return len(self.queue)
+#     def top(self):
+#         if len(self.stack) == 0:
+#             return None
+#         return self.stack[0]
 
-    def is_empty(self):
-        if len(self.stack) != 0:
-            return False
-        else:
-            return True
+#     def s_size(self):
+#         return len(self.queue)
 
-    def sanitize(self):
-        while not self.is_empty():
-            self.pop()
+#     def is_empty(self):
+#         if len(self.stack) != 0:
+#             return False
+#         else:
+#             return True
 
-    def contains(self, target):
-        if target in self.stack:
-            return True
-        else:
-            return False
+#     def sanitize(self):
+#         while not self.is_empty():
+#             self.pop()
 
-    def __str__(self):
-        if len(self.stack) == 0:
-            return "  Stack: nil"
-        return "  Stack: %s" % ",".join(val.__str__() for val in self.stack)
+#     def contains(self, target):
+#         if target in self.stack:
+#             return True
+#         else:
+#             return False
+
+#     def __str__(self):
+#         if len(self.stack) == 0:
+#             return "  Stack: nil"
+#         return "  Stack: %s" % ",".join(val.__str__() for val in self.stack)
 
 
 class Queue:

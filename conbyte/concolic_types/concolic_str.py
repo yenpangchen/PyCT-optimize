@@ -1,4 +1,3 @@
-from ..utils import *
 from .concolic_type import *
 from .concolic_int import *
 from .concolic_list import *

@@ -1,7 +1,7 @@
 # Copyright: copyright.txt
-import logging
+# import logging
 
-log = logging.getLogger("ct.con.float")
+# log = logging.getLogger("ct.con.float")
 
 """
 Classes:

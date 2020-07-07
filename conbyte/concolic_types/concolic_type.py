@@ -1,11 +1,6 @@
 # Copyright: see copyright.txt
 
-import inspect
-import functools
-
 import logging
-import sys
-
 import global_var
 
 log = logging.getLogger("ct.con.type")
@@ -116,8 +111,8 @@ class ConcolicType(object):
         return "{ConType, value: %s, expr: %s)" % (self.value, self.expr)
 
     def __bool__(self):
-        if global_var.engine is not None:
-            global_var.engine.path.which_branch(self)
+        if global_var.global_engine is not None:
+            global_var.global_engine.path.which_branch(self)
         return self.value
 
     # custom method to get the primitive value

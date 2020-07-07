@@ -3,24 +3,14 @@
 import sys
 import os
 import logging
-# import dis
-import inspect
+import builtins
+builtins.len = lambda x: x.__len__()
+
 from optparse import OptionParser
 from optparse import OptionGroup
 
-from conbyte.function import *
-from conbyte.explore import *
-
-import warnings
 import global_var
-
-with warnings.catch_warnings():
-    warnings.simplefilter('ignore', SyntaxWarning)
-    # simulate import of module giving SyntaxWarning
-    warnings.warn('bad', SyntaxWarning)
-
-import builtins
-builtins.len = lambda x: x.__len__()
+from conbyte.explore import ExplorationEngine
 
 def main():
     usage = "usage: %prog [options] <path to (target).py file>"
@@ -69,17 +59,17 @@ def main():
 
     logfile = options.logfile
     if logfile is not None:
-        logging.basicConfig(filename=options.logfile, level=log_level, 
-                            format='%(asctime)s  %(name)s\t%(levelname)s\t%(message)s', 
+        logging.basicConfig(filename=options.logfile, level=log_level,
+                            format='%(asctime)s  %(name)s\t%(levelname)s\t%(message)s',
                             datefmt = '%m/%d/%Y %I:%M:%S %p')
     elif options.quiet:
         logging.basicConfig(filename="/dev/null")
     else:
         if options.get_json:
-            logging.basicConfig(filename="/dev/null", level=log_level, 
+            logging.basicConfig(filename="/dev/null", level=log_level,
                                 format='  %(name)s\t%(levelname)s\t%(message)s')
         else:
-            logging.basicConfig(level=log_level, 
+            logging.basicConfig(level=log_level,
                                 format='  %(name)s\t%(levelname)s\t%(message)s')
 
     base_name = os.path.basename(args[0])
@@ -96,14 +86,14 @@ def main():
         # inputs_file_full = os.path.abspath(options.inputs)
         # exec(open(inputs_file_full).read(), inputs_space)
 
-    # engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
-    global_var.engine = ExplorationEngine(path, filename, module, options.entry, eval(options.inputs), query, options.solver_type, options.ss)
+    # global_var.global_engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
+    global_var.global_engine = ExplorationEngine(path, filename, module, options.entry, eval(options.inputs), query, options.solver_type, options.ss)
 
     if options.extract:
-        global_var.engine.extract()
+        global_var.global_engine.extract()
         return
 
-    global_var.engine.explore(int(options.iteration), options.timeout)
+    global_var.global_engine.explore(int(options.iteration), options.timeout)
 
     if options.quiet:
         return
@@ -111,21 +101,19 @@ def main():
     if not options.get_json:
         print()
         print("Generated inputs")
-        for inputs in global_var.engine.input_sets:
+        for inputs in global_var.global_engine.input_sets:
             print(inputs)
-        if len(global_var.engine.error_sets) != 0:
+        if len(global_var.global_engine.error_sets) != 0:
             print()
             print("Error inputs")
-            for inputs in global_var.engine.error_sets:
+            for inputs in global_var.global_engine.error_sets:
                 print(inputs)
         print()
-        global_var.engine.print_coverage()
+        global_var.global_engine.print_coverage()
     else:
-        print(global_var.engine.result_to_json())
+        print(global_var.global_engine.result_to_json())
 
-    print(global_var.engine.in_ret_sets)
-
-    
+    print(global_var.global_engine.in_ret_sets)
 
 if __name__ == '__main__':
     main()

@@ -50,7 +50,7 @@ class PathToConstraint:
                 cneg = self.current_constraint.add_child(pneg)
                 # we add the new constraint to the queue of the engine for later processing
                 # self.add(cneg)
-                global_var.engine.add_constraint(cneg)
+                global_var.global_engine.add_constraint(cneg)
                 log.debug("Cur constraint %s" % c)
                 log.debug("Add constraint %s" % cneg)
 

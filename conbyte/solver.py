@@ -1,5 +1,4 @@
 import logging
-import sys
 import time
 import os
 from subprocess import Popen, PIPE, STDOUT

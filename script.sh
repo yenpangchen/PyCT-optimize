@@ -29,7 +29,7 @@ declare -A arr
 # --------------------------------------------------------------------
 # arr["test/targets/leetcode/add_digits.py"]=[52] # OK
 # arr["test/targets/leetcode/findUnsortedSubarray.py"]=
-# arr["test/targets/leetcode/fraction_to_decimal.py"]=[-50,8] # OK
+# arr["test/targets/leetcode/fraction_to_decimal.py"]=[-50,8] # __str__ in integer because of circular import
 # arr["test/targets/leetcode/isLongPressedName.py"]='["",""]' # for ch in string
 # arr["test/targets/leetcode/numDecodings.py"]='["226"]' # rmul in ??? (還沒實作 concolic list)
 # arr["test/targets/leetcode/restoreIpAddresses.py"]='["25525511135"]' # assert sub in integer because of range, get_slice in string
@@ -43,7 +43,7 @@ declare -A arr
 # arr["target_int/leetcode_int/numDecodings.py"]='["226"]' # rmul in ??? (還沒實作 concolic list)
 # arr["target_int/leetcode_int/restoreIpAddresses.py"]='["25525511135"]' # sub in integer because of range, get_slice in string
 # arr["target_int/leetcode_int/validIPAddress.py"]='["172.16.254.1"]' # split in string
-# arr["target_int/leetcode_int/validWordAbbreviation.py"]='["internationalization","i12iz4n"]' # assert le in integer because of range, sub in integer because of range
+# arr["target_int/leetcode_int/validWordAbbreviation.py"]='["internationalization","i12iz4n"]' # assert le in integer because of range, sub in integer because of range, __str__ in integer because of circular import
 # --------------------------------------------------------------------
 # arr["target_int/lib_int/datetime__parse_hh_mm_ss_ff.py"]='["12:01:23.123456"]' # sub in integer because of range, __int__ in string
 # arr["target_int/lib_int/datetime__parse_isoformat_date.py"]='["2019-07-19"]' # __int__ in string, 答案的比對還沒實作 list
