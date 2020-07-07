@@ -18,7 +18,7 @@ class ConcolicInteger(int):
 
     def __init__(self, expr, value=None): # maybe decorator required?
         self.expr = expr
-        log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
+        # log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
 
     def __abs__(self):
         value = int.__int__(self).__abs__()
@@ -139,10 +139,11 @@ class ConcolicInteger(int):
     def __sizeof__(self):
         return NotImplemented
 
-    # def __str__(self): # 還沒解決 circular import ConcolicStr 的問題 ...
-    #     expr = ["int.to.str", self.expr]
-    #     value = str(int.__int__(self))
-    #     return ConcolicStr(expr, value)
+    def __str__(self):
+        expr = ["int.to.str", self.expr]
+        value = str(int.__int__(self))
+        from conbyte.concolic_types.concolic_str import ConcolicStr # put here to avoid circular import
+        return ConcolicStr(expr, value)
 
     def __truediv__(self, other):
         x = self.__float__()

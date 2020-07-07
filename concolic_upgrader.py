@@ -29,10 +29,17 @@ if 'added' not in locals():
             #############################################################
             # TODO: We've not considered the case int('...', base=N) yet.
             #############################################################
-            if type(node.func) == Name and node.func.id == 'int':
-                return Call(func=Attribute(value=node.args[0], attr='__int__', ctx=Load()),
-                            args=[],
-                            keywords=[])
+            if type(node.func) == Name:
+                if node.func.id == 'int':
+                    node.args[0] = ConcolicUpgrader2().visit(node.args[0])
+                    return Call(func=Attribute(value=node.args[0], attr='__int__', ctx=Load()),
+                                args=[],
+                                keywords=[])
+                if node.func.id == 'str':
+                    node.args[0] = ConcolicUpgrader2().visit(node.args[0])
+                    return Call(func=Attribute(value=node.args[0], attr='__str__', ctx=Load()),
+                                args=[],
+                                keywords=[])
             return node
 
     ###############################################################
