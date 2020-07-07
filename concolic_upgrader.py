@@ -26,17 +26,17 @@ if 'added' not in locals():
             return node
     class ConcolicUpgrader2(NodeTransformer):
         def visit_Call(self, node: Call):
-            #############################################################
-            # TODO: We've not considered the case int('...', base=N) yet.
-            #############################################################
+            for i in range(len(node.args)):
+                node.args[i] = ConcolicUpgrader2().visit(node.args[i])
             if type(node.func) == Name:
                 if node.func.id == 'int':
-                    node.args[0] = ConcolicUpgrader2().visit(node.args[0])
+                    #############################################################
+                    # TODO: We've not considered the case int('...', base=N) yet.
+                    #############################################################
                     return Call(func=Attribute(value=node.args[0], attr='__int__', ctx=Load()),
                                 args=[],
                                 keywords=[])
                 if node.func.id == 'str':
-                    node.args[0] = ConcolicUpgrader2().visit(node.args[0])
                     return Call(func=Attribute(value=node.args[0], attr='__str__', ctx=Load()),
                                 args=[],
                                 keywords=[])

@@ -5,7 +5,7 @@ import global_var
 
 log = logging.getLogger("ct.con.type")
 
-class ConcolicType(object):
+class ConcolicType:
     def __init__(self, expr=None, value=None):
         self.expr = expr
         self.value = value

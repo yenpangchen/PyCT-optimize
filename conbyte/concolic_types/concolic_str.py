@@ -4,7 +4,7 @@ from .concolic_list import *
 
 log = logging.getLogger("ct.con.str")
 
-class ConcolicStr(str): #(ConcolicType):
+class ConcolicStr(str):
     # def __init__(self, expr, value=None):
     #     if isinstance(expr, str):
     #         expr = expr.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
@@ -17,16 +17,15 @@ class ConcolicStr(str): #(ConcolicType):
     #     log.debug("  ConStr, value: %s, expr: %s" % (self.value, self.expr))
 
     def __new__(cls, expr, value=None): # maybe decorator required?
+        assert type(expr) in [str, list]
         if value is not None:
             return str.__new__(cls, value)
         else:
-            if isinstance(expr, int): expr = str(expr)
             if isinstance(expr, str): expr = expr.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
             return str.__new__(cls, expr.replace("\"", "", 1).replace("\"", "", -1))
 
     def __init__(self, expr, value=None): # maybe decorator required?
-        if isinstance(expr, int): expr = str(expr)
-        if isinstance(expr, str): expr = expr.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
+        if type(expr) == str: expr = expr.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
         if value is None: expr = "\"" + expr + "\"" # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
         self.expr = expr
         log.debug("  ConStr, value: %s, expr: %s" % (self, self.expr))
