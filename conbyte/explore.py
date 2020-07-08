@@ -11,10 +11,13 @@ from func_timeout import func_timeout, FunctionTimedOut
 
 from conbyte.concolic_types.concolic_int import ConcolicInteger
 from conbyte.concolic_types.concolic_str import ConcolicStr
+from conbyte.concolic_types.concolic_list import ConcolicList
 
 from .utils import Queue
 from .path_to_constraint import PathToConstraint
 from .solver import Solver
+
+from global_var import upgrade
 
 log = logging.getLogger("ct.explore")
 
@@ -47,7 +50,7 @@ class ExplorationEngine:
                 raise IOError("Query folder {} not found".format(query_store))
 
         self.solver = Solver(query_store, solver_type, ss)
-        self.coverage_omit = ['py-conbyte.py']
+        self.coverage_omit = ['py-conbyte.py', 'conbyte/**']
 
     def add_constraint(self, constraint):
         self.new_constraints.append(constraint)
@@ -158,6 +161,11 @@ class ExplorationEngine:
             elif type(v.default) == str:
                 copy_vars.append(ConcolicStr(v.name, v.default))
                 self.symbolic_inputs[v.name] = 'String'
+            elif type(v.default) == list:
+                for i in range(len(v.default)):
+                    v.default[i] = upgrade(v.default[i])
+                copy_vars.append(ConcolicList(v.default))
+                self.symbolic_inputs[v.name] = 'List'
             elif v.default != None:
                 raise NotImplementedError
         self.solver.set_variables(self.symbolic_inputs)
@@ -172,6 +180,9 @@ class ExplorationEngine:
             self.constraints_to_solve.push((constraint, extend_var, extend_queries))
 
         self.input_sets.append(init_vars)
+        for i in range(len(init_vars)):
+            if type(init_vars[i]) is list:
+                init_vars[i] = tuple(init_vars[i])
         if hasattr(ret, 'parent'):
             self.in_ret_sets[tuple(init_vars)] = ret.parent()
         else:

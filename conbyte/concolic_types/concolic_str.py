@@ -47,7 +47,7 @@ class ConcolicStr(str):
     # TODO: Concrete value
     def count(self, sub, start=None, end=None): # default arguments are not checked yet
         if start is not None or end is not None: raise NotImplementedError
-        raise NotImplementedError
+        # raise NotImplementedError
         return ConcolicInteger(str.__str__(self).count(str.__str__(sub)))
 
     def encode(self, encoding="utf-8", errors="strict"):
@@ -65,15 +65,22 @@ class ConcolicStr(str):
     def expandtabs(self, tabsize=8):
         raise NotImplementedError
 
-    def find(self, sub, start=ConcolicInteger(0), end=None):
+    def find(self, *args):
+        L = len(args)
+        if L < 1: raise TypeError('find() takes at least 1 argument (' + L + ' given)')
+        sub = args[0]
+        if L < 2: start = ConcolicInteger(0)
+        else: start = args[1]
+        if L < 3: end = None
+        else: end = args[2]
+        if L > 3: raise TypeError('find() takes at most 3 arguments (' + L + ' given)')
         # if not isinstance(sub, ConcolicStr): sub = ConcolicStr(sub)
         assert isinstance(sub, ConcolicStr)
         # if not isinstance(start, ConcolicInteger): start = ConcolicInteger(start)
         assert isinstance(start, ConcolicInteger)
         if end is not None:
-            partial = self.get_slice(start, end)
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start), int.__int__(end))
-            expr = ["str.indexof", partial.expr, sub.expr, start.expr]
+            expr = ["str.indexof", self.substr(start, end).expr, sub.expr, start.expr]
         else:
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start))
             expr = ["str.indexof", self.expr, sub.expr, start.expr]
@@ -85,9 +92,9 @@ class ConcolicStr(str):
     def format_map(self, mapping):
         raise NotImplementedError
 
-    def index(self, sub, start=ConcolicInteger(0), end=None):
-        res = self.find(sub, start, end)
-        if res == -1: raise ValueError
+    def index(self, *args):
+        res = self.find(args)
+        if res == -1: str.__str__(self).index(args) # raise the built-in error
         return res
 
     def isalnum(self):
@@ -237,34 +244,19 @@ class ConcolicStr(str):
         return ConcolicStr(expr, value)
 
     # TODO: Temp
-    def split(self, sep=None, maxsplit=ConcolicInteger(-1)): # default arguments are not checked yet
-        # return str.__str__(self).split(sep, maxsplit)
-        raise NotImplementedError
-        if sep == None:
-            sep = ' '
-        return str.__str__(self).split(str.__str__(sep), int.__int__(maxsplit))
-        # assert isinstance(maxsplit, ConcolicInteger)
-        maxsplit = int.__int__(maxsplit) #.value
-        if sep is not None:
-            if len(str.__str__(self)) == 0:
-                return ConcolicList([ConcolicStr("")]) # ConcolicList([ConcolicStr("\"\"")])
-        else:
-            sep = ConcolicStr(" ") # ConcolicStr("\" \"", " ")
-            if len(str.__str__(self)) == 0:
-                return ConcolicList([ConcolicStr("\"\"")])
-        assert isinstance(sep, ConcolicStr)#: #str):
-        #    sep = ConcolicStr(sep)
-        if maxsplit == 0 or str.__str__(sep) not in str.__str__(self): #.value:
+    def split(self, sep=None, maxsplit=-1):
+        if sep is None: raise NotImplementedError
+        assert type(sep) is ConcolicStr
+        split_index = self.find(sep)
+        maxsplit = int.__int__(maxsplit)
+        sep_len = sep.__len__()
+        if int.__int__(split_index) == -1 or maxsplit == 0:
             return ConcolicList([self])
-        else:
-            sep_idx = self.find(sep)
-            if maxsplit is None:
-                return ConcolicList([self.get_slice(None, sep_idx)]) + \
-                   ConcolicList(self.get_slice(sep_idx + 1).split(sep))
-            else:
-                return [self.get_slice(None, sep_idx)] + [self.get_slice(sep_idx + 1).split(sep, maxsplit - 1)]
-                # return ConcolicList([self.get_slice(None, sep_idx)]) + \
-                #    ConcolicList(self.get_slice(sep_idx + 1).split(sep, maxsplit - 1))
+        elif maxsplit == -1:
+            return ConcolicList([self.substr(stop=split_index)]) + self.substr(start=split_index+sep_len).split(sep=sep)
+        elif maxsplit > 0:
+            return ConcolicList([self.substr(stop=split_index)]) + self.substr(start=split_index+sep_len).split(sep=sep, maxsplit=maxsplit-1)
+        raise NotImplementedError
 
     def splitlines(self, keepends=False):
         if keepends: raise NotImplementedError
@@ -354,7 +346,7 @@ class ConcolicStr(str):
             return ConcolicStr(expr, value)
         if not isinstance(key, slice): raise NotImplementedError
         if key.step is not None: raise NotImplementedError
-        return self.get_slice(key.start, key.stop)
+        return self.substr(key.start, key.stop)
 
     def __gt__(self, other):
         # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
@@ -438,24 +430,26 @@ class ConcolicStr(str):
     def parent(self):
         return str.__str__(self)
 
-    def get_slice(self, start=None, stop=None):
+    def substr(self, start=None, stop=None): # stop is exclusive...
         if stop is None:
             stop = len(self)
-        else:
-            # if not isinstance(stop, ConcolicInteger):
-            #     stop = ConcolicInteger(stop)
-            assert isinstance(stop, ConcolicInteger)
+        # elif not isinstance(stop, ConcolicInteger):
+        #     stop = ConcolicInteger(stop)
+        assert isinstance(stop, ConcolicInteger)
         if start is None:
             start = ConcolicInteger(0)
-        else:
-            # if not isinstance(start, ConcolicInteger):
-            #     start = ConcolicInteger(start)
-            assert isinstance(start, ConcolicInteger)
-        value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
+        # elif not isinstance(start, ConcolicInteger):
+        #     start = ConcolicInteger(start)
+        assert isinstance(start, ConcolicInteger)
         if int.__int__(start) < 0:
-            start.expr = ["+", ["str.len", self.expr], start.expr]
+            if int.__int__(start) < -len(str.__str__(self)): raise NotImplementedError
+            start += self.__len__()
+            # start.expr = ["+", ["str.len", self.expr], start.expr]
         if int.__int__(stop) < 0:
-            stop.expr = ["+", ["str.len", self.expr], stop.expr]
+            if int.__int__(stop) < -len(str.__str__(self)): raise NotImplementedError
+            stop += self.__len__()
+            # stop.expr = ["+", ["str.len", self.expr], stop.expr]
+        value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
         expr = ["str.substr", self.expr, start.expr, (stop-start).expr]
         return ConcolicStr(expr, value)
 

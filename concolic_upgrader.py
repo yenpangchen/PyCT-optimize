@@ -90,11 +90,9 @@ if 'added' not in locals():
         # if module not in added and \
             # module.__name__ in ['make_server', 'pydoc']: # in XSS testing
         if module not in added and \
-            not (module.__spec__.origin and module.__spec__.origin.startswith('/usr/lib/python3.8/')) and \
-            module.__name__ not in ['conbyte.concolic_types.concolic_int',
-                                    'conbyte.concolic_types.concolic_str',
-                                    'conbyte.concolic_types.concolic_list',
-                                    'global_var']: # in simple testing
+            not (module.__spec__.origin and (module.__spec__.origin == 'built-in' or module.__spec__.origin.startswith('/usr/lib/python3.8/'))) and \
+            not module.__name__.startswith('conbyte.concolic_types') and \
+            module.__name__ not in ['global_var']: # in simple testing
             added.append(module)
             try:
                 tree = parse(inspect.getsource(module))

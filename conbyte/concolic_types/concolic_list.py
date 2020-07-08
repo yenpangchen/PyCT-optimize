@@ -86,11 +86,8 @@ class ConcolicList: #(list):
         # self.size += other .size
         return self
 
-    # def __len__(self):
-    #     return self.size
-
-    # def len(self):
-    #     return ConcolicInteger(self.size)
+    def __len__(self):
+        return ConcolicInteger(len(self.value))
 
     def __iter__(self):
         return iter(self.value)
