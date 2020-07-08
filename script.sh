@@ -17,7 +17,7 @@ declare -A arr
 # --------------------------------------------------------------------
 # arr["test/strings/string_find.py"]='["a","b"]' # OK
 # arr["test/strings/string_in.py"]='["a","b"]' # OK
-# arr["test/strings/string_iter.py"]='["a","b"]' # for ch in string
+# arr["test/strings/string_iter.py"]='["a","b"]' # OK
 # arr["test/strings/string_others.py"]='["a","b"]' # lower in string, count in string, split in string
 # arr["test/strings/string_replace.py"]='["a","b"]' # OK
 # arr["test/strings/string_slice.py"]='["a","b"]' # OK
@@ -30,7 +30,7 @@ declare -A arr
 # arr["test/targets/leetcode/add_digits.py"]=[52] # OK
 # arr["test/targets/leetcode/findUnsortedSubarray.py"]=
 # arr["test/targets/leetcode/fraction_to_decimal.py"]=[-50,8] # OK
-# arr["test/targets/leetcode/isLongPressedName.py"]='["",""]' # for ch in string
+# arr["test/targets/leetcode/isLongPressedName.py"]='["",""]' # for ch in string, many branches not touched
 # arr["test/targets/leetcode/numDecodings.py"]='["226"]' # OK
 # arr["test/targets/leetcode/restoreIpAddresses.py"]='["25525511135"]' # OK
 # arr["test/targets/leetcode/reverseCheck.py"]=[0] # OK

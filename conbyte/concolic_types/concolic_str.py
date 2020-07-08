@@ -307,9 +307,8 @@ class ConcolicStr(str):
     #############################################################################################
     # All underscored methods of the parent class "str" are implemented in the following section,
     # except __class__, __delattr__, __dir__, __doc__, __format__, __getattribute__, __getnewargs
-    # __, __init_subclass__, __iter__, __reduce__, __reduce_ex__, __repr__, __setattr__, __sizeof
-    # __, __subclasshook__. Note that __new__ and __init__ are implemented at the beginning of th
-    # is class.
+    # __, __init_subclass__, __reduce__, __reduce_ex__, __repr__, __setattr__, __sizeof__, __subc
+    # lasshook__. Note that __new__ and __init__ are implemented at the beginning of this class.
     #############################################################################################
 
     def __add__(self, other):
@@ -364,6 +363,10 @@ class ConcolicStr(str):
 
     def __hash__(self):
         return hash(str.__str__(self))
+
+    def __iter__(self):
+        from global_var import upgrade
+        return iter(ConcolicList(list(map(upgrade, list(str.__str__(self))))))
 
     def __le__(self, other):
         # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
