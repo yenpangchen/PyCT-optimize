@@ -7,7 +7,7 @@ declare -A arr
 # arr["test/do_abs.py"]=[5,2] # OK
 # arr["test/do_array.py"]=[5,2] # OK
 # arr["test/do_numbers.py"]=[5,2] # OK
-# arr["test/do_range.py"]=[5,2] # assert sub in integer because of range
+# arr["test/do_range.py"]=[5,2] # OK
 # arr["test/list_dict.py"]=[5,2] # OK
 # arr["test/loop.py"]=[5,2] # OK
 # arr["test/while_loop.py"]=[5,2] # OK
@@ -23,7 +23,7 @@ declare -A arr
 # arr["test/strings/string_slice.py"]='["a","b"]' # OK
 # arr["test/strings/string_startswith.py"]='["a","b"]' # OK
 # --------------------------------------------------------------------
-# arr["test/targets/count_emma.py"]='["EMMA"]' # assert le in integer because of range
+# arr["test/targets/count_emma.py"]='["EMMA"]' # OK
 # arr["test/targets/multiplication_or_sum.py"]=[5,2] # OK
 # arr["test/targets/regex.py"]='["a"]' # not implement rsub in integer
 # --------------------------------------------------------------------
@@ -31,8 +31,8 @@ declare -A arr
 # arr["test/targets/leetcode/findUnsortedSubarray.py"]=
 # arr["test/targets/leetcode/fraction_to_decimal.py"]=[-50,8] # OK
 # arr["test/targets/leetcode/isLongPressedName.py"]='["",""]' # for ch in string
-# arr["test/targets/leetcode/numDecodings.py"]='["226"]' # rmul in ??? (還沒實作 concolic list)
-# arr["test/targets/leetcode/restoreIpAddresses.py"]='["25525511135"]' # assert sub in integer because of range, get_slice in string
+# arr["test/targets/leetcode/numDecodings.py"]='["226"]' # OK
+# arr["test/targets/leetcode/restoreIpAddresses.py"]='["25525511135"]' # OK
 # arr["test/targets/leetcode/reverseCheck.py"]=[0] # OK
 # arr["test/targets/leetcode/substring.py"]='[""]' # 答案錯 ???
 # arr["test/targets/leetcode/substring2.py"]='[""]' # 答案錯 ???
@@ -40,10 +40,10 @@ declare -A arr
 # --------------------------------------------------------------------
 # arr["target_int/leetcode_int/add_binary.py"]='["0","0"]' # __int__ in string, 以及為什麼要 ss 選項呢?
 # arr["target_int/leetcode_int/addStrings.py"]='["923","123"]' # __int__ in string
-# arr["target_int/leetcode_int/numDecodings.py"]='["226"]' # rmul in ??? (還沒實作 concolic list)
-# arr["target_int/leetcode_int/restoreIpAddresses.py"]='["25525511135"]' # sub in integer because of range, get_slice in string
+# arr["target_int/leetcode_int/numDecodings.py"]='["226"]' # OK
+# arr["target_int/leetcode_int/restoreIpAddresses.py"]='["25525511135"]' # OK
 # arr["target_int/leetcode_int/validIPAddress.py"]='["172.16.254.1"]' # split in string
-# arr["target_int/leetcode_int/validWordAbbreviation.py"]='["internationalization","i12iz4n"]' # assert le in integer because of range, sub in integer because of range
+# arr["target_int/leetcode_int/validWordAbbreviation.py"]='["internationalization","i12iz4n"]' # OK
 # --------------------------------------------------------------------
 # arr["target_int/lib_int/datetime__parse_hh_mm_ss_ff.py"]='["12:01:23.123456"]' # sub in integer because of range, __int__ in string
 # arr["target_int/lib_int/datetime__parse_isoformat_date.py"]='["2019-07-19"]' # __int__ in string, 答案的比對還沒實作 list

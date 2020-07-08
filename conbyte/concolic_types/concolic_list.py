@@ -10,29 +10,21 @@ Classes:
     Concolic_tuple
 """
 
-class ConcolicList(list): #(ConcolicType):
-    def __new__(cls, value=None):
-        if value is None:
-            return [] # list.__new__(cls, [])
-        elif isinstance(value, ConcolicList):
-            return list(value) # list.__new__(cls, list(value))
-        else:
-            return value # list.__new__(cls, value)
-
+class ConcolicList: #(list):
     def __init__(self, value=None):
         self.expr = "LIST"
         if value is None:
-            # self.value = []
+            self.value = []
             # self.size = 0
             log.debug("  List: empty")
             return
-        # elif isinstance(value, ConcolicList):
-            # self.value = value.value
+        elif isinstance(value, ConcolicList):
+            self.value = value.value
             # self.size = value.size
-        # else:
-            # self.value = value
+        else:
+            self.value = value
             # self.size = len(value)
-        log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
+        # log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
 
     def append(self, element):
@@ -82,7 +74,7 @@ class ConcolicList(list): #(ConcolicType):
     #     if self.size == 0:
     #         return "  List: nil"
     #     return "  List: %s" % ",".join(val.__str__() for val in self.value)
-        
+
     def __add__(self, other):
         self.value += other.value
         # self.size += other .size
@@ -99,15 +91,23 @@ class ConcolicList(list): #(ConcolicType):
 
     # def len(self):
     #     return ConcolicInteger(self.size)
-    
-    def multiply(self, mul):
-        if isinstance(mul, ConcolicInteger):
-            mul = mul.value
+
+    def __iter__(self):
+        return iter(self.value)
+
+    def __getitem__(self, key):
+        return self.value[key]
+
+    def __setitem__(self, key, value):
+        self.value[key] = value
+
+    def __mul__(self, mul):
+        assert type(mul) is ConcolicInteger
+        mul = int.__int__(mul)
         array = []
         for i in range(mul):
             for value in self.value:
                 array.append(value)
-
         return ConcolicList(array)
 
     def store(self, index, value):
@@ -115,14 +115,14 @@ class ConcolicList(list): #(ConcolicType):
             index = index.value
 
         self.value[index] = value
-    
+
     def reverse(self):
         self.value = reversed(self.value)
 
     def insert(self, index, value):
         # self.size += 1
-        if isinstance(index, ConcolicInteger):
-            index = index.value
+        # if isinstance(index, ConcolicInteger):
+            # index = index.value
         self.value.insert(index, value)
 
     def do_del(self, index):
@@ -136,7 +136,7 @@ class ConcolicList(list): #(ConcolicType):
             if val == target:
                 return ConcolicInteger(index)
             index += 1
-        
+
         return ConcolicInteger(-1)
 
     def mul(self, other):
@@ -156,7 +156,7 @@ class ConcolicList(list): #(ConcolicType):
                 # self.size -= 1
                 break
             index += 1
-    
+
     # def pop(self, index=None):
     #     if index is None:
     #         # self.size -= 1
@@ -174,6 +174,9 @@ class ConcolicList(list): #(ConcolicType):
     def extend(self, target):
         self = self.add(target)
 
+    def parent(self):
+        from global_var import downgrade
+        return list(map(downgrade, self.value))
 
 
 class Concolic_tuple(ConcolicType):

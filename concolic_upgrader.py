@@ -8,7 +8,7 @@ if 'added' not in locals():
     added = []
 
     from ast import NodeTransformer, Num, Call, Name, Load, Constant, parse, ImportFrom, alias, \
-                    fix_missing_locations, Attribute
+                    fix_missing_locations, Attribute, List
     import builtins
     import inspect
     import traceback
@@ -40,7 +40,15 @@ if 'added' not in locals():
                     return Call(func=Attribute(value=node.args[0], attr='__str__', ctx=Load()),
                                 args=[],
                                 keywords=[])
+                if node.func.id == 'range':
+                    node.func.id = '_custom_range'
             return node
+        def visit_List(self, node: List):
+            for i in range(len(node.elts)):
+                node.elts[i] = ConcolicUpgrader2().visit(node.elts[i])
+            return Call(func=Name(id='ConcolicList', ctx=Load()),
+                        args=[node],
+                        keywords=[])
 
     ###############################################################
     # To wrap the builtin import function, we store it into another
@@ -84,7 +92,9 @@ if 'added' not in locals():
         if module not in added and \
             not (module.__spec__.origin and module.__spec__.origin.startswith('/usr/lib/python3.8/')) and \
             module.__name__ not in ['conbyte.concolic_types.concolic_int',
-                                    'conbyte.concolic_types.concolic_str']: # in simple testing
+                                    'conbyte.concolic_types.concolic_str',
+                                    'conbyte.concolic_types.concolic_list',
+                                    'global_var']: # in simple testing
             added.append(module)
             try:
                 tree = parse(inspect.getsource(module))
@@ -93,6 +103,12 @@ if 'added' not in locals():
                                                level=0))
                 tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_str',
                                                names=[alias(name='ConcolicStr', asname=None)],
+                                               level=0))
+                tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_list',
+                                               names=[alias(name='ConcolicList', asname=None)],
+                                               level=0))
+                tree.body.insert(0, ImportFrom(module='global_var',
+                                               names=[alias(name='_custom_range', asname=None)],
                                                level=0))
                 tree = ConcolicUpgrader().visit(tree)
                 tree = ConcolicUpgrader2().visit(tree)
