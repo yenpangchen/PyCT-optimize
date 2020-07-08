@@ -72,7 +72,7 @@ class ConcolicStr(str):
         assert isinstance(start, ConcolicInteger)
         if end is not None:
             partial = self.get_slice(start, end)
-            value = str.__str__(partial).find(str.__str__(sub), int.__int__(start), int.__int__(end))
+            value = str.__str__(self).find(str.__str__(sub), int.__int__(start), int.__int__(end))
             expr = ["str.indexof", partial.expr, sub.expr, start.expr]
         else:
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start))

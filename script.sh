@@ -25,7 +25,7 @@ declare -A arr
 # --------------------------------------------------------------------
 # arr["test/targets/count_emma.py"]='["EMMA"]' # OK
 # arr["test/targets/multiplication_or_sum.py"]=[5,2] # OK
-# arr["test/targets/regex.py"]='["a"]' # not implement rsub in integer
+# arr["test/targets/regex.py"]='["a"]' # need /usr/lib/python3.8/re.py, too difficult...
 # --------------------------------------------------------------------
 # arr["test/targets/leetcode/add_digits.py"]=[52] # OK
 # arr["test/targets/leetcode/findUnsortedSubarray.py"]=
@@ -34,8 +34,8 @@ declare -A arr
 # arr["test/targets/leetcode/numDecodings.py"]='["226"]' # OK
 # arr["test/targets/leetcode/restoreIpAddresses.py"]='["25525511135"]' # OK
 # arr["test/targets/leetcode/reverseCheck.py"]=[0] # OK
-# arr["test/targets/leetcode/substring.py"]='[""]' # 答案錯 ???
-# arr["test/targets/leetcode/substring2.py"]='[""]' # 答案錯 ???
+# arr["test/targets/leetcode/substring.py"]='[""]' # OK
+# arr["test/targets/leetcode/substring2.py"]='[""]' # OK
 # arr["test/targets/leetcode/ugly_number.py"]=[0] # OK
 # --------------------------------------------------------------------
 # arr["target_int/leetcode_int/add_binary.py"]='["0","0"]' # __int__ in string, 以及為什麼要 ss 選項呢?
