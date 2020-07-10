@@ -98,6 +98,9 @@ class ConcolicList: #(list):
     def __setitem__(self, key, value):
         self.value[key] = value
 
+    def __delitem__(self, key):
+        del self.value[key]
+
     def __mul__(self, mul):
         assert type(mul) is ConcolicInteger
         mul = int.__int__(mul)
@@ -154,16 +157,16 @@ class ConcolicList: #(list):
                 break
             index += 1
 
-    # def pop(self, index=None):
-    #     if index is None:
-    #         # self.size -= 1
-    #         return self.value.pop()
-    #     else:
-    #         if index.value < self.size:
-    #             self.size -= 1
-    #             return self.value.pop(index.value)
-    #         else:
-    #             return None
+    def pop(self, index=None):
+        if index is None:
+            # self.size -= 1
+            return self.value.pop()
+        else:
+            # if index.value < self.size:
+                # self.size -= 1
+            return self.value.pop(int.__int__(index)) #.value)
+            # else:
+                # return None
 
     def reverse(self):
         self.value.reverse()

@@ -49,6 +49,9 @@ if 'added' not in locals():
             return Call(func=Name(id='ConcolicList', ctx=Load()),
                         args=[node],
                         keywords=[])
+        def visit_Assign(self, node):
+            node.value = ConcolicUpgrader2().visit(node.value)
+            return node
 
     ###############################################################
     # To wrap the builtin import function, we store it into another

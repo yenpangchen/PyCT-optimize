@@ -489,7 +489,8 @@ class ConcolicStr(str):
     #     expr = ["str.len", self.expr]
     #     return ConcolicInteger(expr, value)
     def __int__(self):
-        value = int(self, 10)
+        self.is_number().__bool__()
+        value = int(str.__str__(self))
         expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
                 ["-", ["str.to.int",
                        ["str.substr", self.expr, "1", ["-", ["str.len", self.expr], "1"]]
@@ -504,32 +505,25 @@ class ConcolicStr(str):
     #     # value = value.replace("\r", "\\r")
     #     # value = value.replace("\t", "\\t")
     #     # return value
-    # def contains(self, other):
-    #     value = other.value in self.value
-    #     expr = ["str.contains", self.expr, other.expr]
-    #     return ConcolicType(expr, value)
-    # def not_contains(self, other):
-    #     value = other.value not in self.value
-    #     expr = ["not", ["str.contains", self.expr, other.expr]]
-    #     return ConcolicType(expr, value)
-    # def is_number(self):
-    #     value = True
-    #     expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
-    #            ["and",
-    #             ["ite", ["=", "(- 1)",
-    #                     ["str.to.int", ["str.substr", self.expr, "1", ["-", ["str.len", self.expr], "1"]]]
-    #                    ],
-    #              "false",
-    #              "true"
-    #             ],
-    #             [">", ["str.len", self.expr], "1"]
-    #            ],
-    #            ["ite", ["=", "(- 1)", ["str.to.int", self.expr]],
-    #              "false",
-    #              "true"
-    #            ]
-    #           ]
-    #     return ConcolicType(expr, value)
+    def is_number(self):
+        expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
+               ["and",
+                ["ite", ["=", "(- 1)",
+                        ["str.to.int", ["str.substr", self.expr, "1", ["-", ["str.len", self.expr], "1"]]]
+                       ],
+                 "false",
+                 "true"
+                ],
+                [">", ["str.len", self.expr], "1"]
+               ],
+               ["ite", ["=", "(- 1)", ["str.to.int", self.expr]],
+                 "false",
+                 "true"
+               ]
+              ]
+        my_str = str.__str__(self)
+        if my_str.startswith('-'): my_str = my_str[1:]
+        return ConcolicType(expr, my_str.isdigit())
     # def store(self, index, value):
     #     if isinstance(index, ConcolicInteger):
     #         index = index.value
