@@ -76,16 +76,29 @@ class PathToConstraint:
 
 
     def find_constraint(self, id):
-        return self._find_constraint(self.root_constraint, id)
+        return global_var.constraints[id]
+        # import queue
+        # q = queue.Queue()
+        # q.put(self.root_constraint)
+        # while not q.empty():
+        #     constraint = q.get()
+        #     # print('ID', constraint.id, id)
+        #     if constraint.id == id:
+        #         return constraint
+        #     for child in constraint.children:
+        #         q.put(child)
+        # return None
+        # return self._find_constraint(self.root_constraint, id)
 
-    def _find_constraint(self, constraint, id):
-        if constraint.id == id:
-            return constraint
-        else:
-            for child in constraint.children:
-                found = self._find_constraint(child, id)
-                if found is not None:
-                    return found
-        return None
+    # def _find_constraint(self, constraint, id):
+    #     print('ID', constraint.id, id)
+    #     if constraint.id == id:
+    #         return constraint
+    #     else:
+    #         for child in constraint.children:
+    #             found = self._find_constraint(child, id)
+    #             if found is not None:
+    #                 return found
+    #     return None
 
 

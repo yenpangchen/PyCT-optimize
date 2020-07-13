@@ -10,27 +10,31 @@ Classes:
     Concolic_tuple
 """
 
-class ConcolicList: #(list):
-    def __init__(self, value=None):
+class ConcolicList(list):
+    def __init__(self, *args):
         self.expr = "LIST"
-        if value is None:
-            self.value = []
-            # self.size = 0
-            log.debug("  List: empty")
-            return
-        elif isinstance(value, ConcolicList):
-            self.value = value.value
-            # self.size = value.size
-        else:
-            self.value = value
+        super().__init__(*args)
+        # if value is None:
+        #     super().__init__()
+        #     # self.value = []
+        #     # self.size = 0
+        #     log.debug("  List: empty")
+        #     return
+        # elif isinstance(value, ConcolicList):
+        #     raise NotImplementedError
+        #     # self.value = value.value
+        #     # self.size = value.size
+        # else:
+        #     super().__init__(value)
+            # self.value = value
             # self.size = len(value)
         # log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
 
     def append(self, element):
-        self.value.append(element)
+        super().append(element)
         # self.size += 1
-        log.debug("  List append: %s" % element)
+        # log.debug("  List append: %s" % element)
 
     def get_index(self, index=0):
         if isinstance(index, ConcolicInteger):
@@ -76,7 +80,11 @@ class ConcolicList: #(list):
     #     return "  List: %s" % ",".join(val.__str__() for val in self.value)
 
     def __add__(self, other):
-        self.value += other.value
+        if type(other) == list:
+            super().__iadd__(other)
+        else:
+            super().__iadd__(list(other))
+            # self.value += other.value
         # self.size += other .size
         log.debug(self)
         return self
@@ -87,16 +95,18 @@ class ConcolicList: #(list):
         return self
 
     def __len__(self):
-        return ConcolicInteger(len(self.value))
+        return ConcolicInteger(super().__len__())
 
     def __iter__(self):
-        return iter(self.value)
+        return super().__iter__() #iter(self.value)
 
     def __getitem__(self, key):
-        return self.value[key]
+        return super().__getitem__(key)
+        # return self.value[key]
 
     def __setitem__(self, key, value):
-        self.value[key] = value
+        super().__setitem__(key, value)
+        # self.value[key] = value
 
     def __delitem__(self, key):
         del self.value[key]
@@ -106,7 +116,7 @@ class ConcolicList: #(list):
         mul = int.__int__(mul)
         array = []
         for i in range(mul):
-            for value in self.value:
+            for value in list(self): #.value:
                 array.append(value)
         return ConcolicList(array)
 
@@ -143,10 +153,10 @@ class ConcolicList: #(list):
         self.value *= other.value
         return self
 
-    def add(self, other):
-        self.value += other.value
-        # self.size += other.size
-        return self
+    # def add(self, other):
+    #     self.value += other.value
+    #     # self.size += other.size
+    #     return self
 
     def remove(self, target):
         index = 0
@@ -172,7 +182,8 @@ class ConcolicList: #(list):
         self.value.reverse()
 
     def extend(self, target):
-        self = self.add(target)
+        super().__iadd__(target)
+        # self = self.add(target)
 
     def parent(self):
         from global_var import downgrade

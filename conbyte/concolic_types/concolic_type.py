@@ -6,9 +6,14 @@ import global_var
 log = logging.getLogger("ct.con.type")
 
 class ConcolicType:
-    def __init__(self, expr=None, value=None):
+    def __init__(self, expr, value=None):
         self.expr = expr
-        self.value = value
+        if value is not None:
+            self.value = value
+            self.hasvar = True
+        else:
+            self.value = self.expr
+            self.hasvar = False
         log.debug("  ConType, value %s, expr: %s" % (value, expr))
 
     def to_formula(self):
@@ -35,31 +40,31 @@ class ConcolicType:
     def get_concrete(self):
         return self.value
     
-    def compare_op(self, operator, other):
-        val_l = self.value
-        val_r = other.value
-        if operator == "==":
-            value = val_l == val_r
-            expr = ["=", self.expr, other.expr]
-        elif operator == "!=":
-            value = val_l != val_r
-            expr = ['not', ["=", self.expr, other.expr]]
-        elif operator == ">":
-            value = val_l > val_r
-            expr = [operator, self.expr, other.expr]
-        elif operator == "<":
-            value = val_l < val_r
-            expr = [operator, self.expr, other.expr]
-        elif operator == ">=":
-            value = val_l >= val_r
-            expr = [operator, self.expr, other.expr]
-        elif operator == "<=":
-            value = val_l <= val_r
-            expr = [operator, self.expr, other.expr]
-        else:
-            return None
+    # def compare_op(self, operator, other):
+    #     val_l = self.value
+    #     val_r = other.value
+    #     if operator == "==":
+    #         value = val_l == val_r
+    #         expr = ["=", self.expr, other.expr]
+    #     elif operator == "!=":
+    #         value = val_l != val_r
+    #         expr = ['not', ["=", self.expr, other.expr]]
+    #     elif operator == ">":
+    #         value = val_l > val_r
+    #         expr = [operator, self.expr, other.expr]
+    #     elif operator == "<":
+    #         value = val_l < val_r
+    #         expr = [operator, self.expr, other.expr]
+    #     elif operator == ">=":
+    #         value = val_l >= val_r
+    #         expr = [operator, self.expr, other.expr]
+    #     elif operator == "<=":
+    #         value = val_l <= val_r
+    #         expr = [operator, self.expr, other.expr]
+    #     else:
+    #         return None
 
-        return ConcolicType(expr, value)
+    #     return ConcolicType(expr, value)
 
     def symbolic_eq(self, other):
         return self._eq_worker(self.expr, other.expr)
@@ -78,42 +83,55 @@ class ConcolicType:
         else:
             return expr1 == expr2
 
-    def __eq__(self, other):
-        if self.value != other.value:
-            return False
-        else:
-            return self._eq_worker(self.expr, other.expr)
+    # def __eq__(self, other):
+    #     if self.value != other.value:
+    #         return False
+    #     else:
+    #         return self._eq_worker(self.expr, other.expr)
 
-    # TODO
-    def __or__(self, other):
-        value = self.value | other.value
-        expr = ["and", self.expr, other.expr]
-        return ConcolicType(expr, value)
+    # # TODO
+    # def __or__(self, other):
+    #     value = self.value | other.value
+    #     expr = ["and", self.expr, other.expr]
+    #     return ConcolicType(expr, value)
 
-    # TODO
-    def __xor__(self, other):
-        value = self.value ^ other.value
-        expr = ["xor", self.expr, other.expr]
-        return ConcolicType(expr, value)
+    # # TODO
+    # def __xor__(self, other):
+    #     value = self.value ^ other.value
+    #     expr = ["xor", self.expr, other.expr]
+    #     return ConcolicType(expr, value)
 
-    # TODO
-    def __and__(self, other):
-        value = self.value & other.value
-        expr = ["and", self.expr, other.expr]
-        return ConcolicType(expr, value)
+    # # TODO
+    # def __and__(self, other):
+    #     value = self.value & other.value
+    #     expr = ["and", self.expr, other.expr]
+    #     return ConcolicType(expr, value)
 
     # For bool type
     def negate(self):
+        raise NotImplementedError
         self.value = not self.value
-        self.expr = ['not', self.expr]
+        if True: # :
+            self.expr = ['not', self.expr]
+        else:
+            self.expr = self.value
 
     def __str__(self):
         return "{ConType, value: %s, expr: %s)" % (self.value, self.expr)
 
     def __bool__(self):
-        if global_var.global_engine is not None:
+        if True: # :
+            # print('add branch', self)
             global_var.global_engine.path.which_branch(self)
         return self.value
+
+    def __index__(self):
+        from conbyte.concolic_types.concolic_int import ConcolicInteger
+        value = int.__int__(self.value)
+        # if True: # :
+        #     return ConcolicInteger(self.expr, value)
+        # else:
+        return ConcolicInteger(value)
 
     # custom method to get the primitive value
     def parent(self):

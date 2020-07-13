@@ -36,7 +36,7 @@ class Predicate:
                 if expr < 0:
                     ret = "(- %s)" % -expr
                 else:
-                    ret = str(expr)
+                    ret = str(int.__int__(expr))
                 return ret
             else:
                 return str(expr)

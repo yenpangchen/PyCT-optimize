@@ -33,15 +33,20 @@ if 'added' not in locals():
                     #############################################################
                     # TODO: We've not considered the case int('...', base=N) yet.
                     #############################################################
-                    return Call(func=Attribute(value=node.args[0], attr='__int__', ctx=Load()),
-                                args=[],
-                                keywords=[])
+                    if len(node.args) == 1:
+                        return Call(func=Attribute(value=node.args[0], attr='__int__', ctx=Load()),
+                                    args=[],
+                                    keywords=[])
+                    else:
+                        return node
                 if node.func.id == 'str':
                     return Call(func=Attribute(value=node.args[0], attr='__str__', ctx=Load()),
                                 args=[],
                                 keywords=[])
                 if node.func.id == 'range':
                     node.func.id = '_custom_range'
+                #if node.func.id == 'type':
+                #    node.func.id = '_custom_type'
             return node
         def visit_List(self, node: List):
             for i in range(len(node.elts)):
@@ -93,12 +98,14 @@ if 'added' not in locals():
         # if module not in added and \
             # module.__name__ in ['make_server', 'pydoc']: # in XSS testing
         if module not in added and \
-            not (module.__spec__.origin and (module.__spec__.origin == 'built-in' or module.__spec__.origin.startswith('/usr/lib/python3.8/'))) and \
-            not module.__name__.startswith('conbyte.concolic_types') and \
-            module.__name__ not in ['global_var']: # in simple testing
+            not module.__name__.startswith('conbyte') and \
+            module.__name__ not in ['global_var'] and \
+            not module.__name__.startswith('importlib'): # in simple testing
+            # print('name', module.__spec__.origin, module.__name__)
             added.append(module)
             try:
                 tree = parse(inspect.getsource(module))
+                # print('外建嘻嘻', module.__spec__.origin, module.__name__)
                 tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_int',
                                                names=[alias(name='ConcolicInteger', asname=None)],
                                                level=0))
@@ -120,6 +127,7 @@ if 'added' not in locals():
                 # Here we deal with the case where source codes of a module are not available.
                 # The solution here may not be very complete and is just temporary.
                 ##############################################################################
+                # print('內建嘻嘻', module.__spec__.origin, module.__name__)
                 msg = str(exception)
                 if not (isinstance(exception, OSError) and msg in ['could not get source code',
                                                                    'source code not available']) \

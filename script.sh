@@ -25,7 +25,7 @@ declare -A arr
 # --------------------------------------------------------------------
 # arr["test/targets/count_emma.py"]='["EMMA"]' # OK
 # arr["test/targets/multiplication_or_sum.py"]=[5,2] # OK
-# arr["test/targets/regex.py"]='["a"]' # need /usr/lib/python3.8/re.py, too difficult...
+# arr["test/targets/regex.py"]='["007 James Bond"]' # OK
 # --------------------------------------------------------------------
 # arr["test/targets/leetcode/add_digits.py"]=[52] # OK
 # arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[0,0,0,0,0]] # 有 list 的好像還是比較困難

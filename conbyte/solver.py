@@ -84,6 +84,7 @@ class Solver(object):
         except subprocess.CalledProcessError as e:
             print(e.output)
 
+        # print(formulas)
         stdout, stderr = process.communicate(input=formulas.encode())
 
         log.debug("\n" + stdout.decode())

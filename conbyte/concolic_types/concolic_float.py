@@ -17,13 +17,21 @@ class ConcolicFloat(float):
 
     def __init__(self, expr, value=None): # maybe decorator required?
         self.expr = expr
+        self.hasvar = (value is not None)
         # log.debug("  ConFloat, value: %s, expr: %s" % (self, self.expr)) # not fixed yet
 
     def __int__(self):
-        return ConcolicInteger(['to_int', self.expr], float.__int__(self))
+        value = float.__int__(self)
+        if True: # :
+            return ConcolicInteger(['to_int', self.expr], value)
+        else:
+            return ConcolicInteger(value)
 
     def __truediv__(self, other):
         assert isinstance(other, ConcolicFloat)
-        expr = ['/', self.expr, other.expr]
         value = float.__float__(self) / float.__float__(other)
-        return ConcolicFloat(expr, value)
+        if True: #  or other.hasvar:
+            expr = ['/', self.expr, other.expr]
+            return ConcolicFloat(expr, value)
+        else:
+            return ConcolicFloat(value)

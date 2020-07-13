@@ -2,6 +2,7 @@
 
 import logging
 import inspect
+import global_var
 
 class Constraint(object):
     cnt = 0
@@ -12,17 +13,18 @@ class Constraint(object):
         self.parent = parent
         self.children = []
         self.id = self.__class__.cnt
+        global_var.constraints[self.id] = self
         self.__class__.cnt += 1
         branch = self.predicate.result if self.predicate is not None else ""
-        self.branch_id = self._branch_id(inspect.stack(), branch)
+        # self.branch_id = self._branch_id(inspect.stack(), branch)
 
-    def _branch_id(self, stack, branch):
-        instrumentation_keywords = {"py-conbyte", "concolic"}
-        for frame, filename, linenum, funcname, context, contextline in stack:
-            if any(instrumentation_keyword in filename for instrumentation_keyword in instrumentation_keywords):
-                continue
-            return "{}:{}:{}".format(filename, linenum, branch)
-        return None
+    # def _branch_id(self, stack, branch):
+    #     instrumentation_keywords = {"py-conbyte", "concolic"}
+    #     for frame, filename, linenum, funcname, context, contextline in stack:
+    #         if any(instrumentation_keyword in filename for instrumentation_keyword in instrumentation_keywords):
+    #             continue
+    #         return "{}:{}:{}".format(filename, linenum, branch)
+    #     return None
 
     def __eq__(self, other):
         """Two Constraints are equal iff they have the same chain of predicates"""
