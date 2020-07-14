@@ -98,7 +98,9 @@ class Solver(object):
         else:
             output = output.splitlines()
             while "error" in output[0]:
-                output.pop(0)
+                print('solver error:', output[0])
+                quit()
+                # output.pop(0)
             ret = output[0].lower()
             if "unsat" in ret:
                 ret = "UNSAT"

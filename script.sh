@@ -2,7 +2,7 @@
 
 declare -A arr
 
-# arr["test/build_in.py"]=[5,2] # assert radd in integer because of sum
+# arr["test/build_in.py"]=[5,2] # OK
 # arr["test/call_obj.py"]=[5,2] # OK
 # arr["test/do_abs.py"]=[5,2] # OK
 # arr["test/do_array.py"]=[5,2] # OK

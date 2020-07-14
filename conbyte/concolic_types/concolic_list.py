@@ -112,8 +112,6 @@ class ConcolicList(list):
         del self.value[key]
 
     def __mul__(self, mul):
-        assert type(mul) is ConcolicInteger
-        mul = int.__int__(mul)
         array = []
         for i in range(mul):
             for value in list(self): #.value:
@@ -187,7 +185,7 @@ class ConcolicList(list):
 
     def parent(self):
         from global_var import downgrade
-        return list(map(downgrade, self.value))
+        return list(map(downgrade, list(self)))
 
 
 class Concolic_tuple(ConcolicType):

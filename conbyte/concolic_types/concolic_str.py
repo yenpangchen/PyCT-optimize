@@ -1,7 +1,7 @@
 from .concolic_type import *
 from .concolic_int import *
 from .concolic_list import *
-
+# import logging
 log = logging.getLogger("ct.con.str")
 
 class ConcolicStr(str):
@@ -20,13 +20,6 @@ class ConcolicStr(str):
         if value is not None:
             return str.__new__(cls, value)
         else:
-            # if '。' in expr:
-            # # if type(expr) != str:
-            #     print('我乾你娘', expr)
-            #     import traceback
-            #     traceback.print_stack()
-            #     quit()
-            # #     print('娘你乾我')
             assert type(expr) == str
         #     # if isinstance(expr, str): expr = expr.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
             return str.__new__(cls, expr) #.replace("\"", "", 1).replace("\"", "", -1))
@@ -42,7 +35,7 @@ class ConcolicStr(str):
             # if type(expr) != str: print('unexpected type', type(expr)); quit()
             assert type(expr) == str
             expr = expr.replace("\\", "\\\\")
-            expr = expr.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
+            expr = expr.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t").replace('"', '""')
             expr_new = ""
             for ch in expr:
                 if ord(ch) > 127: # unicode characters
@@ -50,7 +43,7 @@ class ConcolicStr(str):
                 else:
                     expr_new += ch
             expr = expr_new
-            if value is None and not (expr.startswith('"') and expr.endswith('"')): expr = "\"" + expr + "\"" # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
+            if value is None: expr = "\"" + expr + "\"" # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
             self.expr = expr
         log.debug("  ConStr, value: %s, expr: %s" % (self, self.expr))
 
@@ -80,10 +73,9 @@ class ConcolicStr(str):
 
     def endswith(self, suffix, start=None, end=None): # default arguments are not checked yet
         if start is not None or end is not None: raise NotImplementedError
-        # if not isinstance(suffix, ConcolicStr): suffix = ConcolicStr(suffix)
-        assert isinstance(suffix, ConcolicStr)
+        if not isinstance(suffix, ConcolicStr): suffix = ConcolicStr(suffix)
         value = str.__str__(self).endswith(str.__str__(suffix))
-        if True: #  or suffix.hasvar:
+        if self.hasvar or suffix.hasvar:
             expr = ["str.suffixof", suffix.expr, self.expr]
             return ConcolicType(expr, value)
         else:
@@ -97,25 +89,24 @@ class ConcolicStr(str):
         L = len(args)
         if L < 1: raise TypeError('find() takes at least 1 argument (' + L + ' given)')
         sub = args[0]
-        # if not isinstance(sub, ConcolicStr): sub = ConcolicStr(sub)
-        assert isinstance(sub, ConcolicStr)
+        if not isinstance(sub, ConcolicStr): sub = ConcolicStr(sub)
         argshasvar |= sub.hasvar
         if L < 2: start = ConcolicInteger(0)
         else: start = args[1]
-        assert isinstance(start, ConcolicInteger)
+        if not isinstance(start, ConcolicStr): start = ConcolicInteger(start)
         argshasvar |= start.hasvar
         if L < 3: end = None
         else: end = args[2]
         if L > 3: raise TypeError('find() takes at most 3 arguments (' + L + ' given)')
-        # if not isinstance(start, ConcolicInteger): start = ConcolicInteger(start)
         if end is not None:
+            if not isinstance(end, ConcolicInteger): end = ConcolicInteger(end)
             argshasvar |= end.hasvar
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start), int.__int__(end))
             expr = ["str.indexof", self.substr(start, end).expr, sub.expr, start.expr]
         else:
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start))
             expr = ["str.indexof", self.expr, sub.expr, start.expr]
-        if True: # :
+        if argshasvar:
             return ConcolicInteger(expr, value)
         else:
             return ConcolicInteger(value)
@@ -145,7 +136,7 @@ class ConcolicStr(str):
 
     def isdigit(self):
         value = str.__str__(self).isdigit()
-        if True: # :
+        if self.hasvar:
             expr = ["str.in.re", self.expr, ["re.+", ["re.range", "\"0\"", "\"9\""]]]
             return ConcolicType(expr, value)
         else:
@@ -214,7 +205,7 @@ class ConcolicStr(str):
                     ["str.substr", expr, 1, ["-", ["str.len", expr], 1]],
                     expr
                     ]
-        if True: #  or chars.hasvar:
+        if self.hasvar or chars.hasvar:
             return ConcolicStr(expr, value)
         else:
             return ConcolicStr(value)
@@ -228,15 +219,11 @@ class ConcolicStr(str):
 
     # TODO: Temp
     def replace(self, old, new, count=-1):
-        # if not isinstance(old, ConcolicStr): old = ConcolicStr(old)
-        assert isinstance(old, ConcolicStr)
-        # if not isinstance(new, ConcolicStr): new = ConcolicStr(new)
-        assert isinstance(new, ConcolicStr)
+        if not isinstance(old, ConcolicStr): old = ConcolicStr(old)
+        if not isinstance(new, ConcolicStr): new = ConcolicStr(new)
         hasvar = self.hasvar or old.hasvar or new.hasvar or (type(count) is ConcolicInteger and count.hasvar)
         value = str.__str__(self) #.value
         expr = self.expr
-        # if isinstance(count, ConcolicInteger):
-        # assert isinstance(count, ConcolicInteger)
         count = int.__int__(count) #.value
         if count == 0:
             return ConcolicStr(expr, value)
@@ -286,7 +273,7 @@ class ConcolicStr(str):
                     ["str.substr", expr, 0, ["-", ["str.len", expr], 1]],
                     expr
                    ]
-        if True: #  or chars.hasvar:
+        if self.hasvar or chars.hasvar:
             return ConcolicStr(expr, value)
         else:
             return ConcolicStr(value)
@@ -298,7 +285,7 @@ class ConcolicStr(str):
             for i in range(len(res)):
                 res[i] = ConcolicStr(res[i])
             return ConcolicList(res)
-        assert type(sep) is ConcolicStr
+        if not isinstance(sep, ConcolicStr): sep = ConcolicStr(sep)
         split_index = self.find(sep)
         maxsplit = int.__int__(maxsplit)
         sep_len = sep.__len__()
@@ -320,9 +307,8 @@ class ConcolicStr(str):
     def startswith(self, prefix, start=None, end=None): # default arguments are not checked yet
         if start is not None or end is not None: raise NotImplementedError
         if not isinstance(prefix, ConcolicStr): prefix = ConcolicStr(prefix)
-        assert isinstance(prefix, ConcolicStr)
         value = str.__str__(self).startswith(str.__str__(prefix)) #.value)
-        if True: #  or prefix.hasvar:
+        if self.hasvar or prefix.hasvar:
             expr = ["str.prefixof", prefix.expr, self.expr]
             return ConcolicType(expr, value)
         else:
@@ -344,7 +330,7 @@ class ConcolicStr(str):
     # Return a new string, no continued expr
     # TODO: Temp
     def upper(self):
-        value = str(self).upper()
+        value = str.__str__(self).upper()
         return ConcolicStr(value) #'\"' + value + '\"')
 
     def zfill(self, width):
@@ -358,29 +344,18 @@ class ConcolicStr(str):
     #############################################################################################
 
     def __add__(self, other):
-        # assert isinstance(other, ConcolicStr)
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         value = str.__str__(self) + str.__str__(other)
-        if True: #  or other.hasvar:
+        if self.hasvar or other.hasvar:
             expr = ["str.++", self.expr, other.expr]
             return ConcolicStr(expr, value)
         else:
             return ConcolicStr(value)
 
-    # def __radd__(self, other): # the supplementary method for the case <str> + <ConcolicStr>
-        # return other.__add__(self)
-        # raise NotImplementedError
-        # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        # assert isinstance(other, ConcolicStr)
-        # value = str.__str__(other) + str.__str__(self)
-        # expr = ["str.++", other.expr, self.expr]
-        # return ConcolicStr(expr, value)
-
     def __contains__(self, other):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        assert isinstance(other, ConcolicStr)
         value = str.__str__(self).__contains__(str.__str__(other))
-        if True: #  or other.hasvar:
+        if self.hasvar or other.hasvar:
             expr = ["str.contains", self.expr, other.expr]
             return ConcolicType(expr, value)
         else:
@@ -388,24 +363,18 @@ class ConcolicStr(str):
 
     def __eq__(self, other):
         if other is None: return False
-        if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        assert isinstance(other, ConcolicStr)
         return self.compare_op("==", other)
 
     def __ge__(self, other):
-        # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        assert isinstance(other, ConcolicStr)
         return self.compare_op(">=", other)
 
     # TODO
     def __getitem__(self, key):
         if isinstance(key, int):
-        # if isinstance(key, ConcolicInteger):
             if not isinstance(key, ConcolicInteger): key = ConcolicInteger(key)
-            # assert isinstance(key, ConcolicInteger)
             value = str.__str__(self)[int.__int__(key)]
             expr = ["str.at", self.expr, key.expr]
-            if True: #  or key.hasvar:
+            if self.hasvar or key.hasvar:
                 return ConcolicStr(expr, value)
             else:
                 return ConcolicStr(value)
@@ -414,8 +383,7 @@ class ConcolicStr(str):
         return self.substr(key.start, key.stop)
 
     def __gt__(self, other):
-        # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        assert isinstance(other, ConcolicStr)
+        if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         return self.compare_op(">", other)
 
     def __hash__(self):
@@ -426,21 +394,19 @@ class ConcolicStr(str):
         return iter(ConcolicList(list(map(upgrade, list(str.__str__(self))))))
 
     def __le__(self, other):
-        # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        assert isinstance(other, ConcolicStr)
+        if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         return self.compare_op("<=", other)
 
     def __len__(self):
         value = len(str.__str__(self)) #.value)
-        if True: # :
+        if self.hasvar:
             expr = ["str.len", self.expr]
             return ConcolicInteger(expr, value)
         else:
             return ConcolicInteger(value)
 
     def __lt__(self, other):
-        # if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        assert isinstance(other, ConcolicStr)
+        if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         return self.compare_op("<", other)
 
     def __mod__(self, tpl):
@@ -481,8 +447,10 @@ class ConcolicStr(str):
 
     def __ne__(self, other):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
-        assert isinstance(other, ConcolicStr)
         return self.compare_op("!=", other)
+
+    def __repr__(self):
+        return str.__str__(self)
 
     # def __rmod__(self, value):
     #     raise NotImplementedError
@@ -505,14 +473,12 @@ class ConcolicStr(str):
     def substr(self, start=None, stop=None): # stop is exclusive...
         if stop is None:
             stop = len(self)
-        # elif not isinstance(stop, ConcolicInteger):
-        #     stop = ConcolicInteger(stop)
-        assert isinstance(stop, ConcolicInteger)
+        if not isinstance(stop, ConcolicInteger):
+            stop = ConcolicInteger(stop)
         if start is None:
             start = ConcolicInteger(0)
-        # elif not isinstance(start, ConcolicInteger):
-        #     start = ConcolicInteger(start)
-        assert isinstance(start, ConcolicInteger)
+        if not isinstance(start, ConcolicInteger):
+            start = ConcolicInteger(start)
         if int.__int__(start) < 0:
             if int.__int__(start) < -len(str.__str__(self)): raise NotImplementedError
             start += self.__len__()
@@ -523,14 +489,14 @@ class ConcolicStr(str):
             # stop.expr = ["+", ["str.len", self.expr], stop.expr]
         value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
         expr = ["str.substr", self.expr, start.expr, (stop-start).expr]
-        if True: #  or start.hasvar or stop.hasvar:
+        if self.hasvar or start.hasvar or stop.hasvar:
             return ConcolicStr(expr, value)
         else:
             return ConcolicStr(value)
 
     def compare_op(self, operator, other):
         val_l = str.__str__(self) #.value
-        assert isinstance(other, ConcolicStr)
+        if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         val_r = str.__str__(other) #.value
         if operator == "==":
             value = val_l == val_r
@@ -558,7 +524,7 @@ class ConcolicStr(str):
             # expr = ["str.in.re", self.expr, ["re.range", "\"\\x00\"", other.expr]]
         else:
             raise NotImplementedError
-        if True: #  or other.hasvar:
+        if self.hasvar or other.hasvar:
             return ConcolicType(expr, value)
         else:
             return ConcolicType(value)
@@ -572,7 +538,7 @@ class ConcolicStr(str):
     #     return ConcolicInteger(expr, value)
     def __int__(self):
         value = int(str.__str__(self))
-        if True: # :
+        if self.hasvar:
             self.is_number().__bool__()
             expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
                     ["-", ["str.to.int",
@@ -608,7 +574,7 @@ class ConcolicStr(str):
               ]
         my_str = str.__str__(self)
         if my_str.startswith('-'): my_str = my_str[1:]
-        if True: # :
+        if self.hasvar:
             return ConcolicType(expr, my_str.isdigit())
         else:
             return ConcolicType(my_str.isdigit())

@@ -120,18 +120,13 @@ class ConcolicType:
         return "{ConType, value: %s, expr: %s)" % (self.value, self.expr)
 
     def __bool__(self):
-        if True: # :
-            # print('add branch', self)
+        if self.hasvar:
             global_var.global_engine.path.which_branch(self)
         return self.value
 
     def __index__(self):
         from conbyte.concolic_types.concolic_int import ConcolicInteger
-        value = int.__int__(self.value)
-        # if True: # :
-        #     return ConcolicInteger(self.expr, value)
-        # else:
-        return ConcolicInteger(value)
+        return ConcolicInteger(int.__int__(self.value))
 
     # custom method to get the primitive value
     def parent(self):

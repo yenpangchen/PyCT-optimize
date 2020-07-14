@@ -66,6 +66,12 @@ class ExplorationEngine:
         p1, p2 = multiprocessing.Pipe()
         pid = os.fork()
         if pid == 0: # child process
+            import global_var
+            from conbyte.concolic_types.concolic_type import ConcolicType
+            global_var.global_engine.path.which_branch(ConcolicType(['=', 1, 1], False))
+            # The case of 0 constraints should have produced a trivial solution, however our program
+            # here doesn't do this, so we need one additional branch to achieve this goal.
+
             import concolic_upgrader
             assert isinstance(self.t_module, str)
             self.t_module = __import__(self.t_module)
