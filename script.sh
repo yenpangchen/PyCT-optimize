@@ -55,6 +55,7 @@ declare -A arr
 # arr["target_int/lib_int/smtpd_parseargs.py"]='["localhost:8025","localhost:25"]' # OK
 # arr["target_int/lib_int/wsgiref_check_status.py"]='["200 ok"]' # OK
 # --------------------------------------------------------------------
+# arr["make_server.py"]='[""]'
 # arr["test.py"]='["923","123"]'
 
 for key in ${!arr[@]}; do

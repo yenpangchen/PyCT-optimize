@@ -81,8 +81,8 @@ class ConcolicStr(str):
         else:
             return ConcolicType(value)
 
-    def expandtabs(self, tabsize=8):
-        raise NotImplementedError
+    # def expandtabs(self, tabsize=8):
+    #     raise NotImplementedError
 
     def find(self, *args):
         argshasvar = self.hasvar
