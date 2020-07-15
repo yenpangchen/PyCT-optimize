@@ -38,8 +38,8 @@ declare -A arr
 # arr["test/targets/leetcode/substring2.py"]='[""]' # OK
 # arr["test/targets/leetcode/ugly_number.py"]=[0] # OK
 # --------------------------------------------------------------------
-# arr["target_int/leetcode_int/add_binary.py"]='["1","1"]' # OK，但為什麼需要 ss 選項呢?
-# arr["target_int/leetcode_int/addStrings.py"]='["923","123"]' # __int__ in string
+# arr["target_int/leetcode_int/add_binary.py"]='["1","1"]' # OK
+# arr["target_int/leetcode_int/addStrings.py"]='["923","123"]' # OK
 # arr["target_int/leetcode_int/numDecodings.py"]='["226"]' # OK
 # arr["target_int/leetcode_int/restoreIpAddresses.py"]='["25525511135"]' # OK
 # arr["target_int/leetcode_int/validIPAddress.py"]='["172.16.254.1"]' # OK
@@ -55,9 +55,15 @@ declare -A arr
 # arr["target_int/lib_int/smtpd_parseargs.py"]='["localhost:8025","localhost:25"]' # OK
 # arr["target_int/lib_int/wsgiref_check_status.py"]='["200 ok"]' # OK
 # --------------------------------------------------------------------
-# arr["test.py"]='[""]'
+# arr["test.py"]='["923","123"]'
 
 for key in ${!arr[@]}; do
     echo "============== current testcase =============:" ${key} ${arr[${key}]}
-    ./py-conbyte.py -s cvc4 -m 30 -t 3 --input "${arr[${key}]}" ${key}
+    if [ "${key}" = "target_int/leetcode_int/add_binary.py" ]; then
+        ./py-conbyte.py -s cvc4 -m 30 -t 3 --input "${arr[${key}]}" ${key} --ss
+    elif [ "${key}" = "target_int/leetcode_int/addStrings.py" ]; then
+        ./py-conbyte.py -s cvc4 -m 80 -t 3 --input "${arr[${key}]}" ${key}
+    else
+        ./py-conbyte.py -s cvc4 -m 30 -t 3 --input "${arr[${key}]}" ${key}
+    fi
 done

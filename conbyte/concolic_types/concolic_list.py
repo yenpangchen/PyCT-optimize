@@ -108,8 +108,8 @@ class ConcolicList(list):
         super().__setitem__(key, value)
         # self.value[key] = value
 
-    def __delitem__(self, key):
-        del self.value[key]
+    # def __delitem__(self, key):
+    #     del self.value[key]
 
     def __mul__(self, mul):
         array = []
@@ -127,11 +127,11 @@ class ConcolicList(list):
     def reverse(self):
         self.value = reversed(self.value)
 
-    def insert(self, index, value):
-        # self.size += 1
-        # if isinstance(index, ConcolicInteger):
-            # index = index.value
-        self.value.insert(index, value)
+    # def insert(self, index, value):
+    #     # self.size += 1
+    #     # if isinstance(index, ConcolicInteger):
+    #         # index = index.value
+    #     self.value.insert(index, value)
 
     def do_del(self, index):
         value = index.value
@@ -139,13 +139,14 @@ class ConcolicList(list):
         # self.size -= 1
 
     def index(self, target):
-        index = 0
-        for val in self.value:
-            if val == target:
-                return ConcolicInteger(index)
-            index += 1
+        return ConcolicInteger(super().index(target))
+        # index = 0
+        # for val in self.value:
+        #     if val == target:
+        #         return ConcolicInteger(index)
+        #     index += 1
 
-        return ConcolicInteger(-1)
+        # return ConcolicInteger(-1)
 
     def mul(self, other):
         self.value *= other.value

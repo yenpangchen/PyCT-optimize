@@ -372,6 +372,8 @@ class ConcolicStr(str):
     def __getitem__(self, key):
         if isinstance(key, int):
             if not isinstance(key, ConcolicInteger): key = ConcolicInteger(key)
+            if key < 0:
+                key += len(self)
             value = str.__str__(self)[int.__int__(key)]
             expr = ["str.at", self.expr, key.expr]
             if self.hasvar or key.hasvar:
@@ -479,14 +481,10 @@ class ConcolicStr(str):
             start = ConcolicInteger(0)
         if not isinstance(start, ConcolicInteger):
             start = ConcolicInteger(start)
-        if int.__int__(start) < 0:
-            if int.__int__(start) < -len(str.__str__(self)): raise NotImplementedError
+        while int.__int__(start) < 0:
             start += self.__len__()
-            # start.expr = ["+", ["str.len", self.expr], start.expr]
-        if int.__int__(stop) < 0:
-            if int.__int__(stop) < -len(str.__str__(self)): raise NotImplementedError
+        while int.__int__(stop) < 0:
             stop += self.__len__()
-            # stop.expr = ["+", ["str.len", self.expr], stop.expr]
         value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
         expr = ["str.substr", self.expr, start.expr, (stop-start).expr]
         if self.hasvar or start.hasvar or stop.hasvar:
@@ -539,7 +537,7 @@ class ConcolicStr(str):
     def __int__(self):
         value = int(str.__str__(self))
         if self.hasvar:
-            self.is_number().__bool__()
+            self.isnumber().__bool__()
             expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
                     ["-", ["str.to.int",
                         ["str.substr", self.expr, "1", ["-", ["str.len", self.expr], "1"]]
@@ -556,7 +554,7 @@ class ConcolicStr(str):
     #     # value = value.replace("\r", "\\r")
     #     # value = value.replace("\t", "\\t")
     #     # return value
-    def is_number(self):
+    def isnumber(self):
         expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
                ["and",
                 ["ite", ["=", "(- 1)",
