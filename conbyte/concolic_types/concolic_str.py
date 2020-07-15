@@ -481,10 +481,18 @@ class ConcolicStr(str):
             start = ConcolicInteger(0)
         if not isinstance(start, ConcolicInteger):
             start = ConcolicInteger(start)
-        while int.__int__(start) < 0:
+        if int.__int__(start) < 0:
             start += self.__len__()
-        while int.__int__(stop) < 0:
+        if int.__int__(start) < 0:
+            start = ConcolicInteger(0)
+        if int.__int__(start) >= self.__len__():
+            start = self.__len__()
+        if int.__int__(stop) < 0:
             stop += self.__len__()
+        if int.__int__(stop) < 0:
+            stop = ConcolicInteger(0)
+        if int.__int__(stop) >= self.__len__():
+            stop = self.__len__()
         value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
         expr = ["str.substr", self.expr, start.expr, (stop-start).expr]
         if self.hasvar or start.hasvar or stop.hasvar:
@@ -535,7 +543,6 @@ class ConcolicStr(str):
     #     expr = ["str.len", self.expr]
     #     return ConcolicInteger(expr, value)
     def __int__(self):
-        value = int(str.__str__(self))
         if self.hasvar:
             self.isnumber().__bool__()
             expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
@@ -545,9 +552,9 @@ class ConcolicStr(str):
                     ],
                     ["str.to.int", self.expr]
                 ]
-            return ConcolicInteger(expr, value)
+            return ConcolicInteger(expr, int(str.__str__(self)))
         else:
-            return ConcolicInteger(value)
+            return ConcolicInteger(int(str.__str__(self)))
     # def escape_value(self):
     #     return self.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
     #     # value = self.value.replace("\n", "\\n")
