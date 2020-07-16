@@ -1,6 +1,6 @@
-from .concolic_type import *
+from .concolic_bool import *
 
-class ConcolicObject(ConcolicType):
+class ConcolicObject(ConcolicBool):
     def __init__(self):
         self.attrs = dict()
 

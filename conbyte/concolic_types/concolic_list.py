@@ -1,5 +1,5 @@
 from ..utils import *
-from .concolic_type import *
+from .concolic_bool import *
 from .concolic_int import *
 
 log = logging.getLogger("ct.con.list")
@@ -37,14 +37,14 @@ class ConcolicList(list):
         # log.debug("  List append: %s" % element)
 
     def get_index(self, index=0):
-        if isinstance(index, ConcolicInteger):
+        if isinstance(index, ConcolicInt):
             index = index.value
         return self.value[index]
 
     def get_slice(self, start=None, stop=None):
-        if isinstance(start, ConcolicInteger):
+        if isinstance(start, ConcolicInt):
             start = start.value
-        if isinstance(stop, ConcolicInteger):
+        if isinstance(stop, ConcolicInt):
             stop = stop.value
         return ConcolicList(self.value[start:stop])
 
@@ -58,7 +58,7 @@ class ConcolicList(list):
                     expr = ["=", val.expr, other.expr]
                 else:
                     expr = ["or", expr, ["=", val.expr, other.expr]]
-        return ConcolicType(expr, value)
+        return ConcolicBool(expr, value)
 
     def not_contains(self, other):
         expr = None
@@ -72,7 +72,7 @@ class ConcolicList(list):
                     expr = ["or", expr, ["=", val.expr, other.expr]]
         expr = ["not", expr]
         value = not value
-        return ConcolicType(expr, value)
+        return ConcolicBool(expr, value)
 
     # def __str__(self):
     #     if self.size == 0:
@@ -95,7 +95,7 @@ class ConcolicList(list):
         return self
 
     def __len__(self):
-        return ConcolicInteger(super().__len__())
+        return ConcolicInt(super().__len__())
 
     def __iter__(self):
         return super().__iter__() #iter(self.value)
@@ -119,7 +119,7 @@ class ConcolicList(list):
         return ConcolicList(array)
 
     def store(self, index, value):
-        if isinstance(index, ConcolicInteger):
+        if isinstance(index, ConcolicInt):
             index = index.value
 
         self.value[index] = value
@@ -129,7 +129,7 @@ class ConcolicList(list):
 
     # def insert(self, index, value):
     #     # self.size += 1
-    #     # if isinstance(index, ConcolicInteger):
+    #     # if isinstance(index, ConcolicInt):
     #         # index = index.value
     #     self.value.insert(index, value)
 
@@ -139,14 +139,14 @@ class ConcolicList(list):
         # self.size -= 1
 
     def index(self, target):
-        return ConcolicInteger(super().index(target))
+        return ConcolicInt(super().index(target))
         # index = 0
         # for val in self.value:
         #     if val == target:
-        #         return ConcolicInteger(index)
+        #         return ConcolicInt(index)
         #     index += 1
 
-        # return ConcolicInteger(-1)
+        # return ConcolicInt(-1)
 
     def mul(self, other):
         self.value *= other.value
@@ -189,7 +189,7 @@ class ConcolicList(list):
         return list(map(downgrade, list(self)))
 
 
-class Concolic_tuple(ConcolicType):
+class Concolic_tuple(ConcolicBool):
     def __init__(self, value):
         self.expr = "Tuple"
         self.value = value

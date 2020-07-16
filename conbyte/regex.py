@@ -3,7 +3,7 @@ import re
 import sys
 import logging
 from io import StringIO
-from .concolic_types.concolic_type import * 
+from .concolic_types.concolic_bool import * 
 from .concolic_types.concolic_str import * 
 from .concolic_types.concolic_int import * 
 
@@ -146,7 +146,7 @@ class RegexPattern:
         if concolic_value:
             return RegexMatch(formula, concolic_value)
         else:
-            return ConcolicType("nil", None)
+            return ConcolicBool("nil", None)
 
     def search(self, string, flags=None):
         if not self.compiled:
@@ -161,7 +161,7 @@ class RegexPattern:
         if concolic_value:
             return RegexMatch(formula, concolic_value)
         else:
-            return ConcolicType("nil", None)
+            return ConcolicBool("nil", None)
 
     def fullmatch(self, string, flags=None):
         if not self.compiled:
@@ -176,7 +176,7 @@ class RegexPattern:
         if concolic_value:
             return RegexMatch(formula, concolic_value)
         else:
-            return ConcolicType("nil", None)
+            return ConcolicBool("nil", None)
 
 
 
@@ -482,7 +482,7 @@ class RegexMatch():
 
 
     def group(self, index=0):
-        if isinstance(index, ConcolicInteger):
+        if isinstance(index, ConcolicInt):
             index = index.value
         value = self.value[index]
         return ConcolicStr('\"' + value + '\"', value)

@@ -11,7 +11,7 @@ class ConcolicIter():
         if isinstance(target, Concolic_range):
             self.index = None
         else:
-            self.index = ConcolicInteger(0)
+            self.index = ConcolicInt(0)
 
     def next_iter(self):
         target = self.target
@@ -23,22 +23,22 @@ class ConcolicIter():
                 length = target.len()
                 cond_val = self.index.value < length.value
                 cond_expr = ["<", self.index.expr, length.expr]
-                condition = ConcolicType(cond_expr, cond_val)
+                condition = ConcolicBool(cond_expr, cond_val)
                 if cond_val:
                     ret = target.get_index(self.index)
             elif isinstance(target, ConcolicList):
                 length = target.len().value
                 cond_val = self.index.value < length
-                condition = ConcolicType("nil", cond_val)
+                condition = ConcolicBool("nil", cond_val)
                 if cond_val:
                     ret = target.get_index(self.index)
 
             elif isinstance(target, ConcolicMap):
                 length = target.len().value
                 cond_val = self.index.value < length
-                condition = ConcolicType("nil", cond_val)
+                condition = ConcolicBool("nil", cond_val)
                 if cond_val:
                     ret = target.get_iter_at(self.index)
             
-            self.index += ConcolicInteger(1)
+            self.index += ConcolicInt(1)
             return condition, ret

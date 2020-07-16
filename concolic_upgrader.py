@@ -16,7 +16,7 @@ if 'added' not in locals():
     class ConcolicUpgrader(NodeTransformer):
         def visit_Constant(self, node: Constant):
             if type(node.value) == int:
-                return Call(func=Name(id='ConcolicInteger', ctx=Load()),
+                return Call(func=Name(id='ConcolicInt', ctx=Load()),
                             args=[Constant(value=node.value, kind=None)],
                             keywords=[])
             if type(node.value) == str:
@@ -95,19 +95,16 @@ if 'added' not in locals():
         # 3) primitive variables read from outside of this program via I/O
         # It currently supports only "integers" and "strings."
         #######################################################################
-        # if module not in added and \
-            # module.__name__ in ['make_server', 'pydoc']: # in XSS testing
         if module not in added and \
+            not module.__name__ in ['global_var'] and \
             not module.__name__.startswith('conbyte') and \
-            module.__name__ not in ['global_var'] and \
-            not module.__name__.startswith('importlib'): # in simple testing
-            # print('name', module.__spec__.origin, module.__name__)
+            not module.__name__.startswith('importlib'):
             added.append(module)
             try:
                 tree = parse(inspect.getsource(module))
                 # print('外建嘻嘻', module.__spec__.origin, module.__name__)
                 tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_int',
-                                               names=[alias(name='ConcolicInteger', asname=None)],
+                                               names=[alias(name='ConcolicInt', asname=None)],
                                                level=0))
                 tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_str',
                                                names=[alias(name='ConcolicStr', asname=None)],
@@ -147,11 +144,3 @@ if 'added' not in locals():
     # variable so that the builtin mechanism will simply use our implementation.
     #############################################################################
     builtins.__import__ = _wrap_import
-
-    ###################################################################################
-    # The following code snippet is just a mess when I debugged in the XSS environment.
-    # Maybe it is useful in the future work.
-    ###################################################################################
-    # if not (hasattr(module, '__file__') and os.path.abspath(module.__file__).endswith('cpython-38-x86_64-linux-gnu.so')) and \
-    # (module.__name__ in ['pydoc', 'make_server']):
-    # (module.__name__ not in ['unicodedata', 'posixpath', 'genericpath', 'stat', 'zlib', 'bz2', 'lzma', '_lzma', '_compression', 'pwd', 'grp', 'posix', 'urllib', 'contextlib', 'fcntl', 'traceback', '_sysconfigdata__x86_64-linux-gnu', 'urllib.parse', 'conbyte.concolic_types.concolic_str', 'conbyte.concolic_types.concolic_int', 'inspect', 'dis', 'importlib', 'token', 'tokenize', 'html', 'http', 'socketserver', 'socket', 'selectors', 'collections.abc', 'math', 'select', 'threading', '_weakrefset', 'time', 're', 'enum', 'types', 'sre_compile', 'errno', 'warnings', 'codecs', 'encodings', 'os', 'sre_constants', 'sre_parse', 'abc', 'collections', 'operator', 'keyword', 'sys', 'heapq', '_weakref', '_collections', 'reprlib', 'builtins', 'itertools', '_thread', 'functools', '_locale', 'copyreg', 'struct', '_struct', 'quopri', 'binascii', 'email', 'io', 'string']):

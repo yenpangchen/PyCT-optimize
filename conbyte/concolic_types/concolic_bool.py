@@ -3,9 +3,9 @@
 import logging
 import global_var
 
-log = logging.getLogger("ct.con.type")
+log = logging.getLogger("ct.con.bool")
 
-class ConcolicType:
+class ConcolicBool:
     def __init__(self, expr, value=None):
         self.expr = expr
         if value is not None:
@@ -14,7 +14,7 @@ class ConcolicType:
         else:
             self.value = self.expr
             self.hasvar = False
-        log.debug("  ConType, value %s, expr: %s" % (value, expr))
+        log.debug("  ConBool, value %s, expr: %s" % (value, expr))
 
     def to_formula(self):
         expr = self.expr
@@ -64,7 +64,7 @@ class ConcolicType:
     #     else:
     #         return None
 
-    #     return ConcolicType(expr, value)
+    #     return ConcolicBool(expr, value)
 
     def symbolic_eq(self, other):
         return self._eq_worker(self.expr, other.expr)
@@ -93,19 +93,19 @@ class ConcolicType:
     # def __or__(self, other):
     #     value = self.value | other.value
     #     expr = ["and", self.expr, other.expr]
-    #     return ConcolicType(expr, value)
+    #     return ConcolicBool(expr, value)
 
     # # TODO
     # def __xor__(self, other):
     #     value = self.value ^ other.value
     #     expr = ["xor", self.expr, other.expr]
-    #     return ConcolicType(expr, value)
+    #     return ConcolicBool(expr, value)
 
     # # TODO
     # def __and__(self, other):
     #     value = self.value & other.value
     #     expr = ["and", self.expr, other.expr]
-    #     return ConcolicType(expr, value)
+    #     return ConcolicBool(expr, value)
 
     # For bool type
     def negate(self):
@@ -125,8 +125,8 @@ class ConcolicType:
         return self.value
 
     def __index__(self):
-        from conbyte.concolic_types.concolic_int import ConcolicInteger
-        return ConcolicInteger(int.__int__(self.value))
+        from conbyte.concolic_types.concolic_int import ConcolicInt
+        return ConcolicInt(int.__int__(self.value))
 
     # custom method to get the primitive value
     def parent(self):

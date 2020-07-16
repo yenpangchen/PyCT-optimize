@@ -21,12 +21,12 @@ class ConcolicFloat(float):
         # log.debug("  ConFloat, value: %s, expr: %s" % (self, self.expr)) # not fixed yet
 
     def __int__(self):
-        from conbyte.concolic_types.concolic_int import ConcolicInteger
+        from conbyte.concolic_types.concolic_int import ConcolicInt
         value = float.__int__(self)
         if self.hasvar:
-            return ConcolicInteger(['to_int', self.expr], value)
+            return ConcolicInt(['to_int', self.expr], value)
         else:
-            return ConcolicInteger(value)
+            return ConcolicInt(value)
 
     def __truediv__(self, other):
         if not isinstance(other, ConcolicFloat): other = ConcolicFloat(other)

@@ -1,11 +1,11 @@
 from ..utils import *
-from .concolic_type import *
+from .concolic_bool import *
 from .concolic_int import *
 from .concolic_str import *
 
 log = logging.getLogger("ct.con.map")
 
-class ConcolicMap(ConcolicType):
+class ConcolicMap(ConcolicBool):
     def __init__(self, value=None):
         self.expr = "MAP"
         if value is None:
@@ -33,7 +33,7 @@ class ConcolicMap(ConcolicType):
             return default
 
     def get_index(self, name):
-        if isinstance(name, ConcolicInteger) or \
+        if isinstance(name, ConcolicInt) or \
            isinstance(name, ConcolicStr):
             name = name.value
         return self.value[name]
@@ -42,7 +42,7 @@ class ConcolicMap(ConcolicType):
         return self.value.keys()[index.value]
 
     def store(self, name, val):
-        if isinstance(name, ConcolicInteger) or \
+        if isinstance(name, ConcolicInt) or \
            isinstance(name, ConcolicStr):
             name = name.value
         if name not in self.value:
@@ -51,10 +51,10 @@ class ConcolicMap(ConcolicType):
         log.debug("  Map store: <%s: %s>" % (name, val))
 
     def contains(self, other):
-        return ConcolicType('nil', other.value in self.value)
+        return ConcolicBool('nil', other.value in self.value)
 
     def __len__(self):
-        return ConcolicInteger(self.size)
+        return ConcolicInt(self.size)
 
     def len(self):
         return self.size

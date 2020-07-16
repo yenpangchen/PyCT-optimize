@@ -9,7 +9,7 @@ import coverage
 import multiprocessing
 from func_timeout import func_timeout, FunctionTimedOut
 
-from conbyte.concolic_types.concolic_int import ConcolicInteger
+from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.concolic_types.concolic_str import ConcolicStr
 from conbyte.concolic_types.concolic_list import ConcolicList
 
@@ -67,8 +67,8 @@ class ExplorationEngine:
         pid = os.fork()
         if pid == 0: # child process
             import global_var
-            from conbyte.concolic_types.concolic_type import ConcolicType
-            global_var.global_engine.path.which_branch(ConcolicType(['=', 1, 1], False))
+            from conbyte.concolic_types.concolic_bool import ConcolicBool
+            global_var.global_engine.path.which_branch(ConcolicBool(['=', 1, 1], False))
             # The case of 0 constraints should have produced a trivial solution, however our program
             # here doesn't do this, so we need one additional branch to achieve this goal.
 
@@ -162,7 +162,7 @@ class ExplorationEngine:
         self.symbolic_inputs = dict()
         for v in para.values():
             if type(v.default) == int:
-                copy_vars.append(ConcolicInteger(v.name, v.default))
+                copy_vars.append(ConcolicInt(v.name, v.default))
                 self.symbolic_inputs[v.name] = 'Int'
             elif type(v.default) == str:
                 copy_vars.append(ConcolicStr(v.name, v.default))
