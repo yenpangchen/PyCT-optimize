@@ -1,26 +1,34 @@
 # Copyright - see copyright.txt
 
 class Predicate:
-    def __init__(self, con, result):
-        self.concolic = con
-        self.result = result
+    def __init__(self, expr, value):
+        self.expr = expr
+        self.value = value
 
-    def negate(self):
-        """Negates the current predicate"""
-        assert (self.result is not None)
-        return Predicate(self.concolic, not self.result)
-
-    def __eq__(self, other):
+    def __eq__(self, other): # 簡單來說就是 "布林值" 和 "expression" 都要一樣！
         if isinstance(other, Predicate):
-            res = self.result == other.result and self.concolic.symbolic_eq(other.concolic)
+            res = self.value == other.value and self._eq_worker(self.expr, other.expr)
             return res
         else:
             return False
 
+    def _eq_worker(self, expr1, expr2):
+        if isinstance(expr1, list):
+            if not isinstance(expr2, list):
+                return False
+            else:
+                if len(expr1) != len(expr2):
+                    return False
+                for i in range(len(expr1)):
+                    if not self._eq_worker(expr1[i], expr2[i]):
+                        return False
+                return True
+        else:
+            return expr1 == expr2
+
     def get_formula(self):
-        expr = self.concolic.expr
-        formula =  self._get_formula(expr)
-        if self.result is True:
+        formula =  self._get_formula(self.expr)
+        if self.value:
             return "(assert " + formula + ")\n"
         else:
             return "(assert (not " + formula + "))\n"
@@ -42,4 +50,4 @@ class Predicate:
                 return str(expr)
 
     def __str__(self):
-        return "Result: %s\tExpr: %s" % (self.result, self.concolic.expr)
+        return "Result: %s\tExpr: %s" % (self.value, self.expr)

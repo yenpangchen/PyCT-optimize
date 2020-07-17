@@ -63,7 +63,7 @@ for key in ${!arr[@]}; do
     if [ "${key}" = "target_int/leetcode_int/add_binary.py" ]; then
         ./py-conbyte.py -s cvc4 -m 30 -t 3 --input "${arr[${key}]}" ${key} --ss
     elif [ "${key}" = "target_int/leetcode_int/addStrings.py" ]; then
-        ./py-conbyte.py -s cvc4 -m 80 -t 3 --input "${arr[${key}]}" ${key}
+        ./py-conbyte.py -s cvc4 -m 50 -t 3 --input "${arr[${key}]}" ${key}
     else
         ./py-conbyte.py -s cvc4 -m 30 -t 3 --input "${arr[${key}]}" ${key}
     fi

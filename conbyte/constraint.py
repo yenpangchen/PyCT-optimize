@@ -1,39 +1,17 @@
 # Copyright: see copyright.txt
 
-import logging
-import inspect
-import global_var
-
-class Constraint(object):
-    cnt = 0
+class Constraint:
     def __init__(self, parent, last_predicate):
-        self.inputs = None
-        self.predicate = last_predicate
-        self.processed = False
-        self.parent = parent
-        self.children = []
-        self.id = self.__class__.cnt
-        global_var.constraints[self.id] = self
-        self.__class__.cnt += 1
-        branch = self.predicate.result if self.predicate is not None else ""
-        # self.branch_id = self._branch_id(inspect.stack(), branch)
-
-    # def _branch_id(self, stack, branch):
-    #     instrumentation_keywords = {"py-conbyte", "concolic"}
-    #     for frame, filename, linenum, funcname, context, contextline in stack:
-    #         if any(instrumentation_keyword in filename for instrumentation_keyword in instrumentation_keywords):
-    #             continue
-    #         return "{}:{}:{}".format(filename, linenum, branch)
-    #     return None
+        self.parent = parent # 可能是 None 或 Constraint type
+        self.last_predicate = last_predicate # 應該是 Predicate type
+        self.processed = False # 只是給我們看的，程式流程用不到這個
+        self.children = [] # 裝了一堆 Constraint type
 
     def __eq__(self, other):
         """Two Constraints are equal iff they have the same chain of predicates"""
-        if isinstance(other, Constraint):
-            if not self.predicate == other.predicate:
-                return False
-            return self.parent is other.parent
-        else:
-            return False
+        return isinstance(other, Constraint) and \
+            self.parent is other.parent and \
+            self.last_predicate == other.last_predicate
 
     def get_asserts_and_query(self):
         self.processed = True
@@ -41,11 +19,11 @@ class Constraint(object):
         # collect the assertions
         asserts = []
         tmp = self.parent
-        while tmp.predicate is not None:
-            asserts.append(tmp.predicate)
+        while tmp.last_predicate is not None: # 目前根據 path_to_constraint 的 constructor 猜測，它負責檢測是不是 root constraint
+            asserts.append(tmp.last_predicate)
             tmp = tmp.parent
 
-        return asserts, self.predicate
+        return asserts, self.last_predicate
 
     def get_length(self):
         if self.parent is None:
@@ -54,7 +32,7 @@ class Constraint(object):
 
     def find_child(self, predicate):
         for c in self.children:
-            if predicate == c.predicate:
+            if predicate == c.last_predicate:
                 return c
         return None
 
@@ -64,8 +42,5 @@ class Constraint(object):
         self.children.append(c)
         return c
 
-    def __lt__(self, other):
-        return self.get_length() > other.get_length()
-
     def __str__(self):
-        return str(self.predicate) + "  (processed: %s, path_len: %d)" % (self.processed, self.get_length())
+        return str(self.last_predicate) + "  (processed: %s, path_len: %d)" % (self.processed, self.get_length())

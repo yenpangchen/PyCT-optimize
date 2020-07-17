@@ -1,5 +1,4 @@
 global_engine = None
-constraints = dict()
 
 from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.concolic_types.concolic_str import ConcolicStr

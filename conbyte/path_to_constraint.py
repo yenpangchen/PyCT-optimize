@@ -9,52 +9,49 @@ from .constraint import Constraint
 log = logging.getLogger("ct.pathconstraint")
 
 class PathToConstraint:
-    def __init__(self): #, add):
-        self.constraints = []
-        self.root_constraint = Constraint(None, None)
+    def __init__(self):
+        self.root_constraint = Constraint(None, None) # 我在想這一行有沒有暗示 root <==> parent 和 last_predicate 都是 None
         self.current_constraint = self.root_constraint
         self.expected_path = None
-        # self.add = add
 
-    def reset(self, expected):
+    def reset(self, expected): # expected 放的是 constraint, 裡面就存有最後一個 predicate 作為走訪起點, 向上走到 root 處
         self.current_constraint = self.root_constraint
         if expected is None:
             self.expected_path = None
         else:
             self.expected_path = []
             tmp = expected
-            while tmp.predicate is not None:
-                self.expected_path.append(tmp.predicate)
+            while tmp.last_predicate is not None:
+                self.expected_path.append(tmp.last_predicate)
                 tmp = tmp.parent
+            assert tmp == self.current_constraint # 確保 tmp 最後一定是 root constraint
 
-    def which_branch(self, concolic_type, process_neg=True):
-        if concolic_type.expr == 'nil':
+    def which_branch(self, conbool):
+        if conbool.expr == 'nil':
             log.debug("Skip nil")
             return
 
-        if isinstance(concolic_type.expr, bool):
+        if isinstance(conbool.expr, bool):
             # Pure bool type assignment is normally not codition branch
             return
 
-        p = Predicate(concolic_type, concolic_type.value)
+        p = Predicate(conbool.expr, conbool.value)
         c = self.current_constraint.find_child(p)
-        pneg = p.negate()
+        pneg = Predicate(conbool.expr, not conbool.value)
         cneg = self.current_constraint.find_child(pneg)
 
         if c is None and cneg is None:
             c = self.current_constraint.add_child(p)
-            c.processed = True
-            if not process_neg:
-                log.debug("Singel constraint %s" % c)
-            else:
-                cneg = self.current_constraint.add_child(pneg)
-                # we add the new constraint to the queue of the engine for later processing
-                # self.add(cneg)
-                global_var.global_engine.add_constraint(cneg)
-                log.debug("Cur constraint %s" % c)
-                log.debug("Add constraint %s" % cneg)
+            c.processed = True # 只是給我們看的，程式流程用不到這個
+            cneg = self.current_constraint.add_child(pneg)
+            # we add the new constraint to the queue of the engine for later processing
+            global_var.global_engine.constraints_to_solve.push((cneg, dict(), [])) #new_constraints.append(cneg) #.add_constraint(cneg)
+            log.debug("Cur constraint %s" % c)
+            log.debug("Add constraint %s" % cneg)
+        else:
+            assert c is not None and cneg is not None
 
-        self.current_constraint = c
+        self.current_constraint = c # 把當前的 constraint 移到我們要的 child
 
         # check for path mismatch
         # IMPORTANT: note that we don't actually check the predicate is the
@@ -71,34 +68,3 @@ class PathToConstraint:
                 log.debug(expected)
                 log.debug(c.predicate)
         """
-
-        self.current_constraint = c
-
-
-    def find_constraint(self, id):
-        return global_var.constraints[id]
-        # import queue
-        # q = queue.Queue()
-        # q.put(self.root_constraint)
-        # while not q.empty():
-        #     constraint = q.get()
-        #     # print('ID', constraint.id, id)
-        #     if constraint.id == id:
-        #         return constraint
-        #     for child in constraint.children:
-        #         q.put(child)
-        # return None
-        # return self._find_constraint(self.root_constraint, id)
-
-    # def _find_constraint(self, constraint, id):
-    #     print('ID', constraint.id, id)
-    #     if constraint.id == id:
-    #         return constraint
-    #     else:
-    #         for child in constraint.children:
-    #             found = self._find_constraint(child, id)
-    #             if found is not None:
-    #                 return found
-    #     return None
-
-

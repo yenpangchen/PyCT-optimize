@@ -89,13 +89,13 @@ def main():
         # exec(open(inputs_file_full).read(), inputs_space)
 
     # global_var.global_engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
-    global_var.global_engine = ExplorationEngine(path, filename, module, options.entry, eval(options.inputs), query, options.solver_type, options.ss)
+    global_var.global_engine = ExplorationEngine(path, filename, module, options.entry, query, options.solver_type, options.ss)
 
     if options.extract:
         global_var.global_engine.extract()
         return
 
-    global_var.global_engine.explore(int(options.iteration), options.timeout)
+    global_var.global_engine.explore(eval(options.inputs), int(options.iteration), options.timeout)
 
     if options.quiet:
         return

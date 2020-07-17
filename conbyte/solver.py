@@ -46,7 +46,7 @@ class Solver(object):
             self.variables[v] = variables[v]
 
 
-    def find_counter_example(self, asserts, query, extend_vars, extend_queries, timeout=None):
+    def find_constraint_model(self, constraint, extend_vars, extend_queries, timeout=None):
         start_time = time.process_time()
         if "z3" in self.solver_type or  "trauc" in self.solver_type:
             if timeout is not None:
@@ -58,12 +58,11 @@ class Solver(object):
                 cmd = self.cmd + (" --tlimit=%s" % (int(timeout) * 1000))
             else:
                 cmd = self.cmd + " --tlimit=1000"
-        self.asserts = asserts
-        self.query = query
-        result, model = self._find_model(cmd, extend_vars, extend_queries)
+        self.asserts, self.query = constraint.get_asserts_and_query()
+        model = self._find_model(cmd, extend_vars, extend_queries)
         endtime = time.process_time()
         solve_time = endtime - start_time
-        return result, model
+        return model
 
 
     def _find_model(self, cmd, extend_vars, extend_queries):
@@ -94,29 +93,29 @@ class Solver(object):
         # print(output)
 
         if output is None or len(output) == 0:
-            ret = "UNKNOWN"
+            status = "UNKNOWN"
         else:
             output = output.splitlines()
             while "error" in output[0]:
                 print('solver error:', output[0])
                 quit()
                 # output.pop(0)
-            ret = output[0].lower()
-            if "unsat" in ret:
-                ret = "UNSAT"
-            elif "sat" in ret:
-                ret = "SAT"
+            status = output[0].lower()
+            if "unsat" in status:
+                status = "UNSAT"
+            elif "sat" in status:
+                status = "SAT"
                 model = self._get_model(output[1:])
-            elif "timeout" in ret:
-                ret = "TIMEOUT"
-            elif "unknown" in ret and "error" not in stdout.decode():
+            elif "timeout" in status:
+                status = "TIMEOUT"
+            elif "unknown" in status and "error" not in stdout.decode():
                 model = self._get_model(output[1:])
             else:
-                ret = "UNKNOWN"
+                status = "UNKNOWN"
 
-        log.debug("%s smt, Result: %s" % (self.cnt, ret))
+        log.debug("%s smt, Result: %s" % (self.cnt, status))
         self.cnt += 1
-        return ret, model
+        return model
 
 
     def _get_model(self, models):
