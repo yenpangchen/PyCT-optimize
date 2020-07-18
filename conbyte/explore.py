@@ -128,8 +128,8 @@ class ExplorationEngine:
                 symbolic_inputs[v.name] = 'String'
             elif type(v.default) == list:
                 for i in range(len(v.default)):
-                    v.default[i] = upgrade(v.default[i])
-                copy_vars.append(ConcolicList(v.default))
+                    v.default[i] = global_var.upgrade(v.default[i])
+                copy_vars.append(ConcolicList(v.name, v.default))
                 symbolic_inputs[v.name] = 'List'
             elif v.default != None:
                 raise NotImplementedError

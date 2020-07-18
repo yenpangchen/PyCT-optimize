@@ -56,7 +56,7 @@ declare -A arr
 # arr["target_int/lib_int/wsgiref_check_status.py"]='["200 ok"]' # OK
 # --------------------------------------------------------------------
 # arr["make_server.py"]='[""]'
-# arr["test.py"]='["923","123"]'
+# arr["test.py"]=[[0,0,0,0,0]]
 
 for key in ${!arr[@]}; do
     echo "============== current testcase =============:" ${key} ${arr[${key}]}

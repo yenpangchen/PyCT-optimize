@@ -11,9 +11,9 @@ Classes:
 """
 
 class ConcolicList(list):
-    def __init__(self, *args):
-        self.expr = "LIST"
-        super().__init__(*args)
+    def __init__(self, expr, value):
+        self.expr = expr
+        super().__init__(value)
         # if value is None:
         #     super().__init__()
         #     # self.value = []
@@ -36,43 +36,43 @@ class ConcolicList(list):
         # self.size += 1
         # log.debug("  List append: %s" % element)
 
-    def get_index(self, index=0):
-        if isinstance(index, ConcolicInt):
-            index = index.value
-        return self.value[index]
+    # def get_index(self, index=0):
+    #     if isinstance(index, ConcolicInt):
+    #         index = index.value
+    #     return self.value[index]
 
-    def get_slice(self, start=None, stop=None):
-        if isinstance(start, ConcolicInt):
-            start = start.value
-        if isinstance(stop, ConcolicInt):
-            stop = stop.value
-        return ConcolicList(self.value[start:stop])
+    # def get_slice(self, start=None, stop=None):
+    #     if isinstance(start, ConcolicInt):
+    #         start = start.value
+    #     if isinstance(stop, ConcolicInt):
+    #         stop = stop.value
+    #     return ConcolicList(self.value[start:stop])
 
-    def contains(self, other):
-        expr = None
-        value = False
-        for val in self.value:
-            if type(val) == type(other):
-                value = value or (val.value == other.value)
-                if expr is None:
-                    expr = ["=", val.expr, other.expr]
-                else:
-                    expr = ["or", expr, ["=", val.expr, other.expr]]
-        return ConcolicBool(expr, value)
+    # def contains(self, other):
+    #     expr = None
+    #     value = False
+    #     for val in self.value:
+    #         if type(val) == type(other):
+    #             value = value or (val.value == other.value)
+    #             if expr is None:
+    #                 expr = ["=", val.expr, other.expr]
+    #             else:
+    #                 expr = ["or", expr, ["=", val.expr, other.expr]]
+    #     return ConcolicBool(expr, value)
 
-    def not_contains(self, other):
-        expr = None
-        value = False
-        for val in self.value:
-            value = value or (val.value == other.value)
-            if type(val) == type(other):
-                if expr is None:
-                    expr = ["=", val.expr, other.expr]
-                else:
-                    expr = ["or", expr, ["=", val.expr, other.expr]]
-        expr = ["not", expr]
-        value = not value
-        return ConcolicBool(expr, value)
+    # def not_contains(self, other):
+    #     expr = None
+    #     value = False
+    #     for val in self.value:
+    #         value = value or (val.value == other.value)
+    #         if type(val) == type(other):
+    #             if expr is None:
+    #                 expr = ["=", val.expr, other.expr]
+    #             else:
+    #                 expr = ["or", expr, ["=", val.expr, other.expr]]
+    #     expr = ["not", expr]
+    #     value = not value
+    #     return ConcolicBool(expr, value)
 
     # def __str__(self):
     #     if self.size == 0:
@@ -80,22 +80,19 @@ class ConcolicList(list):
     #     return "  List: %s" % ",".join(val.__str__() for val in self.value)
 
     def __add__(self, other):
-        if type(other) == list:
-            super().__iadd__(other)
-        else:
-            super().__iadd__(list(other))
-            # self.value += other.value
-        # self.size += other .size
         log.debug(self)
-        return self
+        if isinstance(other, list):
+            return super().__add__(list(other))
+        else:
+            raise NotImplementedError
 
-    def __radd__(self, other):
-        self.value += other.value
-        # self.size += other .size
-        return self
+    # def __radd__(self, other):
+    #     self.value += other.value
+    #     # self.size += other .size
+    #     return self
 
     def __len__(self):
-        return ConcolicInt(super().__len__())
+        return ConcolicInt(['__len__', self.expr], super().__len__())
 
     def __iter__(self):
         return super().__iter__() #iter(self.value)

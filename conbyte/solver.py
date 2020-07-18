@@ -10,7 +10,7 @@ log = logging.getLogger("ct.solver")
 
 class Solver(object):
     options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
-    cvc_options = ["--produce-models", "--lang", "smt", "--strings-exp", "--quiet"]
+    cvc_options = ["--produce-models", "--lang", "smt", "--quiet"] #, "--strings-exp"]
     cnt = 0
 
     def __init__(self, query_store, solver_type, ss):
@@ -89,8 +89,9 @@ class Solver(object):
         log.debug("\n" + stdout.decode())
 
         output = stdout.decode()
-        # print(formulas)
-        # print(output)
+        if 'unknown' in output:
+            print(formulas)
+            print(output)
 
         if output is None or len(output) == 0:
             status = "UNKNOWN"
@@ -117,28 +118,52 @@ class Solver(object):
         self.cnt += 1
         return model
 
+    ########################################################
+    # Here are examples of expressions of lists of integers.
+    # 1. nil
+    # 2. (cons (- 1) (...))
+    # 3. (cons (- 1) nil)
+    # 4. (cons 20 (...))
+    # 5. (cons 20 nil)
+    ########################################################
+    def _get_list(self, expr):
+        if expr == 'nil':
+            return []
+        else:
+            assert expr.startswith('(cons ') and expr.endswith(')')
+            expr = expr[6:-1] # take away '(cons ' and ')'
+            if expr.startswith('('): # a negative number
+                num, expr = expr.split(') ', 1)
+                num = int(num[1:].replace(' ', ''))
+            else: # a nonnegative number
+                num, expr = expr.split(' ', 1)
+                num = int(num)
+            return [num] + self._get_list(expr)
 
     def _get_model(self, models):
         model = dict()
         for line in models:
-            name, value = line.replace("((", "").replace("))", "").split(" ", 1)
+            assert line.startswith('((') and line.endswith('))')
+            name, value = line[2:-2].split(" ", 1)
             if self.variables[name] == "Int":
                 if "(" in value:
-                    value = value.replace("(", "").replace(")", "").split(" ")[1]
-                    result = -int(value)
+                    value = -int(value.replace("(", "").replace(")", "").split(" ")[1])
                 else:
-                    result = int(value)
-            else:
+                    value = int(value)
+            elif self.variables[name] == "String":
                 value = value.replace("\"", "", 1).replace("\"", "", -1)
-                result = value
+            elif self.variables[name] == "List":
+                value = self._get_list(value)
+            else:
+                raise NotImplementedError
 
             if name.startswith("_ARR_"):
                 name = name.replace("_ARR_", "").split("_", 1)[1]
                 if name not in model:
                     model[name] = list()
-                model[name].append(result)
+                model[name].append(value)
             else:
-                model[name] = result
+                model[name] = value
         return model
 
 
@@ -154,9 +179,14 @@ $getvars
 """)
         assignments = dict()
         assignments['declarevars'] = "\n"
+
+        assignments['declarevars'] += "(declare-datatypes ((List 0)) (((cons (head Int) (tail List)) (nil))))\n"
+        assignments['declarevars'] += "(define-fun-rec __len__ ((a List)) Int (ite (= a nil) 0 (+ 1 (__len__ (tail a)))))\n"
+        assignments['declarevars'] += "(define-fun-rec __getitem__ ((a List) (i Int)) Int (ite (= i 0) (head a) (__getitem__ (tail a) (- i 1))))\n"
+
         for (name, var) in self.variables.items():
-            if var != "List":
-                assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
+            # if var != "List":
+            assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
 
         for (name, var) in extend_vars.items():
             assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
@@ -172,6 +202,6 @@ $getvars
 
         assignments['getvars'] = "\n"
         for name, var in self.variables.items():
-            if var != "List":
-                assignments['getvars'] += "(get-value ({}))\n".format(name)
+            # if var != "List":
+            assignments['getvars'] += "(get-value ({}))\n".format(name)
         return f_template.substitute(assignments).strip()

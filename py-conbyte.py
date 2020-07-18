@@ -12,8 +12,6 @@ from optparse import OptionGroup
 import global_var
 from conbyte.explore import ExplorationEngine
 
-sys.setrecursionlimit(1000000)
-
 def main():
     usage = "usage: %prog [options] <path to (target).py file>"
     parser = OptionParser(usage=usage)
