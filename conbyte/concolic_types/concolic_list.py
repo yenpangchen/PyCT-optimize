@@ -22,12 +22,15 @@ class ConcolicList(list):
             # 2. [2] -> (list (store ((as const (Array Int Int)) 0) 0 2) 1)
             # 3. [-2, 4] -> (list (store (store ((as const (Array Int Int)) 0) 0 (- 2)) 1 4) 2)
             ###########
-            self.expr = [['as', 'const', ['Array', 'Int', 'Int']], 0]
+            from .concolic_str import ConcolicStr
+            types = ['Int', ConcolicInt, 0, 'String', ConcolicStr, '""']
+            if len(value) == 0 or isinstance(value[0], types[1]): t = 0
+            elif isinstance(value[0], types[4]): t = 3
+            else: raise NotImplementedError
+            self.expr = [['as', 'const', ['Array', 'Int', types[t]]], types[t+2]]
             for i, val in enumerate(value):
-                if val < 0:
-                    self.expr = ['store', self.expr, i, ['-', -val]]
-                else:
-                    self.expr = ['store', self.expr, i, val]
+                assert isinstance(val, types[t+1])
+                self.expr = ['store', self.expr, i, val.expr]
             self.expr = ['list', self.expr, len(value)]
         log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 

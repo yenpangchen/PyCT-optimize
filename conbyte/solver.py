@@ -89,9 +89,9 @@ class Solver(object):
         log.debug("\n" + stdout.decode())
 
         output = stdout.decode()
-        if 'unknown' in output:
-            print(formulas)
-            print(output)
+        # if 'unknown' in output:
+        #     print(formulas)
+        #     print(output)
 
         if output is None or len(output) == 0:
             status = "UNKNOWN"
@@ -99,6 +99,7 @@ class Solver(object):
             output = output.splitlines()
             while "error" in output[0]:
                 print('solver error:', output[0])
+                print(formulas)
                 quit()
                 # output.pop(0)
             status = output[0].lower()
@@ -124,7 +125,7 @@ class Solver(object):
     # 2. (list (store ((as const (Array Int Int)) 0) 2 (- 2)) 1)
     # 3. (list ((as const (Array Int Int)) 0) 0)
     ########################################################
-    def _get_list(self, expr):
+    def _get_list_of_int(self, expr):
         ans_dict = dict()
         ans_default = None
         ans_len = None
@@ -161,6 +162,48 @@ class Solver(object):
                 ans_list[key] = value
         return ans_list
 
+    ########################################################
+    # Here are examples of expressions of lists of strings.
+    # 1. (list (store (store ((as const (Array Int String)) "") 0 "1""\\2) 3") 1 "45 6") 2)
+    ########################################################
+    def _get_list_of_str(self, expr):
+        ans_dict = dict()
+        ans_default = None
+        ans_len = None
+        assert expr.startswith('(list ') and expr.endswith(')')
+        expr = expr[6:-1] # take away '(list ' and ')'
+        assert not expr.endswith(')') # to ensure that the length of a list is nonnegative
+        ans_len = expr.split(' ')[-1]
+        expr = expr[:-(len(ans_len)+1)] # take away the last number and the prepended whitespace
+        ans_len = int(ans_len)
+        while True:
+            if expr.startswith('((as const (Array Int String)) ') and expr.endswith(')'):
+                expr = expr[1:-1] # take away '(' and ')'
+                ans_default = expr.split(' ')[-1]
+                break
+            elif expr.startswith('(store ') and expr.endswith(')'):
+                expr = expr[7:-1] # take away '(store ' and ')'
+                # Ex1: (......) 0 "1\\2) 3"
+                # Ex2: (......) 0 "1""\\2) 3"
+                #      <--- i ---> temp[<= i] is computed as the left after the while loop.
+                temp = expr.split('"')
+                i = -1
+                while len(temp[i]) == 0:
+                    i -= 2
+                value = '"'.join(temp[i+1:]).replace('""','"')
+                key = int(temp[i].split(' ')[-2])
+                expr = ' '.join('"'.join(temp[:i+1]).split(' ')[:-2])
+                ans_dict[key] = value
+                # In fact "temp" in this section can be simply "expr,"
+                # but this leads to poor readability.
+            else:
+                raise NotImplementedError
+        ans_list = [ans_default] * ans_len
+        for key, value in ans_dict.items():
+            if key < len(ans_list):
+                ans_list[key] = value
+        return ans_list
+
     def _get_model(self, models):
         model = dict()
         for line in models:
@@ -172,9 +215,13 @@ class Solver(object):
                 else:
                     value = int(value)
             elif self.variables[name] == "String":
-                value = value.replace("\"", "", 1).replace("\"", "", -1)
-            elif self.variables[name] == "List":
-                value = self._get_list(value)
+                assert value.startswith('"') and value.endswith('"')
+                value = value[1:-1] # .replace("\"", "", 1).replace("\"", "", -1)
+                value = value.replace('""', '"')
+            elif self.variables[name] == "ListOfInt":
+                value = self._get_list_of_int(value)
+            elif self.variables[name] == "ListOfStr":
+                value = self._get_list_of_str(value)
             else:
                 raise NotImplementedError
 
@@ -200,12 +247,13 @@ $getvars
 """)
         assignments = dict()
         assignments['declarevars'] = "\n"
-        assignments['declarevars'] += "(declare-datatypes ((List 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
+        assignments['declarevars'] += "(declare-datatypes ((ListOfInt 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
+        assignments['declarevars'] += "(declare-datatypes ((ListOfStr 0)) (((list (array (Array Int String)) (__len__ Int)))))\n"
 
         for (name, var) in self.variables.items():
             # if var != "List":
             assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
-            if var == "List":
+            if var.startswith("List"):
                 assignments['declarevars'] += "(assert (>= (__len__ {}) 0))\n".format(name)
 
         for (name, var) in extend_vars.items():

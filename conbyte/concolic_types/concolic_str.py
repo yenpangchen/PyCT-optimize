@@ -392,8 +392,11 @@ class ConcolicStr(str):
         return hash(str.__str__(self))
 
     def __iter__(self):
-        from global_var import upgrade
-        return iter(ConcolicList(list(map(upgrade, list(str.__str__(self))))))
+        index = ConcolicInt(0)
+        while index < self.__len__():
+            result = self.__getitem__(index)
+            index += ConcolicInt(1)
+            yield result
 
     def __le__(self, other):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)

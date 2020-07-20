@@ -130,7 +130,12 @@ class ExplorationEngine:
                 for i in range(len(v.default)):
                     v.default[i] = global_var.upgrade(v.default[i])
                 copy_vars.append(ConcolicList(v.default, v.name))
-                symbolic_inputs[v.name] = 'List'
+                if len(v.default) == 0 or isinstance(v.default[0], ConcolicInt):
+                    symbolic_inputs[v.name] = 'ListOfInt'
+                elif isinstance(v.default[0], ConcolicStr):
+                    symbolic_inputs[v.name] = 'ListOfStr'
+                else:
+                    raise NotImplementedError
             elif v.default != None:
                 raise NotImplementedError
         self.solver.set_variables(symbolic_inputs)

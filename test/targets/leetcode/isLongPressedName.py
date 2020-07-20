@@ -25,4 +25,4 @@ def isLongPressedName(name, typed):
 
     return True
 
-print(isLongPressedName('Foolyou', 'FFoolyouu'))
+print(isLongPressedName('Foolyou', 'FFoolyouu')) # pragma: no cover

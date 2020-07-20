@@ -315,21 +315,21 @@ class ConcolicRange: #():
         if not isinstance(self.start, ConcolicInt): self.start = ConcolicInt(self.start)
         if not isinstance(self.end, ConcolicInt): self.end = ConcolicInt(self.end)
         if not isinstance(self.step, ConcolicInt): self.step = ConcolicInt(self.step)
-        self.current = self.start
 
     def __iter__(self):
+        current = self.start
         while True:
             if self.step > 0:
-                if self.current < self.end:
-                    result = self.current
-                    self.current += self.step
+                if current < self.end:
+                    result = current
+                    current += self.step
                     yield result
                 else:
                     break
             else: # self.step < 0
-                if self.current > self.end:
-                    result = self.current
-                    self.current += self.step
+                if current > self.end:
+                    result = current
+                    current += self.step
                     yield result
                 else:
                     break
