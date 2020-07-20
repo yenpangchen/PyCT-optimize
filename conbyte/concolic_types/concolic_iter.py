@@ -8,14 +8,14 @@ from .concolic_map import *
 class ConcolicIter():
     def __init__(self, target):
         self.target = target
-        if isinstance(target, Concolic_range):
+        if isinstance(target, ConcolicRange):
             self.index = None
         else:
             self.index = ConcolicInt(0)
 
     def next_iter(self):
         target = self.target
-        if isinstance(target, Concolic_range):
+        if isinstance(target, ConcolicRange):
             return target.next_iter()
         else:
             ret = None

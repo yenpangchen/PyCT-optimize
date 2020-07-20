@@ -44,7 +44,7 @@ if 'added' not in locals():
                                 args=[],
                                 keywords=[])
                 if node.func.id == 'range':
-                    node.func.id = '_custom_range'
+                    node.func.id = 'ConcolicRange'
                 #if node.func.id == 'type':
                 #    node.func.id = '_custom_type'
             return node
@@ -112,8 +112,8 @@ if 'added' not in locals():
                 tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_list',
                                                names=[alias(name='ConcolicList', asname=None)],
                                                level=0))
-                tree.body.insert(0, ImportFrom(module='global_var',
-                                               names=[alias(name='_custom_range', asname=None)],
+                tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_int',
+                                               names=[alias(name='ConcolicRange', asname=None)],
                                                level=0))
                 tree = ConcolicUpgrader().visit(tree)
                 tree = ConcolicUpgrader2().visit(tree)

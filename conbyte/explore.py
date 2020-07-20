@@ -129,7 +129,7 @@ class ExplorationEngine:
             elif type(v.default) == list:
                 for i in range(len(v.default)):
                     v.default[i] = global_var.upgrade(v.default[i])
-                copy_vars.append(ConcolicList(v.name, v.default))
+                copy_vars.append(ConcolicList(v.default, v.name))
                 symbolic_inputs[v.name] = 'List'
             elif v.default != None:
                 raise NotImplementedError
@@ -155,6 +155,9 @@ class ExplorationEngine:
         for args in self.input_sets:
             cov.start()
             copy_args = copy.deepcopy(args)
+            for i in range(len(copy_args)):
+                if type(copy_args[i]) is tuple:
+                    copy_args[i] = list(copy_args[i])
             result = execute(*copy_args)
             cov.stop()
             if self.in_ret_sets[tuple(args)] != result:

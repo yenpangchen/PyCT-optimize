@@ -6,7 +6,7 @@ log = logging.getLogger("ct.con.int")
 """
 Classes:
     ConcolicInt
-    Concolic_range
+    ConcolicRange
 """
 
 class ConcolicInt(int):
@@ -298,45 +298,63 @@ for (name, op, op_smt) in rops:
     method = "__%s__" % name
     make_rmethod(method, op, op_smt)
 
-class Concolic_range():
+class ConcolicRange: #():
     def __init__(self, start, end=None, step=None):
         if end is None:
-            self.start = ConcolicInt(0)
+            self.start = 0 #ConcolicInt(0)
             self.end = start
         else:
             self.start = start
             self.end = end
-
         if step is None:
-            self.step = ConcolicInt(1)
+            self.step = 1 #ConcolicInt(1)
         else:
             self.step = step
-            # See if the args violates range()
-            range(start.value, end.value, step.value)
+        # See if the args violates range()
+        range(self.start, self.end, self.step)
+        if not isinstance(self.start, ConcolicInt): self.start = ConcolicInt(self.start)
+        if not isinstance(self.end, ConcolicInt): self.end = ConcolicInt(self.end)
+        if not isinstance(self.step, ConcolicInt): self.step = ConcolicInt(self.step)
+        self.current = self.start
 
-        self.cur = self.start
+    def __iter__(self):
+        while True:
+            if self.step > 0:
+                if self.current < self.end:
+                    result = self.current
+                    self.current += self.step
+                    yield result
+                else:
+                    break
+            else: # self.step < 0
+                if self.current > self.end:
+                    result = self.current
+                    self.current += self.step
+                    yield result
+                else:
+                    break
 
-    def next_iter(self):
-        if self.step.value > 0:
-            cond_val = self.cur.value < self.end.value
-            cond_exp = "nil"
-        else:
-            cond_val = self.cur.value > self.end.value
-            cond_exp = "nil"
+    # def next_iter(self):
+    #     if self.step.value > 0:
+    #         cond_val = self.current.value < self.end.value
+    #         cond_exp = "nil"
+    #     else:
+    #         cond_val = self.current.value > self.end.value
+    #         cond_exp = "nil"
 
-        if cond_val:
-            ret = self.cur
-            self.cur += self.step
-        else:
-            ret = None
-        return ConcolicBool(cond_exp, cond_val), ret
+    #     if cond_val:
+    #         ret = self.current
+    #         self.current += self.step
+    #     else:
+    #         ret = None
+    #     return ConcolicBool(cond_exp, cond_val), ret
 
-    def __str__(self):
-        return "(Inter s: %s, e: %s, c: %s, step: %s)" % (self.start, self.end, self.cur, self.step)
+    # def __str__(self):
+    #     return "(Inter s: %s, e: %s, c: %s, step: %s)" % (self.start, self.end, self.current, self.step)
 
-    def reverse(self):
-        self.step.negate()
-        tmp = self.end + self.step
-        self.end  = self.start + self.step
-        self.start = tmp
-        self.cur = self.start
+    # def reverse(self):
+    #     self.step.negate()
+    #     tmp = self.end + self.step
+    #     self.end  = self.start + self.step
+    #     self.start = tmp
+    #     self.current = self.start

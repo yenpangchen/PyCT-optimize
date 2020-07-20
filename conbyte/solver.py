@@ -10,7 +10,7 @@ log = logging.getLogger("ct.solver")
 
 class Solver(object):
     options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
-    cvc_options = ["--produce-models", "--lang", "smt", "--quiet"] #, "--strings-exp"]
+    cvc_options = ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
     cnt = 0
 
     def __init__(self, query_store, solver_type, ss):
@@ -120,25 +120,46 @@ class Solver(object):
 
     ########################################################
     # Here are examples of expressions of lists of integers.
-    # 1. nil
-    # 2. (cons (- 1) (...))
-    # 3. (cons (- 1) nil)
-    # 4. (cons 20 (...))
-    # 5. (cons 20 nil)
+    # 1. (list (store (store ((as const (Array Int Int)) 0) 4 15) 2 5) 0)
+    # 2. (list (store ((as const (Array Int Int)) 0) 2 (- 2)) 1)
+    # 3. (list ((as const (Array Int Int)) 0) 0)
     ########################################################
     def _get_list(self, expr):
-        if expr == 'nil':
-            return []
-        else:
-            assert expr.startswith('(cons ') and expr.endswith(')')
-            expr = expr[6:-1] # take away '(cons ' and ')'
-            if expr.startswith('('): # a negative number
-                num, expr = expr.split(') ', 1)
-                num = int(num[1:].replace(' ', ''))
-            else: # a nonnegative number
-                num, expr = expr.split(' ', 1)
-                num = int(num)
-            return [num] + self._get_list(expr)
+        ans_dict = dict()
+        ans_default = None
+        ans_len = None
+        assert expr.startswith('(list ') and expr.endswith(')')
+        expr = expr[6:-1] # take away '(list ' and ')'
+        assert not expr.endswith(')') # to ensure that the length of a list is nonnegative
+        ans_len = expr.split(' ')[-1]
+        expr = expr[:-(len(ans_len)+1)] # take away the last number and the prepended whitespace
+        ans_len = int(ans_len)
+        while True:
+            if expr.startswith('((as const (Array Int Int)) ') and expr.endswith(')'):
+                expr = expr[1:-1] # take away '(' and ')'
+                ans_default = int(expr.split(' ')[-1])
+                break
+            elif expr.startswith('(store ') and expr.endswith(')'):
+                expr = expr[7:-1] # take away '(store ' and ')'
+                # Ex1: (...) 1 (- 1)
+                # Ex2: (...) 1 20
+                temp = expr.split(' ')
+                if not expr.endswith(')'):
+                    key = temp[-2]
+                    value = temp[-1]
+                    expr = ' '.join(temp[:-2])
+                else:
+                    key = temp[-3]
+                    value = ''.join(temp[-2:])[1:-1]
+                    expr = ' '.join(temp[:-3])
+                ans_dict[int(key)] = int(value)
+            else:
+                raise NotImplementedError
+        ans_list = [ans_default] * ans_len
+        for key, value in ans_dict.items():
+            if key < len(ans_list):
+                ans_list[key] = value
+        return ans_list
 
     def _get_model(self, models):
         model = dict()
@@ -179,14 +200,13 @@ $getvars
 """)
         assignments = dict()
         assignments['declarevars'] = "\n"
-
-        assignments['declarevars'] += "(declare-datatypes ((List 0)) (((cons (head Int) (tail List)) (nil))))\n"
-        assignments['declarevars'] += "(define-fun-rec __len__ ((a List)) Int (ite (= a nil) 0 (+ 1 (__len__ (tail a)))))\n"
-        assignments['declarevars'] += "(define-fun-rec __getitem__ ((a List) (i Int)) Int (ite (= i 0) (head a) (__getitem__ (tail a) (- i 1))))\n"
+        assignments['declarevars'] += "(declare-datatypes ((List 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
 
         for (name, var) in self.variables.items():
             # if var != "List":
             assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
+            if var == "List":
+                assignments['declarevars'] += "(assert (>= (__len__ {}) 0))\n".format(name)
 
         for (name, var) in extend_vars.items():
             assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)

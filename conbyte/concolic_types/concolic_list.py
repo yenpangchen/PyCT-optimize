@@ -11,28 +11,29 @@ Classes:
 """
 
 class ConcolicList(list):
-    def __init__(self, expr, value):
-        self.expr = expr
+    def __init__(self, value, expr=None):
         super().__init__(value)
-        # if value is None:
-        #     super().__init__()
-        #     # self.value = []
-        #     # self.size = 0
-        #     log.debug("  List: empty")
-        #     return
-        # elif isinstance(value, ConcolicList):
-        #     raise NotImplementedError
-        #     # self.value = value.value
-        #     # self.size = value.size
-        # else:
-        #     super().__init__(value)
-            # self.value = value
-            # self.size = len(value)
-        # log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
-
+        if expr is not None:
+            self.expr = expr
+        else:
+            ###########
+            # Here are some examples of transforming lists into expressions.
+            # 1. [] -> (list ((as const (Array Int Int)) 0) 0)
+            # 2. [2] -> (list (store ((as const (Array Int Int)) 0) 0 2) 1)
+            # 3. [-2, 4] -> (list (store (store ((as const (Array Int Int)) 0) 0 (- 2)) 1 4) 2)
+            ###########
+            self.expr = [['as', 'const', ['Array', 'Int', 'Int']], 0]
+            for i, val in enumerate(value):
+                if val < 0:
+                    self.expr = ['store', self.expr, i, ['-', -val]]
+                else:
+                    self.expr = ['store', self.expr, i, val]
+            self.expr = ['list', self.expr, len(value)]
+        log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
     def append(self, element):
         super().append(element)
+        self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
         # self.size += 1
         # log.debug("  List append: %s" % element)
 
@@ -98,11 +99,16 @@ class ConcolicList(list):
         return super().__iter__() #iter(self.value)
 
     def __getitem__(self, key):
-        return super().__getitem__(key)
-        # return self.value[key]
+        if not isinstance(key, ConcolicInt): key = ConcolicInt(key)
+        if key < 0: key += self.__len__()
+        return ConcolicInt(['select', ['array', self.expr], key.expr], super().__getitem__(key))
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
+        if not isinstance(key, ConcolicInt): key = ConcolicInt(key)
+        if not isinstance(value, ConcolicInt): value = ConcolicInt(value)
+        if key < 0: key += self.__len__()
+        self.expr = ['list', ['store', ['array', self.expr], key.expr, value.expr], ['__len__', self.expr]]
         # self.value[key] = value
 
     # def __delitem__(self, key):
@@ -166,8 +172,10 @@ class ConcolicList(list):
     def pop(self, index=None):
         if index is None:
             # self.size -= 1
-            return self.value.pop()
+            self.expr = ['list', ['array', self.expr], ['-', ['__len__', self.expr], 1]]
+            return super().pop()
         else:
+            raise NotImplementedError
             # if index.value < self.size:
                 # self.size -= 1
             return self.value.pop(int.__int__(index)) #.value)
