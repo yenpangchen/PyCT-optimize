@@ -1,9 +1,11 @@
 # Copyright: see copyright.txt
 
 class Constraint:
-    def __init__(self, parent, last_predicate):
+    def __init__(self, parent, last_predicate, last_extend_vars, last_extend_queries):
         self.parent = parent # 可能是 None 或 Constraint type
         self.last_predicate = last_predicate # 應該是 Predicate type
+        self.last_extend_vars = last_extend_vars
+        self.last_extend_queries = last_extend_queries
         self.processed = False # 只是給我們看的，程式流程用不到這個
         self.children = [] # 裝了一堆 Constraint type
 
@@ -18,12 +20,17 @@ class Constraint:
 
         # collect the assertions
         asserts = []
+        extend_vars = dict()
+        extend_queries = []
         tmp = self.parent
         while tmp.last_predicate is not None: # 目前根據 path_to_constraint 的 constructor 猜測，它負責檢測是不是 root constraint
             asserts.append(tmp.last_predicate)
+            extend_vars = {**extend_vars, **tmp.last_extend_vars}
+            extend_queries += tmp.last_extend_queries
             tmp = tmp.parent
-
-        return asserts, self.last_predicate
+        extend_vars = {**extend_vars, **self.last_extend_vars}
+        extend_queries += self.last_extend_queries
+        return asserts, self.last_predicate, extend_vars, extend_queries
 
     def get_length(self):
         if self.parent is None:
@@ -36,9 +43,9 @@ class Constraint:
                 return c
         return None
 
-    def add_child(self, predicate):
+    def add_child(self, predicate, last_extend_vars, last_extend_queries):
         assert (self.find_child(predicate) is None)
-        c = Constraint(self, predicate)
+        c = Constraint(self, predicate, last_extend_vars, last_extend_queries)
         self.children.append(c)
         return c
 

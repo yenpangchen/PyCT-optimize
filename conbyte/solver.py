@@ -22,6 +22,8 @@ class Solver(object):
         self.query_store = query_store
         self.solver_type = solver_type
         self.ss = ss
+        self.extend_vars = None
+        self.extend_queries = None
 
         if solver_type == "z3seq":
             self.cmd = "z3 -in"
@@ -46,7 +48,7 @@ class Solver(object):
             self.variables[v] = variables[v]
 
 
-    def find_constraint_model(self, constraint, extend_vars, extend_queries, timeout=None):
+    def find_constraint_model(self, constraint, timeout=None):
         start_time = time.process_time()
         if "z3" in self.solver_type or  "trauc" in self.solver_type:
             if timeout is not None:
@@ -58,16 +60,16 @@ class Solver(object):
                 cmd = self.cmd + (" --tlimit=%s" % (int(timeout) * 1000))
             else:
                 cmd = self.cmd + " --tlimit=1000"
-        self.asserts, self.query = constraint.get_asserts_and_query()
-        model = self._find_model(cmd, extend_vars, extend_queries)
+        self.asserts, self.query, self.extend_vars, self.extend_queries = constraint.get_asserts_and_query()
+        model = self._find_model(cmd)
         endtime = time.process_time()
         solve_time = endtime - start_time
         return model
 
 
-    def _find_model(self, cmd, extend_vars, extend_queries):
+    def _find_model(self, cmd):
 
-        formulas = self._build_expr(extend_vars, extend_queries)
+        formulas = self._build_expr()
 
         # log.debug("\n" + formulas)
         if self.query_store is not None:
@@ -235,7 +237,7 @@ class Solver(object):
         return model
 
 
-    def _build_expr(self, extend_vars, extend_queries):
+    def _build_expr(self):
         f_template = Template("""
 $declarevars
 
@@ -256,16 +258,16 @@ $getvars
             if var.startswith("List"):
                 assignments['declarevars'] += "(assert (>= (__len__ {}) 0))\n".format(name)
 
-        for (name, var) in extend_vars.items():
+        for (name, var) in self.extend_vars.items():
             assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
 
-        assignments['query'] = "\n".join(assertion.get_formula() for assertion in self.asserts)
+        assignments['query'] = "".join(assertion.get_formula() for assertion in self.asserts)
         assignments['query'] += self.query.get_formula()
         if self.ss:
             assignments['query'] += "(assert (str.in.re a (re.+ (re.range \"0\" \"1\"))))\n"
             assignments['query'] += "(assert (str.in.re b (re.+ (re.range \"0\" \"1\"))))\n"
 
-        for query in extend_queries:
+        for query in self.extend_queries:
             assignments['query'] += "%s\n" % query
 
         assignments['getvars'] = "\n"

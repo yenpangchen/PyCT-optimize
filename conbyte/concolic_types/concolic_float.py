@@ -24,7 +24,7 @@ class ConcolicFloat(float):
         from conbyte.concolic_types.concolic_int import ConcolicInt
         value = float.__int__(self)
         if self.hasvar:
-            return ConcolicInt(['to_int', self.expr], value)
+            return ConcolicInt(value, ['to_int', self.expr])
         else:
             return ConcolicInt(value)
 

@@ -107,7 +107,7 @@ class ConcolicStr(str):
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start))
             expr = ["str.indexof", self.expr, sub.expr, start.expr]
         if argshasvar:
-            return ConcolicInt(expr, value)
+            return ConcolicInt(value, expr)
         else:
             return ConcolicInt(value)
 
@@ -286,16 +286,26 @@ class ConcolicStr(str):
                 res[i] = ConcolicStr(res[i])
             return ConcolicList(res)
         if not isinstance(sep, ConcolicStr): sep = ConcolicStr(sep)
-        split_index = self.find(sep)
-        maxsplit = int.__int__(maxsplit)
-        sep_len = sep.__len__()
-        if int.__int__(split_index) == -1 or maxsplit == 0:
-            return ConcolicList([self])
-        elif maxsplit == -1:
-            return ConcolicList([self.substr(stop=split_index)]) + self.substr(start=split_index+sep_len).split(sep=sep)
-        elif maxsplit > 0:
-            return ConcolicList([self.substr(stop=split_index)]) + self.substr(start=split_index+sep_len).split(sep=sep, maxsplit=maxsplit-1)
-        raise NotImplementedError
+        sep2 = sep + sep
+        sep_len = sep.__len__() # a constant
+        ans_list = []
+        substr = self
+        while True:
+            split_index = substr.find(sep)
+            if split_index == -1 or maxsplit == 0:
+                ans_list.append(substr)
+                break
+            elif maxsplit == -1:
+                ans_list.append(substr.substr(stop=split_index))
+                substr = substr.substr(start=split_index+sep_len)
+            elif maxsplit > 0:
+                ans_list.append(substr.substr(stop=split_index))
+                substr = substr.substr(start=split_index+sep_len)
+                maxsplit -= 1
+            else:
+                raise NotImplementedError
+        len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self.expr, sep.expr, sep2.expr]], ['str.len', self.expr]], ['str.len', sep.expr]]]
+        return ConcolicList(ans_list, len_expr=len_expr) # 我們目前先不考慮 maxsplit 的限制
 
     def splitlines(self, keepends=False):
         if keepends: raise NotImplementedError
@@ -406,7 +416,7 @@ class ConcolicStr(str):
         value = len(str.__str__(self)) #.value)
         if self.hasvar:
             expr = ["str.len", self.expr]
-            return ConcolicInt(expr, value)
+            return ConcolicInt(value, expr)
         else:
             return ConcolicInt(value)
 
@@ -494,11 +504,16 @@ class ConcolicStr(str):
             stop += self.__len__()
         if int.__int__(stop) < 0:
             stop = ConcolicInt(0)
-        if int.__int__(stop) >= self.__len__():
+        if int.__int__(stop) > self.__len__():
             stop = self.__len__()
         value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
         expr = ["str.substr", self.expr, start.expr, (stop-start).expr]
         if self.hasvar or start.hasvar or stop.hasvar:
+            name = 'String_' + str(global_var.num_of_extend_vars)
+            global_var.extend_vars[name] = 'String'
+            global_var.num_of_extend_vars += 1
+            global_var.extend_queries.append('(assert ' + Predicate._get_formula(['=', name, expr]) + ')')
+            expr = name
             return ConcolicStr(expr, value)
         else:
             return ConcolicStr(value)
@@ -514,22 +529,26 @@ class ConcolicStr(str):
             value = val_l != val_r
             expr = ['not', ["=", self.expr, other.expr]]
         elif operator == ">":
+            assert len(val_l) == 1 and len(val_r) == 1
             value = val_l > val_r
-            return ConcolicBool(value)
+            expr = ['not', ['str.<=', self.expr, other.expr]]
             # expr = ["str.in.re", self.expr, ["re.range", other.expr, "\"\\xff\""]]
             # expr = ["and", ["not", ["=", self.expr, other.expr]], expr]
         elif operator == "<":
+            assert len(val_l) == 1 and len(val_r) == 1
             value = val_l < val_r
-            return ConcolicBool(value)
+            expr = ['str.<', self.expr, other.expr]
             # expr = ["str.in.re", self.expr, ["re.range", "\"\\x00\"", other.expr]]
             # expr = ["and", ["not", ["=", self.expr, other.expr]], expr]
         elif operator == ">=":
+            assert len(val_l) == 1 and len(val_r) == 1
             value = val_l >= val_r
-            return ConcolicBool(value)
+            expr = ['not', ['str.<', self.expr, other.expr]]
             # expr = ["str.in.re", self.expr, ["re.range", other.expr, "\"\\xff\""]]
         elif operator == "<=":
+            assert len(val_l) == 1 and len(val_r) == 1
             value = val_l <= val_r
-            return ConcolicBool(value)
+            expr = ['str.<=', self.expr, other.expr]
             # expr = ["str.in.re", self.expr, ["re.range", "\"\\x00\"", other.expr]]
         else:
             raise NotImplementedError
@@ -544,7 +563,7 @@ class ConcolicStr(str):
     # def len(self):
     #     value = len(self.value)
     #     expr = ["str.len", self.expr]
-    #     return ConcolicInt(expr, value)
+    #     return ConcolicInt(value, expr)
     def __int__(self):
         if self.hasvar:
             self.isnumber().__bool__()
@@ -555,7 +574,7 @@ class ConcolicStr(str):
                     ],
                     ["str.to.int", self.expr]
                 ]
-            return ConcolicInt(expr, int(str.__str__(self)))
+            return ConcolicInt(int(str.__str__(self)), expr)
         else:
             return ConcolicInt(int(str.__str__(self)))
     # def escape_value(self):

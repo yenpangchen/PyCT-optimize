@@ -33,11 +33,12 @@ class Predicate:
         else:
             return "(assert (not " + formula + "))\n"
 
-    def _get_formula(self, expr):
+    @staticmethod
+    def _get_formula(expr):
         if isinstance(expr, list):
             formula = "( "
             for exp in expr:
-                formula += self._get_formula(exp) + " "
+                formula += Predicate._get_formula(exp) + " "
             return formula + " )"
         else:
             if isinstance(expr, int):

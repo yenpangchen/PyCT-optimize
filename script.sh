@@ -42,7 +42,7 @@ declare -A arr
 # arr["target_int/leetcode_int/addStrings.py"]='["923","123"]' # OK
 # arr["target_int/leetcode_int/numDecodings.py"]='["226"]' # OK
 # arr["target_int/leetcode_int/restoreIpAddresses.py"]='["25525511135"]' # OK
-# arr["target_int/leetcode_int/validIPAddress.py"]='["172.16.254.1"]' # OK
+# arr["target_int/leetcode_int/validIPAddress.py"]='[""]' # OK
 # arr["target_int/leetcode_int/validWordAbbreviation.py"]='["internationalization","i12iz4n"]' # OK
 # --------------------------------------------------------------------
 # arr["target_int/lib_int/datetime__parse_hh_mm_ss_ff.py"]='["12:01:23.123456"]' # OK
@@ -50,7 +50,7 @@ declare -A arr
 # arr["target_int/lib_int/distutils_get_build_version.py"]='["MSC v.1212 abc"]' # OK
 # arr["target_int/lib_int/email__parsedate_tz.py"]='["Mon, 16 Nov 2009 13:32:02 +0100"]' # OK (poor, and str.split() not implemented)
 # arr["target_int/lib_int/http_parse_request.py"]='["HTTP/1.0"]' # OK
-# arr["target_int/lib_int/ipaddress__ip_int_from_string.py"]='["2001:0db8:85a3:0000:0000:8a2e:0370:7334"]' # OK (but very slow)
+# arr["target_int/lib_int/ipaddress__ip_int_from_string.py"]='[""]' # OK (but very slow)
 # arr["target_int/lib_int/nntplib__parse_datetime.py"]='["20190723121212"]' # OK
 # arr["target_int/lib_int/smtpd_parseargs.py"]='["localhost:8025","localhost:25"]' # OK
 # arr["target_int/lib_int/wsgiref_check_status.py"]='["200 ok"]' # OK

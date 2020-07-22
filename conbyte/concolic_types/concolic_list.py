@@ -1,6 +1,8 @@
 from ..utils import *
 from .concolic_bool import *
 from .concolic_int import *
+from conbyte.predicate import Predicate
+from global_var import extend_vars, extend_queries, num_of_extend_vars
 
 log = logging.getLogger("ct.con.list")
 
@@ -11,7 +13,7 @@ Classes:
 """
 
 class ConcolicList(list):
-    def __init__(self, value, expr=None):
+    def __init__(self, value, expr=None, len_expr=None):
         super().__init__(value)
         if expr is not None:
             self.expr = expr
@@ -31,12 +33,35 @@ class ConcolicList(list):
             for i, val in enumerate(value):
                 assert isinstance(val, types[t+1])
                 self.expr = ['store', self.expr, i, val.expr]
-            self.expr = ['list', self.expr, len(value)]
+            if len_expr is None:
+                self.expr = ['list', self.expr, len(value)]
+            else:
+                self.expr = ['list', self.expr, len_expr]
+            if t == 0:
+                name = 'ListOfInt_' + str(global_var.num_of_extend_vars)
+                global_var.extend_vars[name] = 'ListOfInt'
+            else: # t == 3
+                name = 'ListOfStr_' + str(global_var.num_of_extend_vars)
+                global_var.extend_vars[name] = 'ListOfStr'
+            global_var.num_of_extend_vars += 1
+            global_var.extend_queries.append('(assert ' + Predicate._get_formula(['=', name, self.expr]) + ')')
+            self.expr = name
         log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
     def append(self, element):
         super().append(element)
+        if isinstance(element, int):
+            name = 'ListOfInt_' + str(global_var.num_of_extend_vars)
+            global_var.extend_vars[name] = 'ListOfInt'
+        elif isinstance(element, str):
+            name = 'ListOfStr_' + str(global_var.num_of_extend_vars)
+            global_var.extend_vars[name] = 'ListOfStr'
+        else:
+            raise NotImplementedError
+        global_var.num_of_extend_vars += 1
         self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
+        global_var.extend_queries.append('(assert ' + Predicate._get_formula(['=', name, self.expr]) + ')')
+        self.expr = name
         # self.size += 1
         # log.debug("  List append: %s" % element)
 
@@ -96,15 +121,26 @@ class ConcolicList(list):
     #     return self
 
     def __len__(self):
-        return ConcolicInt(['__len__', self.expr], super().__len__())
+        return ConcolicInt(super().__len__(), ['__len__', self.expr])
 
     def __iter__(self):
-        return super().__iter__() #iter(self.value)
+        index = ConcolicInt(0)
+        while index < self.__len__():
+            result = self.__getitem__(index)
+            index += ConcolicInt(1)
+            yield result
 
     def __getitem__(self, key):
-        if not isinstance(key, ConcolicInt): key = ConcolicInt(key)
+        from .concolic_str import ConcolicStr
+        if not isinstance(key, ConcolicInt):
+            if isinstance(key, slice): # TODO: SMT 先暫不處理 slice 的 type
+                return ConcolicList(super().__getitem__(key))
+            key = ConcolicInt(key)
         if key < 0: key += self.__len__()
-        return ConcolicInt(['select', ['array', self.expr], key.expr], super().__getitem__(key))
+        if isinstance(super().__getitem__(key), int):
+            return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+        else:
+            return ConcolicStr(['select', ['array', self.expr], key.expr], str.__str__(super().__getitem__(key)))
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)

@@ -66,8 +66,8 @@ class ExplorationEngine:
 
             # TODO: Currently single thread
             while iterations < max_iterations and not self.constraints_to_solve.is_empty():
-                constraint, extend_var, extend_queries = self.constraints_to_solve.pop()
-                model = self.solver.find_constraint_model(constraint, extend_var, extend_queries, timeout)
+                constraint = self.constraints_to_solve.pop()
+                model = self.solver.find_constraint_model(constraint, timeout)
                 log.debug("Solving: %s" % constraint)
 
                 if model is not None:
@@ -109,6 +109,9 @@ class ExplorationEngine:
 
 
     def _one_execution(self, init_vars, expected_path=None):
+        global_var.extend_vars = dict()
+        global_var.extend_queries = []
+        global_var.num_of_extend_vars = 0
         log.info("Inputs: " + str(init_vars))
         copy_vars = copy.deepcopy(init_vars)
         self.path.reset(expected_path)
@@ -121,7 +124,7 @@ class ExplorationEngine:
         symbolic_inputs = dict()
         for v in para.values():
             if type(v.default) == int:
-                copy_vars.append(ConcolicInt(v.name, v.default))
+                copy_vars.append(ConcolicInt(v.default, v.name))
                 symbolic_inputs[v.name] = 'Int'
             elif type(v.default) == str:
                 copy_vars.append(ConcolicStr(v.name, v.default))

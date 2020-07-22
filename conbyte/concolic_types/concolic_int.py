@@ -1,5 +1,6 @@
 # Copyright: copyright.txt
 from .concolic_bool import *
+from conbyte.predicate import Predicate
 
 log = logging.getLogger("ct.con.int")
 
@@ -10,22 +11,28 @@ Classes:
 """
 
 class ConcolicInt(int):
-    def __new__(cls, expr, value=None): # maybe decorator required?
-        if value is not None:
-            return int.__new__(cls, value)
-        else:
-            return int.__new__(cls, expr.__int__())
+    def __new__(cls, value, expr=None): # maybe decorator required?
+        return int.__new__(cls, value)
 
-    def __init__(self, expr, value=None): # maybe decorator required?
-        self.expr = expr
-        self.hasvar = (value is not None)
-        # log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
+    def __init__(self, value, expr=None): # maybe decorator required?
+        if expr is None:
+            self.expr = value
+        else:
+            self.expr = expr
+        self.hasvar = (expr is not None)
+        if self.hasvar:
+            name = 'Int_' + str(global_var.num_of_extend_vars)
+            global_var.extend_vars[name] = 'Int'
+            global_var.num_of_extend_vars += 1
+            global_var.extend_queries.append('(assert ' + Predicate._get_formula(['=', name, self.expr]) + ')')
+            log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
+            self.expr = name
 
     def __abs__(self):
         value = int.__int__(self).__abs__()
         if self.hasvar:
             expr = ["ite", [">=", self.expr, 0], self.expr, ["-", 0, self.expr]]
-            return ConcolicInt(expr, value)
+            return ConcolicInt(value, expr)
         else:
             return ConcolicInt(value)
 
@@ -135,7 +142,7 @@ class ConcolicInt(int):
         value = -int.__int__(self)
         if self.hasvar:
             expr = ["-", 0, self.expr]
-            return ConcolicInt(expr, value)
+            return ConcolicInt(value, expr)
         else:
             return ConcolicInt(value)
 
@@ -255,7 +262,7 @@ def make_method(method, op, op_smt):
     code += "      if not isinstance(other, ConcolicInt):\n"
     code += "         other = ConcolicInt(other)\n"
     code += "      expr = [\"%s\", self.expr, other.expr]\n" % op_smt
-    code += "      return ConcolicInt(expr, value)\n"
+    code += "      return ConcolicInt(value, expr)\n"
     code += "   else:\n"
     code += "      return ConcolicInt(value)\n"
     locals_dict = {}
@@ -281,7 +288,7 @@ def make_rmethod(method, op, op_smt):
     code += "      value = int.__int__(other) %s int.__int__(self)\n" % op
     code += "      expr = [\"%s\", other.expr, self.expr]\n" % op_smt
     code += "      if self.hasvar:\n"
-    code += "         return ConcolicInt(expr, value)\n"
+    code += "         return ConcolicInt(value, expr)\n"
     code += "      else:\n"
     code += "         return ConcolicInt(value)\n"
     code += "   else:\n"
