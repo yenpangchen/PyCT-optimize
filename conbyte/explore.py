@@ -51,8 +51,8 @@ class ExplorationEngine:
         p1, p2 = multiprocessing.Pipe()
         pid = os.fork()
         if pid == 0: # child process
-            from conbyte.concolic_types.concolic_bool import ConcolicBool
-            global_var.global_engine.path.which_branch(ConcolicBool(['=', 1, 1], False))
+            # from conbyte.concolic_types.concolic_bool import ConcolicBool
+            # global_var.global_engine.path.which_branch(ConcolicBool(False, ['=', 1, 1]))
             # The case of 0 constraints should have produced a trivial solution, however our program
             # here doesn't do this, so we need one additional branch to achieve this goal.
 
@@ -127,7 +127,7 @@ class ExplorationEngine:
                 copy_vars.append(ConcolicInt(v.default, v.name))
                 symbolic_inputs[v.name] = 'Int'
             elif type(v.default) == str:
-                copy_vars.append(ConcolicStr(v.name, v.default))
+                copy_vars.append(ConcolicStr(v.default, v.name))
                 symbolic_inputs[v.name] = 'String'
             elif type(v.default) == list:
                 for i in range(len(v.default)):

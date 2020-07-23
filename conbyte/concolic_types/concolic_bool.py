@@ -6,15 +6,17 @@ import global_var
 log = logging.getLogger("ct.con.bool")
 
 class ConcolicBool:
-    def __init__(self, expr, value=None):
-        self.expr = expr
-        if value is not None:
-            self.value = value
-            self.hasvar = True
+    def __init__(self, value, expr=None):
+        assert type(value) is bool
+        self.hasvar = expr is not None
+        self.value = value
+        if expr is None:
+            self.expr = str(self.value).lower()
         else:
-            self.value = self.expr
-            self.hasvar = False
-        log.debug("  ConBool, value %s, expr: %s" % (value, expr))
+            self.expr = expr
+            # if isinstance(self.expr, list):
+            #     self.expr = global_var.add_extended_vars_and_queries('Bool', self.expr)
+        log.debug("  ConBool, value %s, expr: %s" % (self.value, self.expr))
 
     def __bool__(self):
         if self.hasvar:
@@ -23,7 +25,11 @@ class ConcolicBool:
 
     def __index__(self):
         from conbyte.concolic_types.concolic_int import ConcolicInt
-        return ConcolicInt(int.__int__(self.value))
+        value = int.__int__(self.value)
+        if self.hasvar:
+            return ConcolicInt(value, ["ite", ["=", self.expr, "true"], 1, 0])
+        else:
+            return ConcolicInt(value)
 
     def __str__(self):
         return "{ConType, value: %s, expr: %s)" % (self.value, self.expr)
@@ -80,7 +86,7 @@ class ConcolicBool:
     #     else:
     #         return None
 
-    #     return ConcolicBool(expr, value)
+    #     return ConcolicBool(value, expr)
 
     # def __eq__(self, other):
     #     if self.value != other.value:
@@ -92,19 +98,19 @@ class ConcolicBool:
     # def __or__(self, other):
     #     value = self.value | other.value
     #     expr = ["and", self.expr, other.expr]
-    #     return ConcolicBool(expr, value)
+    #     return ConcolicBool(value, expr)
 
-    # # TODO
-    # def __xor__(self, other):
-    #     value = self.value ^ other.value
-    #     expr = ["xor", self.expr, other.expr]
-    #     return ConcolicBool(expr, value)
+    # TODO
+    def __xor__(self, other):
+        value = self.value ^ other.value
+        expr = ["xor", self.expr, other.expr]
+        return ConcolicBool(value, expr)
 
-    # # TODO
+    # TODO
     # def __and__(self, other):
     #     value = self.value & other.value
     #     expr = ["and", self.expr, other.expr]
-    #     return ConcolicBool(expr, value)
+    #     return ConcolicBool(value, expr)
 
     # For bool type
     # def negate(self):

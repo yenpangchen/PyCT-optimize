@@ -146,7 +146,7 @@ class RegexPattern:
         if concolic_value:
             return RegexMatch(formula, concolic_value)
         else:
-            return ConcolicBool("nil", None)
+            return ConcolicBool(None, "nil")
 
     def search(self, string, flags=None):
         if not self.compiled:
@@ -161,7 +161,7 @@ class RegexPattern:
         if concolic_value:
             return RegexMatch(formula, concolic_value)
         else:
-            return ConcolicBool("nil", None)
+            return ConcolicBool(None, "nil")
 
     def fullmatch(self, string, flags=None):
         if not self.compiled:
@@ -176,7 +176,7 @@ class RegexPattern:
         if concolic_value:
             return RegexMatch(formula, concolic_value)
         else:
-            return ConcolicBool("nil", None)
+            return ConcolicBool(None, "nil")
 
 
 

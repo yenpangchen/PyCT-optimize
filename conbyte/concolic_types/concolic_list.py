@@ -15,6 +15,11 @@ Classes:
 class ConcolicList(list):
     def __init__(self, value, expr=None, len_expr=None):
         super().__init__(value)
+        from .concolic_str import ConcolicStr
+        types = ['Int', int, 0, 'String', str, '""']
+        if len(value) == 0 or isinstance(value[0], types[1]): t = 0
+        elif isinstance(value[0], types[4]): t = 3
+        else: raise NotImplementedError
         if expr is not None:
             self.expr = expr
         else:
@@ -24,44 +29,36 @@ class ConcolicList(list):
             # 2. [2] -> (list (store ((as const (Array Int Int)) 0) 0 2) 1)
             # 3. [-2, 4] -> (list (store (store ((as const (Array Int Int)) 0) 0 (- 2)) 1 4) 2)
             ###########
-            from .concolic_str import ConcolicStr
-            types = ['Int', ConcolicInt, 0, 'String', ConcolicStr, '""']
-            if len(value) == 0 or isinstance(value[0], types[1]): t = 0
-            elif isinstance(value[0], types[4]): t = 3
-            else: raise NotImplementedError
             self.expr = [['as', 'const', ['Array', 'Int', types[t]]], types[t+2]]
             for i, val in enumerate(value):
                 assert isinstance(val, types[t+1])
+                from global_var import upgrade
+                val = global_var.upgrade(val)
                 self.expr = ['store', self.expr, i, val.expr]
             if len_expr is None:
                 self.expr = ['list', self.expr, len(value)]
             else:
                 self.expr = ['list', self.expr, len_expr]
+        if isinstance(self.expr, list):
             if t == 0:
-                name = 'ListOfInt_' + str(global_var.num_of_extend_vars)
-                global_var.extend_vars[name] = 'ListOfInt'
+                self.expr = global_var.add_extended_vars_and_queries('ListOfInt', self.expr)
             else: # t == 3
-                name = 'ListOfStr_' + str(global_var.num_of_extend_vars)
-                global_var.extend_vars[name] = 'ListOfStr'
-            global_var.num_of_extend_vars += 1
-            global_var.extend_queries.append('(assert ' + Predicate._get_formula(['=', name, self.expr]) + ')')
-            self.expr = name
+                self.expr = global_var.add_extended_vars_and_queries('ListOfStr', self.expr)
         log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
     def append(self, element):
+        element = global_var.upgrade(element)
         super().append(element)
-        if isinstance(element, int):
-            name = 'ListOfInt_' + str(global_var.num_of_extend_vars)
-            global_var.extend_vars[name] = 'ListOfInt'
-        elif isinstance(element, str):
-            name = 'ListOfStr_' + str(global_var.num_of_extend_vars)
-            global_var.extend_vars[name] = 'ListOfStr'
-        else:
+        if not hasattr(element, 'expr'):
             raise NotImplementedError
-        global_var.num_of_extend_vars += 1
-        self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
-        global_var.extend_queries.append('(assert ' + Predicate._get_formula(['=', name, self.expr]) + ')')
-        self.expr = name
+        else:
+            self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
+            if isinstance(element, int):
+                self.expr = global_var.add_extended_vars_and_queries('ListOfInt', self.expr)
+            elif isinstance(element, str):
+                self.expr = global_var.add_extended_vars_and_queries('ListOfStr', self.expr)
+            else:
+                raise NotImplementedError
         # self.size += 1
         # log.debug("  List append: %s" % element)
 
@@ -87,7 +84,7 @@ class ConcolicList(list):
     #                 expr = ["=", val.expr, other.expr]
     #             else:
     #                 expr = ["or", expr, ["=", val.expr, other.expr]]
-    #     return ConcolicBool(expr, value)
+    #     return ConcolicBool(value, expr)
 
     # def not_contains(self, other):
     #     expr = None
@@ -101,19 +98,19 @@ class ConcolicList(list):
     #                 expr = ["or", expr, ["=", val.expr, other.expr]]
     #     expr = ["not", expr]
     #     value = not value
-    #     return ConcolicBool(expr, value)
+    #     return ConcolicBool(value, expr)
 
     # def __str__(self):
     #     if self.size == 0:
     #         return "  List: nil"
     #     return "  List: %s" % ",".join(val.__str__() for val in self.value)
 
-    def __add__(self, other):
-        log.debug(self)
-        if isinstance(other, list):
-            return super().__add__(list(other))
-        else:
-            raise NotImplementedError
+    # def __add__(self, other):
+    #     log.debug(self)
+    #     if isinstance(other, list):
+    #         return super().__add__(list(other))
+    #     else:
+    #         raise NotImplementedError
 
     # def __radd__(self, other):
     #     self.value += other.value
@@ -140,7 +137,7 @@ class ConcolicList(list):
         if isinstance(super().__getitem__(key), int):
             return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
         else:
-            return ConcolicStr(['select', ['array', self.expr], key.expr], str.__str__(super().__getitem__(key)))
+            return ConcolicStr(str.__str__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
@@ -233,11 +230,11 @@ class ConcolicList(list):
         return list(map(downgrade, list(self)))
 
 
-class Concolic_tuple(ConcolicBool):
-    def __init__(self, value):
-        self.expr = "Tuple"
-        self.value = value
-        log.debug("  Tuple: %s" % str(self.value))
+# class Concolic_tuple(ConcolicBool):
+#     def __init__(self, value):
+#         self.expr = "Tuple"
+#         self.value = value
+#         log.debug("  Tuple: %s" % str(self.value))
 
-    def __str__(self):
-        return "  Tuple: %s" % str(self.value)
+#     def __str__(self):
+#         return "  Tuple: %s" % str(self.value)

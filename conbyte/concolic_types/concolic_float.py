@@ -1,4 +1,5 @@
 # Copyright: copyright.txt
+import global_var
 # import logging
 
 # log = logging.getLogger("ct.con.float")
@@ -9,15 +10,17 @@ Classes:
 """
 
 class ConcolicFloat(float):
-    def __new__(cls, expr, value=None): # maybe decorator required?
-        if value is not None:
-            return float.__new__(cls, value)
-        else:
-            return float.__new__(cls, float(expr))
+    def __new__(cls, value, expr=None):
+        return float.__new__(cls, value)
 
-    def __init__(self, expr, value=None): # maybe decorator required?
-        self.expr = expr
-        self.hasvar = (value is not None)
+    def __init__(self, value, expr=None):
+        self.hasvar = expr is not None
+        if expr is None:
+            self.expr = value
+        else:
+            self.expr = expr
+            # if isinstance(self.expr, list):
+            #     self.expr = global_var.add_extended_vars_and_queries('Real', self.expr)
         # log.debug("  ConFloat, value: %s, expr: %s" % (self, self.expr)) # not fixed yet
 
     def __int__(self):
@@ -33,6 +36,6 @@ class ConcolicFloat(float):
         value = float.__float__(self) / float.__float__(other)
         if self.hasvar or other.hasvar:
             expr = ['/', self.expr, other.expr]
-            return ConcolicFloat(expr, value)
+            return ConcolicFloat(value, expr)
         else:
             return ConcolicFloat(value)

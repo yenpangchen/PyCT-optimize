@@ -1,10 +1,10 @@
 # py-conbyte 
 
 # Requirements
-- Python version >= 3.7.3
+- Python version == 3.8.2
 - SMT-solver installed ([Z3](https://github.com/Z3Prover/z3) or [CVC4](https://github.com/CVC4/CVC4)) 
 
-A Python concolic testing tool running on bytecode level.
+A Python concolic testing tool taking advantage of the inheritance method ~~running on bytecode level~~.
 
 This project takes refer to the structure purposed in 
 [Deconstructing Dynamic Symbolic Execution](http://research.microsoft.com/apps/pubs/?id=233035),  
@@ -32,8 +32,8 @@ py-conbyte currently supports:
   - `len()`
   - `int()`
   - `str()`
-  - `dict()`
-  - `list()`
+  ~~- `dict()`~~
+  ~~- `list()`~~
   - `range()`
   - `sum()`
   - `max()`
@@ -43,14 +43,14 @@ py-conbyte currently supports:
   - Integer
   - String
   - Array
-  - Dictionary
+  ~~- Dictionary~~
   - Class containing these types
 See `test/` for supported syntaxes.   
 
 Formal parameters of the program to analysis can only be integers,
 strings, array containing integer and string.
 
-## Installation
+## Installation (新式套件管理器改用 pipenv)
 Make sure you have z3/cvc4 installed in your system.   
 Use `pip` to install python packages.
 ```
@@ -66,7 +66,7 @@ Options:
 
   Exploration Setup:
     -i INPUTS, --input=INPUTS
-                        Specify initial inputs, default to './inputs.py'
+                        Specify initial inputs from the command line argument
     --stdin             Read inputs from stdin instead of a file
     -e ENTRY, --entry=ENTRY
                         Specify entry point, if different than (target).py
@@ -92,6 +92,11 @@ Options:
 
 Example:
 ```
- $ ./py-conbyte.py -i inputs.py test/do_numbers.py
+ $ ./py-conbyte.py -s cvc4 test/do_numbers.py -i [0,0]
 ```
 
+使用方式:
+1. `$ git clone git@github.com:alan23273850/py-conbyte.git` 或 `$ git clone https://github.com/alan23273850/py-conbyte.git`
+2. 進入專案根目錄，建立套件環境 `$ pipenv shell`。(可能要先安裝 pipenv: `$ sudo apt install pipenv`)
+3. 安裝所需套件 `$ pipenv install`。
+4. 所有的測資都寫在 script.sh 裡面，可以自行使用。以後每次測試之前都要先打 `$ pipenv shell` 進入虛擬環境才能使用。

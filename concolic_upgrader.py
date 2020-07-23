@@ -51,9 +51,12 @@ if 'added' not in locals():
         def visit_List(self, node: List):
             for i in range(len(node.elts)):
                 node.elts[i] = ConcolicUpgrader2().visit(node.elts[i])
+            # if len(node.elts) > 0 and (isinstance(node.elts[0], int) or isinstance(node.elts[0], str)):
             return Call(func=Name(id='ConcolicList', ctx=Load()),
                         args=[node],
                         keywords=[])
+            # else:
+            #     return node
         def visit_Assign(self, node):
             node.value = ConcolicUpgrader2().visit(node.value)
             return node
@@ -112,7 +115,7 @@ if 'added' not in locals():
                 tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_list',
                                                names=[alias(name='ConcolicList', asname=None)],
                                                level=0))
-                tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_int',
+                tree.body.insert(0, ImportFrom(module='conbyte.concolic_types.concolic_range',
                                                names=[alias(name='ConcolicRange', asname=None)],
                                                level=0))
                 tree = ConcolicUpgrader().visit(tree)
