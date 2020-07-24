@@ -88,7 +88,7 @@ optional arguments:
 
 Example:
 ```
- $ ./py-conbyte.py -s cvc4 test/do_numbers.py -i [0,0]
+ $ ./py-conbyte.py test/do_numbers.py [0,0] -s cvc4
 ```
 
 使用方式:
