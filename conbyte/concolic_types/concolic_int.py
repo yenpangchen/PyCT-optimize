@@ -20,7 +20,7 @@ class ConcolicInt(int):
         else:
             self.expr = expr
             # if isinstance(self.expr, list):
-            #     self.expr = global_var.add_extended_vars_and_queries('Int', self.expr)
+            #     self.expr = global_utils.add_extended_vars_and_queries('Int', self.expr)
         log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
 
     def __abs__(self):

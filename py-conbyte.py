@@ -9,7 +9,7 @@ builtins.len = lambda x: x.__len__()
 from optparse import OptionParser
 from optparse import OptionGroup
 
-import global_var
+import conbyte.global_utils
 from conbyte.explore import ExplorationEngine
 
 def main():
@@ -86,14 +86,14 @@ def main():
         # inputs_file_full = os.path.abspath(options.inputs)
         # exec(open(inputs_file_full).read(), inputs_space)
 
-    # global_var.global_engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
-    global_var.global_engine = ExplorationEngine(path, filename, module, options.entry, query, options.solver_type, options.ss)
+    # conbyte.global_utils.engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
+    conbyte.global_utils.engine = ExplorationEngine(path, filename, module, options.entry, query, options.solver_type, options.ss)
 
     if options.extract:
-        global_var.global_engine.extract()
+        conbyte.global_utils.engine.extract()
         return
 
-    global_var.global_engine.explore(eval(options.inputs), int(options.iteration), options.timeout)
+    conbyte.global_utils.engine.explore(eval(options.inputs), int(options.iteration), options.timeout)
 
     if options.quiet:
         return
@@ -101,19 +101,19 @@ def main():
     if not options.get_json:
         print()
         print("Generated inputs")
-        for inputs in global_var.global_engine.input_sets:
+        for inputs in conbyte.global_utils.engine.input_sets:
             print(inputs)
-        if len(global_var.global_engine.error_sets) != 0:
+        if len(conbyte.global_utils.engine.error_sets) != 0:
             print()
             print("Error inputs")
-            for inputs in global_var.global_engine.error_sets:
+            for inputs in conbyte.global_utils.engine.error_sets:
                 print(inputs)
         print()
-        global_var.global_engine.print_coverage()
+        conbyte.global_utils.engine.print_coverage()
     else:
-        print(global_var.global_engine.result_to_json())
+        print(conbyte.global_utils.engine.result_to_json())
 
-    print(global_var.global_engine.in_ret_sets)
+    print(conbyte.global_utils.engine.in_ret_sets)
 
 if __name__ == '__main__':
     main()

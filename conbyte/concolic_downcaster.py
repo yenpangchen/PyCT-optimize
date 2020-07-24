@@ -99,7 +99,7 @@ if 'added' not in locals():
         # It currently supports only "integers" and "strings."
         #######################################################################
         if module not in added and \
-            not module.__name__ in ['global_var'] and \
+            not module.__name__ in ['global_utils'] and \
             not module.__name__.startswith('conbyte') and \
             not module.__name__.startswith('importlib'):
             added.append(module)

@@ -1,7 +1,7 @@
 # Copyright: see copyright.txt
 
 import logging
-import global_var
+import conbyte.global_utils
 
 log = logging.getLogger("ct.con.bool")
 
@@ -15,12 +15,12 @@ class ConcolicBool:
         else:
             self.expr = expr
             # if isinstance(self.expr, list):
-            #     self.expr = global_var.add_extended_vars_and_queries('Bool', self.expr)
+            #     self.expr = conbyte.global_utils.add_extended_vars_and_queries('Bool', self.expr)
         log.debug("  ConBool, value %s, expr: %s" % (self.value, self.expr))
 
     def __bool__(self):
         if self.hasvar:
-            global_var.global_engine.path.which_branch(self)
+            conbyte.global_utils.engine.path.which_branch(self)
         return self.value
 
     def __index__(self):

@@ -2,7 +2,6 @@ from ..utils import *
 from .concolic_bool import *
 from .concolic_int import *
 from conbyte.predicate import Predicate
-from global_var import extend_vars, extend_queries, num_of_extend_vars
 
 log = logging.getLogger("ct.con.list")
 
@@ -14,6 +13,7 @@ Classes:
 
 class ConcolicList(list):
     def __init__(self, value, expr=None, len_expr=None):
+        import conbyte.global_utils
         super().__init__(value)
         from .concolic_str import ConcolicStr
         types = ['Int', int, 0, 'String', str, '""']
@@ -32,8 +32,8 @@ class ConcolicList(list):
             self.expr = [['as', 'const', ['Array', 'Int', types[t]]], types[t+2]]
             for i, val in enumerate(value):
                 assert isinstance(val, types[t+1])
-                from global_var import upgrade
-                val = global_var.upgrade(val)
+                from conbyte.global_utils import upgrade
+                val = upgrade(val)
                 self.expr = ['store', self.expr, i, val.expr]
             if len_expr is None:
                 self.expr = ['list', self.expr, len(value)]
@@ -41,22 +41,23 @@ class ConcolicList(list):
                 self.expr = ['list', self.expr, len_expr]
         if isinstance(self.expr, list):
             if t == 0:
-                self.expr = global_var.add_extended_vars_and_queries('ListOfInt', self.expr)
+                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
             else: # t == 3
-                self.expr = global_var.add_extended_vars_and_queries('ListOfStr', self.expr)
+                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
         log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
     def append(self, element):
-        element = global_var.upgrade(element)
+        import conbyte.global_utils
+        element = conbyte.global_utils.upgrade(element)
         super().append(element)
         if not hasattr(element, 'expr'):
             raise NotImplementedError
         else:
             self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
             if isinstance(element, int):
-                self.expr = global_var.add_extended_vars_and_queries('ListOfInt', self.expr)
+                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
             elif isinstance(element, str):
-                self.expr = global_var.add_extended_vars_and_queries('ListOfStr', self.expr)
+                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
             else:
                 raise NotImplementedError
         # self.size += 1
@@ -226,7 +227,7 @@ class ConcolicList(list):
         # self = self.add(target)
 
     def parent(self):
-        from global_var import downgrade
+        from conbyte.global_utils import downgrade
         return list(map(downgrade, list(self)))
 
 

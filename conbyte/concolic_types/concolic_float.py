@@ -1,5 +1,5 @@
 # Copyright: copyright.txt
-import global_var
+import conbyte.global_utils
 # import logging
 
 # log = logging.getLogger("ct.con.float")
@@ -20,7 +20,7 @@ class ConcolicFloat(float):
         else:
             self.expr = expr
             # if isinstance(self.expr, list):
-            #     self.expr = global_var.add_extended_vars_and_queries('Real', self.expr)
+            #     self.expr = global_utils.add_extended_vars_and_queries('Real', self.expr)
         # log.debug("  ConFloat, value: %s, expr: %s" % (self, self.expr)) # not fixed yet
 
     def __int__(self):

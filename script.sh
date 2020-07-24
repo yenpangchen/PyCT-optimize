@@ -25,7 +25,7 @@ declare -A arr
 # arr["test/targets/regex.py"]='["007 James Bond"]' # OK
 # --------------------------------------------------------------------
 # arr["test/targets/leetcode/add_digits.py"]=[0] # OK
-# arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[]] # OK
+arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[]] # OK
 # arr["test/targets/leetcode/fraction_to_decimal.py"]=[-50,8] # OK
 # arr["test/targets/leetcode/isLongPressedName.py"]='["",""]' # OK
 # arr["test/targets/leetcode/numDecodings.py"]='[""]' # OK
@@ -52,8 +52,8 @@ declare -A arr
 # arr["target_int/lib_int/smtpd_parseargs.py"]='["",""]' # OK
 # arr["target_int/lib_int/wsgiref_check_status.py"]='[""]' # OK
 # --------------------------------------------------------------------
-# arr["make_server.py"]='[""]'
-# arr["test.py"]=[[0,0,0,0,0]]
+# arr["test/xss/make_server.py"]='[""]'
+# arr["test/temp.py"]=[[0,0,0,0,0]]
 
 for key in ${!arr[@]}; do
     echo "============== current testcase =============:" ${key} ${arr[${key}]}

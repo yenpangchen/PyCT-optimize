@@ -13,7 +13,7 @@ class ConcolicStr(str):
         if expr is not None:
             self.expr = expr
             # if isinstance(self.expr, list):
-            #     self.expr = global_var.add_extended_vars_and_queries('String', self.expr)
+            #     self.expr = global_utils.add_extended_vars_and_queries('String', self.expr)
         else:
             value = value.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t").replace('"', '""')
             value_new = ""

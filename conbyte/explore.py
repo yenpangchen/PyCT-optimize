@@ -17,7 +17,7 @@ from .utils import Queue
 from .path_to_constraint import PathToConstraint
 from .solver import Solver
 
-import global_var
+import conbyte.global_utils
 
 log = logging.getLogger("ct.explore")
 
@@ -52,11 +52,11 @@ class ExplorationEngine:
         pid = os.fork()
         if pid == 0: # child process
             # from conbyte.concolic_types.concolic_bool import ConcolicBool
-            # global_var.global_engine.path.which_branch(ConcolicBool(False, ['=', 1, 1]))
+            # global_utils.engine.path.which_branch(ConcolicBool(False, ['=', 1, 1]))
             # The case of 0 constraints should have produced a trivial solution, however our program
             # here doesn't do this, so we need one additional branch to achieve this goal.
 
-            import concolic_upgrader
+            import conbyte.concolic_downcaster
             assert isinstance(self.t_module, str)
             self.t_module = __import__(self.t_module)
             # First Execution
@@ -109,9 +109,9 @@ class ExplorationEngine:
 
 
     def _one_execution(self, init_vars, expected_path=None):
-        global_var.extend_vars = dict()
-        global_var.extend_queries = []
-        global_var.num_of_extend_vars = 0
+        conbyte.global_utils.extend_vars = dict()
+        conbyte.global_utils.extend_queries = []
+        conbyte.global_utils.num_of_extend_vars = 0
         log.info("Inputs: " + str(init_vars))
         copy_vars = copy.deepcopy(init_vars)
         self.path.reset(expected_path)
@@ -131,7 +131,7 @@ class ExplorationEngine:
                 symbolic_inputs[v.name] = 'String'
             elif type(v.default) == list:
                 for i in range(len(v.default)):
-                    v.default[i] = global_var.upgrade(v.default[i])
+                    v.default[i] = conbyte.global_utils.upgrade(v.default[i])
                 copy_vars.append(ConcolicList(v.default, v.name))
                 if len(v.default) == 0 or isinstance(v.default[0], ConcolicInt):
                     symbolic_inputs[v.name] = 'ListOfInt'
