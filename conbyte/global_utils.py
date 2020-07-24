@@ -2,7 +2,6 @@ from conbyte.predicate import Predicate
 from conbyte.concolic_types.concolic_range import ConcolicRange
 from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.concolic_types.concolic_str import ConcolicStr
-from conbyte.concolic_types.concolic_list import ConcolicList
 
 engine = None
 extend_vars = dict()

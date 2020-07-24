@@ -1,119 +1,82 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import logging
-import builtins
-builtins.len = lambda x: x.__len__()
-
-from optparse import OptionParser
-from optparse import OptionGroup
-
+import logging, os, sys
+from argparse import ArgumentParser
 import conbyte.global_utils
 from conbyte.explore import ExplorationEngine
 
-def main():
-    usage = "usage: %prog [options] <path to (target).py file>"
-    parser = OptionParser(usage=usage)
+# Our main program starts now!
+parser = ArgumentParser()
 
-    # Setup
-    setup_group = OptionGroup(parser, "Exploration Setup")
-    setup_group.add_option("-i", "--input", dest="inputs", action="store", help="Specify initial inputs, default to \'./inputs.py\'", default="./inputs.py")
-    setup_group.add_option("--stdin", dest="from_stdin", action="store_true", help="Read inputs from stdin instead of a file")
-    setup_group.add_option("-e", "--entry", dest="entry", action="store", help="Specify entry point, if different than (target).py", default=None)
-    setup_group.add_option("-m", "--max_iter", dest="iteration", action="store", help="Specify max iterations", default=50)
-    setup_group.add_option("-t", "--timeout", dest="timeout", action="store", help="Specify solver timeout (default = 1sec)", default=None)
-    setup_group.add_option("--ss", dest="ss", action="store_true", help="Special constraint for add_binays.py", default=None)
-    parser.add_option_group(setup_group)
+# Setup
+parser.add_argument("file", metavar="path_to_target_file.py", help="specify the target file")
+parser.add_argument("inputs", metavar="input_args", help="specify the input arguments")
+parser.add_argument("-e", "--entry", dest="entry", action="store", help="specify entry point, if different from path_to_target_file.py", default=None)
+parser.add_argument("-m", "--max_iter", dest="iteration", action="store", help="specify max iterations", type=int, default=50)
+parser.add_argument("-t", "--timeout", dest="timeout", action="store", help="specify solver timeout (default = 1sec)", default=None)
+parser.add_argument("--ss", dest="ss", action="store_true", help="special constraint for add_binary.py", default=None)
 
-    # Logging configuration
-    logging_group = OptionGroup(parser, "Logging Configuration")
-    logging_group.add_option("-d", "--debug", dest='debug', action="store_true", help="Enable debug logging")
-    logging_group.add_option("--extract", dest='extract', action="store_true", help="Extract bytecode only")
-    logging_group.add_option("-q", "--query", dest='query', action="store", help="Store smt queries", default=None)
-    logging_group.add_option("--quiet", dest='quiet', action="store_true", help="No logging")
-    logging_group.add_option("-l", "--logfile", dest='logfile', action="store", help="Store log", default=None)
-    logging_group.add_option("--json", dest='get_json', action="store_true", help="Print JSON format to stdout", default=None)
-    parser.add_option_group(logging_group)
+# Logging configuration
+parser.add_argument("-d", "--debug", dest='debug', action="store_true", help="enable debug logging")
+parser.add_argument("-q", "--query", dest='query', action="store", help="store smt queries", default=None)
+parser.add_argument("--quiet", dest='quiet', action="store_true", help="no logging")
+parser.add_argument("-l", "--logfile", dest='logfile', action="store", help="store log", default=None)
+parser.add_argument("--json", dest='get_json', action="store_true", help="print JSON format to stdout", default=None)
 
-    # Solver configuration
-    solver_group = OptionGroup(parser, "Solver Configuration")
-    solver_group.add_option("-s", "--solver", dest='solver_type', action="store", help="Solver=[z3seq, z3str, trauc, cvc4], default to z3", default="z3seq")
-    parser.add_option_group(solver_group)
+# Solver configuration
+parser.add_argument("-s", "--solver", dest='solver', action="store", help="solver=[z3seq, z3str, trauc, cvc4], default to z3", default="z3seq")
 
-    (options, args) = parser.parse_args()
-    if len(args) == 0 or not os.path.exists(args[0]):
-        parser.error("Missing app to execute")
-        sys.exit(1)
+# Parse arguments
+args = parser.parse_args()
 
-    """
-    if options.solver_type != "z3" and options.solver_type != "cvc4":
-        parser.error("Solver can only be z3 or cvc4")
-        sys.exit(1)
-    """
+# Check the target file
+if not os.path.exists(args.file):
+    parser.error("the given target file is invalid")
+    sys.exit(1)
 
-    if options.debug:
-        log_level = logging.DEBUG
+###################################################################################
+# This section mainly deals with the logging settings.
+if args.debug:
+    log_level = logging.DEBUG
+else:
+    log_level = logging.INFO
+if args.logfile is not None:
+    logging.basicConfig(filename=args.logfile, level=log_level,
+                        format='%(asctime)s  %(name)s\t%(levelname)s\t%(message)s',
+                        datefmt='%m/%d/%Y %I:%M:%S %p')
+elif args.quiet:
+    logging.basicConfig(filename="/dev/null")
+else:
+    if args.get_json:
+        logging.basicConfig(filename="/dev/null", level=log_level,
+                            format='  %(name)s\t%(levelname)s\t%(message)s')
     else:
-        log_level = logging.INFO
+        logging.basicConfig(level=log_level,
+                            format='  %(name)s\t%(levelname)s\t%(message)s')
+###################################################################################
 
-    logfile = options.logfile
-    if logfile is not None:
-        logging.basicConfig(filename=options.logfile, level=log_level,
-                            format='%(asctime)s  %(name)s\t%(levelname)s\t%(message)s',
-                            datefmt = '%m/%d/%Y %I:%M:%S %p')
-    elif options.quiet:
-        logging.basicConfig(filename="/dev/null")
-    else:
-        if options.get_json:
-            logging.basicConfig(filename="/dev/null", level=log_level,
-                                format='  %(name)s\t%(levelname)s\t%(message)s')
-        else:
-            logging.basicConfig(level=log_level,
-                                format='  %(name)s\t%(levelname)s\t%(message)s')
+#####################################################################################################################
+# This section creates an explorer instance and starts our analysis procedure!
+base_name = os.path.basename(args.file)
+filename = os.path.abspath(args.file) # the 2nd argument in the following constructor
+path = filename.replace(base_name, "") # the 1st argument in the following constructor
+module = base_name.replace(".py", "") # the 3rd argument in the following constructor
+conbyte.global_utils.engine = ExplorationEngine(path, filename, module, args.entry, args.query, args.solver, args.ss)
+conbyte.global_utils.engine.explore(eval(args.inputs), args.iteration, args.timeout)
+#####################################################################################################################
 
-    base_name = os.path.basename(args[0])
-    filename = os.path.abspath(args[0])
-    path = filename.replace(base_name, "")
-    module = base_name.replace(".py", "")
-    query = options.query
-
-    inputs_space = {}
-    if options.from_stdin:
-        exec(sys.stdin.read(), inputs_space)
-    # else:
-        # inputs_file = options.inputs
-        # inputs_file_full = os.path.abspath(options.inputs)
-        # exec(open(inputs_file_full).read(), inputs_space)
-
-    # conbyte.global_utils.engine = ExplorationEngine(path, filename, module, options.entry, inputs_space["INI_ARGS"], query, options.solver_type, options.ss)
-    conbyte.global_utils.engine = ExplorationEngine(path, filename, module, options.entry, query, options.solver_type, options.ss)
-
-    if options.extract:
-        conbyte.global_utils.engine.extract()
-        return
-
-    conbyte.global_utils.engine.explore(eval(options.inputs), int(options.iteration), options.timeout)
-
-    if options.quiet:
-        return
-
-    if not options.get_json:
-        print()
-        print("Generated inputs")
-        for inputs in conbyte.global_utils.engine.input_sets:
-            print(inputs)
-        if len(conbyte.global_utils.engine.error_sets) != 0:
-            print()
-            print("Error inputs")
-            for inputs in conbyte.global_utils.engine.error_sets:
-                print(inputs)
-        print()
-        conbyte.global_utils.engine.print_coverage()
-    else:
-        print(conbyte.global_utils.engine.result_to_json())
-
-    print(conbyte.global_utils.engine.in_ret_sets)
-
-if __name__ == '__main__':
-    main()
+###############################################################################
+# This section prints the generated inputs and coverage results.
+if args.quiet: sys.exit(0)
+if not args.get_json:
+    print("\nGenerated inputs")
+    for inputs in conbyte.global_utils.engine.input_sets:
+        print(inputs)
+    if len(conbyte.global_utils.engine.error_sets) > 0: print("\nError inputs")
+    for inputs in conbyte.global_utils.engine.error_sets:
+        print(inputs)
+    conbyte.global_utils.engine.print_coverage()
+else:
+    print(conbyte.global_utils.engine.result_to_json())
+print(conbyte.global_utils.engine.in_ret_sets)
+###############################################################################

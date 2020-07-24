@@ -25,10 +25,10 @@ declare -A arr
 # arr["test/targets/regex.py"]='["007 James Bond"]' # OK
 # --------------------------------------------------------------------
 # arr["test/targets/leetcode/add_digits.py"]=[0] # OK
-arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[]] # OK
+# arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[]] # OK
 # arr["test/targets/leetcode/fraction_to_decimal.py"]=[-50,8] # OK
 # arr["test/targets/leetcode/isLongPressedName.py"]='["",""]' # OK
-# arr["test/targets/leetcode/numDecodings.py"]='[""]' # OK
+arr["test/targets/leetcode/numDecodings.py"]='[""]' # OK
 # arr["test/targets/leetcode/restoreIpAddresses.py"]='["25525511135"]' # OK
 # arr["test/targets/leetcode/reverseCheck.py"]=[0] # OK
 # arr["test/targets/leetcode/substring.py"]='[""]' # OK
@@ -58,12 +58,12 @@ arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[]] # OK
 for key in ${!arr[@]}; do
     echo "============== current testcase =============:" ${key} ${arr[${key}]}
     if [ "${key}" = "target_int/leetcode_int/add_binary.py" ]; then
-        ./py-conbyte.py -s cvc4 -m 30 -t 3 --input "${arr[${key}]}" ${key} --ss
+        ./py-conbyte.py ${key} "${arr[${key}]}" -s cvc4 -m 30 -t 3 --ss
     elif [ "${key}" = "target_int/lib_int/datetime__parse_hh_mm_ss_ff.py" ]; then
-        ./py-conbyte.py -s cvc4 -m 40 -t 3 --input "${arr[${key}]}" ${key}
+        ./py-conbyte.py ${key} "${arr[${key}]}" -s cvc4 -m 40 -t 3
     elif [ "${key}" = "target_int/leetcode_int/addStrings.py" ]; then
-        ./py-conbyte.py -s cvc4 -m 50 -t 3 --input "${arr[${key}]}" ${key}
+        ./py-conbyte.py ${key} "${arr[${key}]}" -s cvc4 -m 50 -t 3
     else
-        ./py-conbyte.py -s cvc4 -m 30 -t 3 --input "${arr[${key}]}" ${key}
+        ./py-conbyte.py ${key} "${arr[${key}]}" -s cvc4 -m 30 -t 3
     fi
 done

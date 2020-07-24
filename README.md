@@ -59,35 +59,31 @@ $ pip install -r requirements.txt
 
 ## Usage
 ```
-Usage: py-conbyte.py [options] <path to (target).py file>
+usage: py-conbyte.py [-h] [-e ENTRY] [-m ITERATION] [-t TIMEOUT] [--ss] [-d] [-q QUERY] [--quiet] [-l LOGFILE] [--json] [-s SOLVER] path_to_target_file.py input_args
 
-Options:
+positional arguments:
+  path_to_target_file.py
+                        specify the target file
+  input_args            specify the input arguments
+
+optional arguments:
   -h, --help            show this help message and exit
-
-  Exploration Setup:
-    -i INPUTS, --input=INPUTS
-                        Specify initial inputs from the command line argument
-    --stdin             Read inputs from stdin instead of a file
-    -e ENTRY, --entry=ENTRY
-                        Specify entry point, if different than (target).py
-    -m ITERATION, --max_iter=ITERATION
-                        Specify max iterations
-    -t TIMEOUT, --timeout=TIMEOUT
-                        Specify solver timeout (default = 1sec)
-
-  Logging Configuration:
-    -d, --debug         Enable debug logging
-    --extract           Extract bytecode only
-    -q QUERY, --query=QUERY
-                        Store smt queries
-    --quiet             No logging
-    -l LOGFILE, --logfile=LOGFILE
-                        Store log
-    --json              Print JSON format to stdout
-
-  Solver Configuration:
-    -s SOLVER_TYPE, --solver=SOLVER_TYPE
-                        Solver=[z3seq, z3str, trauc, cvc4], default to z3seq
+  -e ENTRY, --entry ENTRY
+                        specify entry point, if different from path_to_target_file.py
+  -m ITERATION, --max_iter ITERATION
+                        specify max iterations
+  -t TIMEOUT, --timeout TIMEOUT
+                        specify solver timeout (default = 1sec)
+  --ss                  special constraint for add_binays.py
+  -d, --debug           enable debug logging
+  -q QUERY, --query QUERY
+                        store smt queries
+  --quiet               no logging
+  -l LOGFILE, --logfile LOGFILE
+                        store log
+  --json                print JSON format to stdout
+  -s SOLVER, --solver SOLVER
+                        solver=[z3seq, z3str, trauc, cvc4], default to z3
 ```
 
 Example:

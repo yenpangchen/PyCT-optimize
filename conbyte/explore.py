@@ -9,10 +9,6 @@ import coverage
 import multiprocessing
 from func_timeout import func_timeout, FunctionTimedOut
 
-from conbyte.concolic_types.concolic_int import ConcolicInt
-from conbyte.concolic_types.concolic_str import ConcolicStr
-from conbyte.concolic_types.concolic_list import ConcolicList
-
 from .utils import Queue
 from .path_to_constraint import PathToConstraint
 from .solver import Solver
@@ -56,6 +52,8 @@ class ExplorationEngine:
             # The case of 0 constraints should have produced a trivial solution, however our program
             # here doesn't do this, so we need one additional branch to achieve this goal.
 
+            import builtins
+            builtins.len = lambda x: x.__len__()
             import conbyte.concolic_downcaster
             assert isinstance(self.t_module, str)
             self.t_module = __import__(self.t_module)
@@ -109,6 +107,9 @@ class ExplorationEngine:
 
 
     def _one_execution(self, init_vars, expected_path=None):
+        from conbyte.concolic_types.concolic_int import ConcolicInt
+        from conbyte.concolic_types.concolic_str import ConcolicStr
+        from conbyte.concolic_types.concolic_list import ConcolicList
         conbyte.global_utils.extend_vars = dict()
         conbyte.global_utils.extend_queries = []
         conbyte.global_utils.num_of_extend_vars = 0
@@ -176,7 +177,7 @@ class ExplorationEngine:
 
     def print_coverage(self):
         total_lines, executed_lines, missing_lines, executed_branches = self.coverage_statistics()
-        print("Line coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0))
+        print("\nLine coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0))
         print("Branch coverage {}".format(executed_branches))
         if len(missing_lines) > 0:
             print("Missing lines:")
