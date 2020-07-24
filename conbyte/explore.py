@@ -7,9 +7,9 @@ import json
 import copy
 import coverage
 import multiprocessing
+import queue
 from func_timeout import func_timeout, FunctionTimedOut
 
-from .utils import Queue
 from .path_to_constraint import PathToConstraint
 from .solver import Solver
 
@@ -28,7 +28,7 @@ class ExplorationEngine:
         else:
             self.entry = entry
 
-        self.constraints_to_solve = Queue() # 指的是還沒、但即將被 solver 解出 model 的 constraint
+        self.constraints_to_solve = queue.Queue() # 指的是還沒、但即將被 solver 解出 model 的 constraint
         self.input_sets = []
         self.error_sets = []
         self.in_ret_sets = dict()
@@ -63,8 +63,8 @@ class ExplorationEngine:
             iterations = 1
 
             # TODO: Currently single thread
-            while iterations < max_iterations and not self.constraints_to_solve.is_empty():
-                constraint = self.constraints_to_solve.pop()
+            while iterations < max_iterations and not self.constraints_to_solve.empty():
+                constraint = self.constraints_to_solve.get()
                 model = self.solver.find_constraint_model(constraint, timeout)
                 log.debug("Solving: %s" % constraint)
 

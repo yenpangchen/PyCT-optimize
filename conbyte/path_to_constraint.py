@@ -47,7 +47,7 @@ class PathToConstraint:
             conbyte.global_utils.extend_vars = dict()
             conbyte.global_utils.extend_queries = []
             # we add the new constraint to the queue of the engine for later processing
-            conbyte.global_utils.engine.constraints_to_solve.push(cneg) # dict(), [])) #new_constraints.append(cneg) #.add_constraint(cneg)
+            conbyte.global_utils.engine.constraints_to_solve.put(cneg) # dict(), [])) #new_constraints.append(cneg) #.add_constraint(cneg)
             log.debug("Cur constraint %s" % c)
             log.debug("Add constraint %s" % cneg)
         else:
