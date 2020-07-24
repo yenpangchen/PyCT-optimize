@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-import logging, os, sys
-from argparse import ArgumentParser
+import argparse, logging, os, sys
+import conbyte.explore
 import conbyte.global_utils
-from conbyte.explore import ExplorationEngine
 
 # Our main program starts now!
-parser = ArgumentParser()
+parser = argparse.ArgumentParser()
 
 # Setup
 parser.add_argument("file", metavar="path_to_target_file.py", help="specify the target file")
@@ -58,10 +57,9 @@ else:
 #####################################################################################################################
 # This section creates an explorer instance and starts our analysis procedure!
 base_name = os.path.basename(args.file)
-filename = os.path.abspath(args.file) # the 2nd argument in the following constructor
-path = filename.replace(base_name, "") # the 1st argument in the following constructor
-module = base_name.replace(".py", "") # the 3rd argument in the following constructor
-conbyte.global_utils.engine = ExplorationEngine(path, filename, module, args.entry, args.query, args.solver, args.ss)
+sys.path.append(os.path.abspath(args.file).replace(base_name, "")) # filename = os.path.abspath(args.file)
+module = base_name.replace(".py", "") # the 1st argument in the following constructor
+conbyte.global_utils.engine = conbyte.explore.ExplorationEngine(module, args.entry, args.query, args.solver, args.ss)
 conbyte.global_utils.engine.explore(eval(args.inputs), args.iteration, args.timeout)
 #####################################################################################################################
 

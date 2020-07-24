@@ -16,9 +16,10 @@ class Solver(object):
     def __init__(self, query_store, solver_type, ss):
         self.query = None
         self.asserts = None
-        self.prefix = None
-        self.ending = None
         self.variables = dict()
+        if query_store is not None:
+            if not os.path.isdir(query_store):
+                raise IOError("Query folder {} not found".format(query_store))
         self.query_store = query_store
         self.solver_type = solver_type
         self.ss = ss
@@ -30,23 +31,15 @@ class Solver(object):
         elif solver_type == "z3str":
             self.cmd = "z3"
             for option in self.options:
-                self.cmd = self.cmd + " " + self.options[option]
+                self.cmd += " " + self.options[option]
         elif solver_type == "trauc":
             self.cmd = "trauc"
             for option in self.options:
-                self.cmd = self.cmd + " " + self.options[option]
+                self.cmd += " " + self.options[option]
         elif solver_type == "cvc4":
             self.cmd = "cvc4"
             for option in self.cvc_options:
-                self.cmd = self.cmd + " " + option
-
-
-
-    def set_variables(self, variables):
-        self.varables = variables
-        for v in variables:
-            self.variables[v] = variables[v]
-
+                self.cmd += " " + option
 
     def find_constraint_model(self, constraint, timeout=None):
         start_time = time.process_time()
