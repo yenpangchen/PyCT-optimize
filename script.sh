@@ -12,7 +12,7 @@ declare -A arr
 # arr["test/loop.py"]=[0,0] # OK
 # arr["test/while_loop.py"]=[0,0] # OK
 # --------------------------------------------------------------------
-# arr["test/strings/string_find.py"]='["",""]' # OK
+arr["test/strings/string_find.py"]='["",""]' # OK
 # arr["test/strings/string_in.py"]='["",""]' # OK
 # arr["test/strings/string_iter.py"]='["",""]' # OK
 # arr["test/strings/string_others.py"]='["",""]' # OK
@@ -25,7 +25,7 @@ declare -A arr
 # arr["test/targets/regex.py"]='["007 James Bond"]' # OK
 # --------------------------------------------------------------------
 # arr["test/targets/leetcode/add_digits.py"]=[0] # OK
-# arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[]] # OK
+arr["test/targets/leetcode/findUnsortedSubarray.py"]=[[]] # OK
 # arr["test/targets/leetcode/fraction_to_decimal.py"]=[-50,8] # OK
 # arr["test/targets/leetcode/isLongPressedName.py"]='["",""]' # OK
 arr["test/targets/leetcode/numDecodings.py"]='[""]' # OK

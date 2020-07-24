@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse, logging, os, sys
-import conbyte.explore
-import conbyte.global_utils
+import conbyte.explore, conbyte.global_utils
 
 # Our main program starts now!
 parser = argparse.ArgumentParser()
@@ -60,7 +59,7 @@ base_name = os.path.basename(args.file)
 sys.path.append(os.path.abspath(args.file).replace(base_name, "")) # filename = os.path.abspath(args.file)
 module = base_name.replace(".py", "") # the 1st argument in the following constructor
 conbyte.global_utils.engine = conbyte.explore.ExplorationEngine(module, args.entry, args.query, args.solver, args.ss)
-conbyte.global_utils.engine.explore(eval(args.inputs), args.iteration, args.timeout)
+print("\n# of iterations:", conbyte.global_utils.engine.explore(eval(args.inputs), args.iteration, args.timeout))
 #####################################################################################################################
 
 ###############################################################################
@@ -75,6 +74,8 @@ if not args.get_json:
         print(inputs)
     conbyte.global_utils.engine.print_coverage()
 else:
-    print(conbyte.global_utils.engine.result_to_json())
-print(conbyte.global_utils.engine.in_ret_sets)
+    print(conbyte.global_utils.engine.result_to_json()); print()
+result_list = list(zip(conbyte.global_utils.engine.input_sets, conbyte.global_utils.engine.result_sets))
+print("# of input vectors:", len(result_list))
+print(result_list); print()
 ###############################################################################
