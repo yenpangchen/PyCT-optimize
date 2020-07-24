@@ -1,4 +1,3 @@
-from ..utils import *
 from .concolic_bool import *
 from .concolic_int import *
 from conbyte.predicate import Predicate
