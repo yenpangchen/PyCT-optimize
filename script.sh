@@ -12,7 +12,7 @@ declare -A arr
 # arr["test/loop.py"]=[0,0] # OK
 # arr["test/while_loop.py"]=[0,0] # OK
 # --------------------------------------------------------------------
-arr["test/strings/string_find.py"]='["",""]' # OK
+# arr["test/strings/string_find.py"]='["",""]' # OK
 # arr["test/strings/string_in.py"]='["",""]' # OK
 # arr["test/strings/string_iter.py"]='["",""]' # OK
 # arr["test/strings/string_others.py"]='["",""]' # OK
@@ -49,11 +49,11 @@ arr["test/targets/leetcode/numDecodings.py"]='[""]' # OK
 # arr["target_int/lib_int/http_parse_request.py"]='["HTTP/1.0"]' # OK
 # arr["target_int/lib_int/ipaddress__ip_int_from_string.py"]='[""]' # OK (but very slow)
 # arr["target_int/lib_int/nntplib__parse_datetime.py"]='["20190723121212"]' # OK
-# arr["target_int/lib_int/smtpd_parseargs.py"]='["",""]' # OK
+arr["target_int/lib_int/smtpd_parseargs.py"]='["",""]' # OK
 # arr["target_int/lib_int/wsgiref_check_status.py"]='[""]' # OK
 # --------------------------------------------------------------------
 # arr["test/xss/make_server.py"]='[""]'
-# arr["test/temp.py"]=[[0,0,0,0,0]]
+# arr["test/playground/temp.py"]=[[0,0,0,0,0]]
 
 for key in ${!arr[@]}; do
     echo "============== current testcase =============:" ${key} ${arr[${key}]}

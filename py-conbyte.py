@@ -67,15 +67,15 @@ print("\n# of iterations:", conbyte.global_utils.engine.explore(eval(args.inputs
 if args.quiet: sys.exit(0)
 if not args.get_json:
     print("\nGenerated inputs")
-    for inputs in conbyte.global_utils.engine.input_sets:
+    for inputs in conbyte.global_utils.engine.inputs:
         print(inputs)
-    if len(conbyte.global_utils.engine.error_sets) > 0: print("\nError inputs")
-    for inputs in conbyte.global_utils.engine.error_sets:
+    if len(conbyte.global_utils.engine.errors) > 0: print("\nError inputs")
+    for inputs in conbyte.global_utils.engine.errors:
         print(inputs)
     conbyte.global_utils.engine.print_coverage()
 else:
     print(conbyte.global_utils.engine.result_to_json()); print()
-result_list = list(zip(conbyte.global_utils.engine.input_sets, conbyte.global_utils.engine.result_sets))
+result_list = list(zip(conbyte.global_utils.engine.inputs, conbyte.global_utils.engine.results))
 print("# of input vectors:", len(result_list))
 print(result_list); print()
 ###############################################################################

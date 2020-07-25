@@ -34,5 +34,4 @@ runtime/
 .vscode/
 
 # Test environment
-test/temp.py
-test/example.smt2
+test/playground/

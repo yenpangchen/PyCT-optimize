@@ -24,4 +24,5 @@ def numDecodings(s):
                 dp[index] += dp[index - 1]
     return dp[ls - 1]
 
-print(numDecodings("226"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(numDecodings("226"))
