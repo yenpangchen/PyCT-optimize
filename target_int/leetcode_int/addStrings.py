@@ -57,4 +57,5 @@ def addStrings(num1, num2):
     else:
         return False
 
-print(addStrings("923", "123"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(addStrings("923", "123"))

@@ -12,7 +12,6 @@ parser.add_argument("inputs", metavar="input_args", help="specify the input argu
 parser.add_argument("-e", "--entry", dest="entry", action="store", help="specify entry point, if different from path_to_target_file.py", default=None)
 parser.add_argument("-m", "--max_iter", dest="iteration", action="store", help="specify max iterations", type=int, default=50)
 parser.add_argument("-t", "--timeout", dest="timeout", action="store", help="specify solver timeout (default = 1sec)", default=None)
-parser.add_argument("--ss", dest="ss", action="store_true", help="special constraint for add_binary.py", default=None)
 
 # Logging configuration
 parser.add_argument("-d", "--debug", dest='debug', action="store_true", help="enable debug logging")
@@ -39,17 +38,17 @@ if args.debug:
 else:
     log_level = logging.INFO
 if args.logfile is not None:
-    logging.basicConfig(filename=args.logfile, level=log_level,
+    logging.basicConfig(filename=args.logfile, level=log_level, stream=sys.stdout,
                         format='%(asctime)s  %(name)s\t%(levelname)s\t%(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p')
 elif args.quiet:
-    logging.basicConfig(filename="/dev/null")
+    logging.basicConfig(filename="/dev/null", stream=sys.stdout)
 else:
     if args.get_json:
-        logging.basicConfig(filename="/dev/null", level=log_level,
+        logging.basicConfig(filename="/dev/null", level=log_level, stream=sys.stdout,
                             format='  %(name)s\t%(levelname)s\t%(message)s')
     else:
-        logging.basicConfig(level=log_level,
+        logging.basicConfig(level=log_level, stream=sys.stdout,
                             format='  %(name)s\t%(levelname)s\t%(message)s')
 ###################################################################################
 
@@ -58,8 +57,8 @@ else:
 base_name = os.path.basename(args.file)
 sys.path.append(os.path.abspath(args.file).replace(base_name, "")) # filename = os.path.abspath(args.file)
 module = base_name.replace(".py", "") # the 1st argument in the following constructor
-conbyte.global_utils.engine = conbyte.explore.ExplorationEngine(module, args.entry, args.query, args.solver, args.ss)
-print("\n# of iterations:", conbyte.global_utils.engine.explore(eval(args.inputs), args.iteration, args.timeout))
+conbyte.global_utils.engine = conbyte.explore.ExplorationEngine(module, args.entry)
+print("\n# of iterations:", conbyte.global_utils.engine.explore(args.solver, eval(args.inputs), args.iteration, args.timeout, args.query))
 #####################################################################################################################
 
 ###############################################################################
@@ -78,4 +77,5 @@ else:
 result_list = list(zip(conbyte.global_utils.engine.inputs, conbyte.global_utils.engine.results))
 print("# of input vectors:", len(result_list))
 print(result_list); print()
+print(bool(conbyte.global_utils.engine.coverage_statistics()[2]))
 ###############################################################################

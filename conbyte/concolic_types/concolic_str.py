@@ -283,8 +283,11 @@ class ConcolicStr(str):
                 maxsplit -= 1
             else:
                 raise NotImplementedError
-        len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self.expr, sep.expr, sep2.expr]], ['str.len', self.expr]], ['str.len', sep.expr]]]
-        return ConcolicList(ans_list, len_expr=len_expr) # 我們目前先不考慮 maxsplit 的限制
+        if maxsplit == -1:
+            len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self.expr, sep.expr, sep2.expr]], ['str.len', self.expr]], ['str.len', sep.expr]]]
+            return ConcolicList(ans_list, len_expr=len_expr)
+        else:
+            return ConcolicList(ans_list)
 
     def splitlines(self, keepends=False):
         if keepends: raise NotImplementedError

@@ -34,4 +34,5 @@ def email__header_value_parser(value):
 
     return str(major) + "." + str(minor)
 
-print(email__header_value_parser("2.15"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(email__header_value_parser("2.15"))

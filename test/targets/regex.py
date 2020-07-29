@@ -9,4 +9,5 @@ def regex(string):
     return None
 
 # Call our function, passing in our string
-print(regex("007 James Bond"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(regex("007 James Bond"))

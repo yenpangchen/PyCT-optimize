@@ -34,4 +34,5 @@ runtime/
 .vscode/
 
 # Test environment
+script.sh
 test/playground/

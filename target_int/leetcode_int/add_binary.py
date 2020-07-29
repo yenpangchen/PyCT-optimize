@@ -32,4 +32,5 @@ def add_binary(a, b):
         res = '1' + res
     return res
 
-print(add_binary("10111", "111"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(add_binary("10111", "111"))

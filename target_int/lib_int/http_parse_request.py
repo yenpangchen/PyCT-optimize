@@ -26,4 +26,5 @@ def http_parse_request(version):
         return False
     return True
 
-print(http_parse_request("HTTP/1.2"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(http_parse_request("HTTP/1.2"))

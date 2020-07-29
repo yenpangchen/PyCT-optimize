@@ -135,5 +135,5 @@ def ipaddress__ip_int_from_string(ip_str):
         ip_int += num
     return ip_int
 
-
-print(ipaddress__ip_int_from_string("2001:0db8:85a3:0:0:8A2E:0370:7334"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(ipaddress__ip_int_from_string("2001:0db8:85a3:0:0:8A2E:0370:7334"))

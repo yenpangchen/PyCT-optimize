@@ -29,9 +29,9 @@ class Predicate:
     def get_formula(self):
         formula =  self._get_formula(self.expr)
         if self.value:
-            return "(assert " + formula + ")\n"
+            return "(assert " + formula + ")"
         else:
-            return "(assert (not " + formula + "))\n"
+            return "(assert (not " + formula + "))"
 
     @staticmethod
     def _get_formula(expr):

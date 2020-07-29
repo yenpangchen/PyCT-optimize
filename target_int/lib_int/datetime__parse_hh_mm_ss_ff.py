@@ -54,4 +54,5 @@ def datetime__parse_hh_mm_ss_ff(tstr):
 
     return time_comps
 
-print(datetime__parse_hh_mm_ss_ff("12:01:23.123456"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(datetime__parse_hh_mm_ss_ff("12:01:23.123456"))

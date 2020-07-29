@@ -31,6 +31,6 @@ def validWordAbbreviation( word, abbr):
     if pos == len(word):
         return True
     return False
-    
 
-print(validWordAbbreviation("internationalization", "i12iz4n"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(validWordAbbreviation("internationalization", "i12iz4n"))

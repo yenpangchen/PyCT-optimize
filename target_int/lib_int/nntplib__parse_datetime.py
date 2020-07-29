@@ -21,4 +21,5 @@ def nntplib__parse_datetime(date_str, time_str=None):
         year += 1900
     return [year, month, day, hours, minutes, seconds]
 
-print(nntplib__parse_datetime("20190723121212"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(nntplib__parse_datetime("20190723121212"))

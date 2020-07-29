@@ -10,5 +10,6 @@ def ugly_number(num):
             num = int(num / d)
     return num == 1
 
-print(ugly_number(-2147483648)) # pragma: no cover
-print(ugly_number(8))           # pragma: no cover
+if __name__ == '__main__': # pragma: no cover
+    print(ugly_number(-2147483648))
+    print(ugly_number(8))

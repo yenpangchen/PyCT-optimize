@@ -10,7 +10,8 @@ def wsgiref_check_status(status):
         return 0
     if len(status) < 4 or status[3] != ' ':
         return 0
-    
+
     return 1
 
-print(wsgiref_check_status("200 ok"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(wsgiref_check_status("200 ok"))

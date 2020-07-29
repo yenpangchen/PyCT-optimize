@@ -9,6 +9,5 @@ def add_digits(num):
     else:
         return num%9
 
-
-
-print(add_digits(38))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(add_digits(38))

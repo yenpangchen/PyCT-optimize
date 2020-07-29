@@ -5,5 +5,5 @@ def multiplication_or_sum(num1, num2):
   else:
     return num1 +num2
 
-
-print(multiplication_or_sum(10, 20))
+if __name__ == '__main__':   # pragma: no cover
+  print(multiplication_or_sum(10, 20))

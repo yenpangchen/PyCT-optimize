@@ -1,117 +1,69 @@
-import logging
-import time
-import os
-from subprocess import Popen, PIPE, STDOUT
-from hashlib import sha224
-import subprocess
-from string import Template
+import logging, os, string, subprocess, sys
+import conbyte.global_utils
 
 log = logging.getLogger("ct.solver")
 
-class Solver(object):
+class Solver:
     options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
-    cvc_options = ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
-    cnt = 0
+    cnt = 0 # for query_store
 
-    def __init__(self, query_store, solver_type, ss):
-        self.query = None
-        self.asserts = None
-        self.variables = dict()
-        if query_store is not None:
-            if not os.path.isdir(query_store):
-                raise IOError("Query folder {} not found".format(query_store))
-        self.query_store = query_store
-        self.solver_type = solver_type
-        self.ss = ss
-        self.extend_vars = None
-        self.extend_queries = None
-
-        if solver_type == "z3seq":
-            self.cmd = "z3 -in"
-        elif solver_type == "z3str":
-            self.cmd = "z3"
-            for option in self.options:
-                self.cmd += " " + self.options[option]
-        elif solver_type == "trauc":
-            self.cmd = "trauc"
-            for option in self.options:
-                self.cmd += " " + self.options[option]
-        elif solver_type == "cvc4":
-            self.cmd = "cvc4"
-            for option in self.cvc_options:
-                self.cmd += " " + option
-
-    def find_constraint_model(self, constraint, timeout=None):
-        start_time = time.process_time()
-        if "z3" in self.solver_type or  "trauc" in self.solver_type:
-            if timeout is not None:
-                cmd = self.cmd + " -T:" + str(timeout)
-            else:
-                cmd = self.cmd + " -T:1"
+    @staticmethod
+    def find_model_from_constraint(solver, constraint, timeout=1, query_store=None):
+        ######################################################################################
+        # Build the command from the solver type
+        if solver == "z3seq":
+            cmd = "z3 -in".split(' ')
+        elif solver == "z3str":
+            cmd = ["z3"] + self.options.values()
+        elif solver == "trauc":
+            cmd = ["trauc"] + self.options.values()
+        elif solver == "cvc4":
+            cmd = ["cvc4"] + ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
         else:
-            if timeout is not None:
-                cmd = self.cmd + (" --tlimit=%s" % (int(timeout) * 1000))
-            else:
-                cmd = self.cmd + " --tlimit=1000"
-        self.asserts, self.query, self.extend_vars, self.extend_queries = constraint.get_asserts_and_query()
-        model = self._find_model(cmd)
-        endtime = time.process_time()
-        solve_time = endtime - start_time
-        return model
-
-
-    def _find_model(self, cmd):
-
-        formulas = self._build_expr()
-
-        # log.debug("\n" + formulas)
-        if self.query_store is not None:
-            #smthash = sha224(bytes(str(self.query), 'UTF-8')).hexdigest()
-            #filename = os.path.join(self.query_store, "{}.smt2".format(smthash))
-            filename = os.path.join(self.query_store, "{}.smt2".format(self.cnt))
+            raise NotImplementedError
+        ######################################################################################
+        # Build the command from the timeout parameter
+        if isinstance(timeout, str): timeout = int(timeout)
+        assert isinstance(timeout, int)
+        if "z3" in solver or  "trauc" in solver:
+            cmd += ["-T:" + str(timeout)]
+        else:
+            timeout *= 1000
+            cmd += ["--tlimit=" + str(timeout)]
+        ######################################################################################
+        formulas = Solver._build_formulas_from_constraint(constraint)
+        ######################################################################################
+        if query_store is not None:
+            filename = os.path.join(query_store, f"{Solver.cnt}.smt2")
             with open(filename, 'w') as f:
                 f.write(formulas)
-
+        ######################################################################################
+        try: completed_process = subprocess.run(cmd, input=formulas.encode(), capture_output=True)
+        except subprocess.CalledProcessError as e: print(e.output)
+        output = completed_process.stdout.decode()
         model = None
-        try:
-            process = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        except subprocess.CalledProcessError as e:
-            print(e.output)
-
-        # print(formulas)
-        stdout, stderr = process.communicate(input=formulas.encode())
-
-        log.debug("\n" + stdout.decode())
-
-        output = stdout.decode()
-        # if 'unknown' in output:
-        #     print(formulas)
-        #     print(output)
-
         if output is None or len(output) == 0:
             status = "UNKNOWN"
         else:
-            output = output.splitlines()
-            while "error" in output[0]:
-                print('solver error:', output[0])
+            outputs = output.splitlines()
+            if "error" in outputs[0]:
+                print('solver error:', outputs[0])
                 print(formulas)
-                quit()
-                # output.pop(0)
-            status = output[0].lower()
+                sys.exit(1)
+            status = outputs[0].lower()
             if "unsat" in status:
                 status = "UNSAT"
             elif "sat" in status:
                 status = "SAT"
-                model = self._get_model(output[1:])
+                model = Solver._get_model(outputs[1:])
             elif "timeout" in status:
                 status = "TIMEOUT"
-            elif "unknown" in status and "error" not in stdout.decode():
-                model = self._get_model(output[1:])
+            elif "unknown" in status and "error" not in output:
+                model = Solver._get_model(outputs[1:])
             else:
                 status = "UNKNOWN"
-
-        log.debug("%s smt, Result: %s" % (self.cnt, status))
-        self.cnt += 1
+        log.debug("%s smt, Result: %s" % (Solver.cnt, status))
+        Solver.cnt += 1
         return model
 
     ########################################################
@@ -120,7 +72,8 @@ class Solver(object):
     # 2. (list (store ((as const (Array Int Int)) 0) 2 (- 2)) 1)
     # 3. (list ((as const (Array Int Int)) 0) 0)
     ########################################################
-    def _get_list_of_int(self, expr):
+    @staticmethod
+    def _get_list_of_int(expr):
         ans_dict = dict()
         ans_default = None
         ans_len = None
@@ -135,7 +88,7 @@ class Solver(object):
                 expr = expr[1:-1] # take away '(' and ')'
                 ans_default = int(expr.split(' ')[-1])
                 break
-            elif expr.startswith('(store ') and expr.endswith(')'):
+            if expr.startswith('(store ') and expr.endswith(')'):
                 expr = expr[7:-1] # take away '(store ' and ')'
                 # Ex1: (...) 1 (- 1)
                 # Ex2: (...) 1 20
@@ -161,7 +114,8 @@ class Solver(object):
     # Here are examples of expressions of lists of strings.
     # 1. (list (store (store ((as const (Array Int String)) "") 0 "1""\\2) 3") 1 "45 6") 2)
     ########################################################
-    def _get_list_of_str(self, expr):
+    @staticmethod
+    def _get_list_of_str(expr):
         ans_dict = dict()
         ans_default = None
         ans_len = None
@@ -176,7 +130,7 @@ class Solver(object):
                 expr = expr[1:-1] # take away '(' and ')'
                 ans_default = expr.split(' ')[-1]
                 break
-            elif expr.startswith('(store ') and expr.endswith(')'):
+            if expr.startswith('(store ') and expr.endswith(')'):
                 expr = expr[7:-1] # take away '(store ' and ')'
                 # Ex1: (......) 0 "1\\2) 3"
                 # Ex2: (......) 0 "1""\\2) 3"
@@ -185,7 +139,7 @@ class Solver(object):
                 i = -1
                 while len(temp[i]) == 0:
                     i -= 2
-                value = '"'.join(temp[i+1:]).replace('""','"')
+                value = '"'.join(temp[i+1:]).replace('""', '"')
                 key = int(temp[i].split(' ')[-2])
                 expr = ' '.join('"'.join(temp[:i+1]).split(' ')[:-2])
                 ans_dict[key] = value
@@ -199,24 +153,26 @@ class Solver(object):
                 ans_list[key] = value
         return ans_list
 
-    def _get_model(self, models):
+    @staticmethod
+    def _get_model(models):
         model = dict()
         for line in models:
+            # print('LINE', line)
             assert line.startswith('((') and line.endswith('))')
             name, value = line[2:-2].split(" ", 1)
-            if self.variables[name] == "Int":
+            if conbyte.global_utils.engine.var_to_types[name] == "Int":
                 if "(" in value:
                     value = -int(value.replace("(", "").replace(")", "").split(" ")[1])
                 else:
                     value = int(value)
-            elif self.variables[name] == "String":
+            elif conbyte.global_utils.engine.var_to_types[name] == "String":
                 assert value.startswith('"') and value.endswith('"')
                 value = value[1:-1] # .replace("\"", "", 1).replace("\"", "", -1)
                 value = value.replace('""', '"')
-            elif self.variables[name] == "ListOfInt":
-                value = self._get_list_of_int(value)
-            elif self.variables[name] == "ListOfStr":
-                value = self._get_list_of_str(value)
+            elif conbyte.global_utils.engine.var_to_types[name] == "ListOfInt":
+                value = Solver._get_list_of_int(value)
+            elif conbyte.global_utils.engine.var_to_types[name] == "ListOfStr":
+                value = Solver._get_list_of_str(value)
             else:
                 raise NotImplementedError
 
@@ -229,42 +185,20 @@ class Solver(object):
                 model[name] = value
         return model
 
-
-    def _build_expr(self):
-        f_template = Template("""
-$declarevars
-
-$query
-
-(check-sat)
-
-$getvars
-""")
+    @staticmethod
+    def _build_formulas_from_constraint(constraint):
+        asserts, query, extend_vars, extend_queries = constraint.get_asserts_and_query()
         assignments = dict()
-        assignments['declarevars'] = "\n"
-        assignments['declarevars'] += "(declare-datatypes ((ListOfInt 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
+        assignments['declarevars'] = "(declare-datatypes ((ListOfInt 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
         assignments['declarevars'] += "(declare-datatypes ((ListOfStr 0)) (((list (array (Array Int String)) (__len__ Int)))))\n"
-
-        for (name, var) in self.variables.items():
-            # if var != "List":
-            assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
+        for (name, var) in conbyte.global_utils.engine.var_to_types.items():
+            assignments['declarevars'] += f"(declare-fun {name} () {var})\n"
             if var.startswith("List"):
-                assignments['declarevars'] += "(assert (>= (__len__ {}) 0))\n".format(name)
-
-        for (name, var) in self.extend_vars.items():
-            assignments['declarevars'] += "(declare-fun {} () {})\n".format(name, var)
-
-        assignments['query'] = "".join(assertion.get_formula() for assertion in self.asserts)
-        assignments['query'] += self.query.get_formula()
-        if self.ss:
-            assignments['query'] += "(assert (str.in.re a (re.+ (re.range \"0\" \"1\"))))\n"
-            assignments['query'] += "(assert (str.in.re b (re.+ (re.range \"0\" \"1\"))))\n"
-
-        for query in self.extend_queries:
-            assignments['query'] += "%s\n" % query
-
-        assignments['getvars'] = "\n"
-        for name, var in self.variables.items():
-            # if var != "List":
-            assignments['getvars'] += "(get-value ({}))\n".format(name)
-        return f_template.substitute(assignments).strip()
+                assignments['declarevars'] += f"(assert (>= (__len__ {name}) 0))\n"
+        for (name, var) in extend_vars.items():
+            assignments['declarevars'] += f"(declare-fun {name} () {var})\n"
+        assignments['query'] = "\n".join(assertion.get_formula() for assertion in asserts)
+        assignments['query'] += '\n' + query.get_formula() + '\n'
+        assignments['query'] += "\n".join(extend_queries)
+        assignments['getvars'] = "\n".join(f"(get-value ({name}))" for name in conbyte.global_utils.engine.var_to_types.keys())
+        return string.Template("\n$declarevars\n$query\n(check-sat)\n$getvars").substitute(assignments).strip()

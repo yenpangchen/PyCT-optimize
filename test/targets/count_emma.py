@@ -9,4 +9,5 @@ def count_emma(statement):
     # count += statement[i:i+4] == 'Emma'
   return count
 
-print(count_emma("Emma is good developer. Emma is aslo a writer"))  # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
+  print(count_emma("Emma is good developer. Emma is aslo a writer"))

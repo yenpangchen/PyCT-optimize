@@ -39,6 +39,5 @@ def smtpd_parseargs(arg1, arg2):
     else:
         return 2
 
-
-
-print(smtpd_parseargs("localhost:8025", "localhost:25"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(smtpd_parseargs("localhost:8025", "localhost:25"))

@@ -25,4 +25,5 @@ def isLongPressedName(name, typed):
 
     return True
 
-print(isLongPressedName('Foolyou', 'FFoolyouu')) # pragma: no cover
+if __name__ == '__main__': # pragma: no cover
+    print(isLongPressedName('Foolyou', 'FFoolyouu'))

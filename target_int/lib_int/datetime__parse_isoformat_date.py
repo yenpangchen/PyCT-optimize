@@ -24,4 +24,5 @@ def datetime__parse_isoformat_date(dtstr):
 
     return [year, month, day]
 
-print(datetime__parse_isoformat_date("2019-07-19"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(datetime__parse_isoformat_date("2019-07-19"))

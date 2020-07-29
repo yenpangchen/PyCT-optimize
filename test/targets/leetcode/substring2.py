@@ -25,4 +25,5 @@ def substring2(s: str) -> int:
     else:
         return max_len
 
-print(substring2('quiaaaaaaaaaac')) # pragma: no cover
+if __name__ == '__main__': # pragma: no cover
+    print(substring2('quiaaaaaaaaaac'))

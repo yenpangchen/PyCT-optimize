@@ -107,4 +107,5 @@ def email__parsedate_tz(data):
 
     return [yy, mm, dd, thh, tmm, tss, 0, 1, -1]
 
-print(email__parsedate_tz("Mon, 16 Nov 2009 13:32:02 +0100"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(email__parsedate_tz("Mon, 16 Nov 2009 13:32:02 +0100"))

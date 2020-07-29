@@ -24,5 +24,5 @@ def substring(s: str) -> int:
     
     return max_len
 
-
-print(substring("oi"))  # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
+    print(substring("oi"))

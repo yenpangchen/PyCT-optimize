@@ -11,14 +11,20 @@ Classes:
 """
 
 class ConcolicList(list):
-    def __init__(self, value, expr=None, len_expr=None):
-        import conbyte.global_utils
-        super().__init__(value)
+    def __init__(self, value, expr=None, len_expr=None, ctype=None):
         from .concolic_str import ConcolicStr
-        types = ['Int', int, 0, 'String', str, '""']
-        if len(value) == 0 or isinstance(value[0], types[1]): t = 0
-        elif isinstance(value[0], types[4]): t = 3
-        else: raise NotImplementedError
+        import conbyte.global_utils
+        assert isinstance(value, list)
+        super().__init__(value)
+        # types = ['Int', int, 0, 'String', str, '""']
+        # if len(value) == 0:
+        #     if ctype == 'ListOfInt': t = 0
+        #     elif ctype == 'ListOfStr': t = 3
+        #     else: raise NotImplementedError
+        # elif isinstance(value[0], types[1]): t = 0
+        # elif isinstance(value[0], types[4]): t = 3
+        # else: raise NotImplementedError
+        self.expr = None
         if expr is not None:
             self.expr = expr
         else:
@@ -28,39 +34,56 @@ class ConcolicList(list):
             # 2. [2] -> (list (store ((as const (Array Int Int)) 0) 0 2) 1)
             # 3. [-2, 4] -> (list (store (store ((as const (Array Int Int)) 0) 0 (- 2)) 1 4) 2)
             ###########
-            self.expr = [['as', 'const', ['Array', 'Int', types[t]]], types[t+2]]
-            for i, val in enumerate(value):
-                assert isinstance(val, types[t+1])
-                from conbyte.global_utils import upgrade
-                val = upgrade(val)
-                self.expr = ['store', self.expr, i, val.expr]
-            if len_expr is None:
-                self.expr = ['list', self.expr, len(value)]
-            else:
-                self.expr = ['list', self.expr, len_expr]
+            if len(value) > 0: # only construct expressions for non-empty lists
+                types = ['Int', ConcolicInt, 0, 'String', ConcolicStr, '""']
+                if isinstance(value[0], types[1]): t = 0
+                elif isinstance(value[0], types[4]): t = 3
+                else: return # raise NotImplementedError
+                self.expr = [['as', 'const', ['Array', 'Int', types[t]]], types[t+2]]
+                for (i, val) in enumerate(value):
+                    assert isinstance(val, types[t+1])
+                    val = conbyte.global_utils.upgrade(val)
+                    self.expr = ['store', self.expr, i, val.expr]
+                if len_expr is None:
+                    self.expr = ['list', self.expr, len(value)]
+                else:
+                    self.expr = ['list', self.expr, len_expr]
         if isinstance(self.expr, list):
             if t == 0:
                 self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
             else: # t == 3
                 self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
-        log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
+        # log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
+
+    # 這個 method 似乎冥冥之中已經被加入 branch 了... 但我不知道原因！！！
+    # def __contains__(self, element):
+    #     raise NotImplementedError
 
     def append(self, element):
-        import conbyte.global_utils
-        element = conbyte.global_utils.upgrade(element)
         super().append(element)
         if not hasattr(element, 'expr'):
-            raise NotImplementedError
+            return #raise NotImplementedError
         else:
-            self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
-            if isinstance(element, int):
-                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
-            elif isinstance(element, str):
-                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
-            else:
-                raise NotImplementedError
+            if self.expr:
+                self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
+                if isinstance(element, int):
+                    self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
+                elif isinstance(element, str):
+                    self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
+                else:
+                    raise NotImplementedError
+            else: # append to an empty list
+                if isinstance(element, int):
+                    self.expr = [['as', 'const', ['Array', 'Int', 'Int']], 0]
+                elif isinstance(element, str):
+                    self.expr = [['as', 'const', ['Array', 'Int', 'String']], '""']
+                else:
+                    raise NotImplementedError
+                self.expr = ['store', self.expr, 0, element.expr]
+                self.expr = ['list', self.expr, 1]
+
         # self.size += 1
-        # log.debug("  List append: %s" % element)
+        log.debug("  List append: %s" % element)
 
     # def get_index(self, index=0):
     #     if isinstance(index, ConcolicInt):
@@ -118,26 +141,39 @@ class ConcolicList(list):
     #     return self
 
     def __len__(self):
-        return ConcolicInt(super().__len__(), ['__len__', self.expr])
+        if self.expr:
+            return ConcolicInt(super().__len__(), ['__len__', self.expr])
+        else:
+            return ConcolicInt(super().__len__())
 
     def __iter__(self):
-        index = ConcolicInt(0)
-        while index < self.__len__():
-            result = self.__getitem__(index)
-            index += ConcolicInt(1)
-            yield result
+        if self.expr:
+            index = ConcolicInt(0)
+            while index < self.__len__():
+                result = self.__getitem__(index)
+                index += ConcolicInt(1)
+                yield result
+        else:
+            index = 0
+            while index < super().__len__():
+                result = super().__getitem__(index)
+                index += 1
+                yield result
 
     def __getitem__(self, key):
-        from .concolic_str import ConcolicStr
-        if not isinstance(key, ConcolicInt):
-            if isinstance(key, slice): # TODO: SMT 先暫不處理 slice 的 type
-                return ConcolicList(super().__getitem__(key))
-            key = ConcolicInt(key)
-        if key < 0: key += self.__len__()
-        if isinstance(super().__getitem__(key), int):
-            return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+        if self.expr:
+            from .concolic_str import ConcolicStr
+            if not isinstance(key, ConcolicInt):
+                if isinstance(key, slice): # TODO: SMT 先暫不處理 slice 的 type
+                    return ConcolicList(super().__getitem__(key))
+                key = ConcolicInt(key)
+            if key < 0: key += self.__len__()
+            if isinstance(super().__getitem__(key), int):
+                return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+            else:
+                return ConcolicStr(str.__str__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
         else:
-            return ConcolicStr(str.__str__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+            return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
@@ -170,7 +206,7 @@ class ConcolicList(list):
     #     # self.size += 1
     #     # if isinstance(index, ConcolicInt):
     #         # index = index.value
-    #     self.value.insert(index, value)
+    #     super().insert(index, value)
 
     def do_del(self, index):
         value = index.value

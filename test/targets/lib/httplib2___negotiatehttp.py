@@ -16,4 +16,5 @@ def httplib2___negotiatehttp(recv):
 
     return "Continue"
 
-print(httplib2___negotiatehttp(["HTTP/1.1 200 Pa", "rtial content\nDate: Wed, 15 ", "Nov 1995 06:25:24 GMT\r\n\r\n"]))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(httplib2___negotiatehttp(["HTTP/1.1 200 Pa", "rtial content\nDate: Wed, 15 ", "Nov 1995 06:25:24 GMT\r\n\r\n"]))

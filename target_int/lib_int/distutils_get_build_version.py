@@ -29,5 +29,5 @@ def distutils_get_build_version(version):
     # else we don't know what version of the compiler this is
     return None
 
-
-print(distutils_get_build_version("MSC v.1212 abc"))   # pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
+    print(distutils_get_build_version("MSC v.1212 abc"))

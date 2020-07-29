@@ -9,5 +9,6 @@ def reverseCheck(number):
     return True
   else:
     return False
-    
-print(reverseCheck(12121))    # pragma: no cover
+
+if __name__ == '__main__':    # pragma: no cover
+  print(reverseCheck(12121))
