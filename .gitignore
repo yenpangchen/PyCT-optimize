@@ -2,8 +2,6 @@
 ## Python
 #############
 
-test.py
-
 *.py[co]
 
 # pyenv
