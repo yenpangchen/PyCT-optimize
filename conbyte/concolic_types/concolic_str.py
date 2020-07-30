@@ -263,7 +263,7 @@ class ConcolicStr(str):
             res = str.__str__(self).split(sep, maxsplit) #raise NotImplementedError
             for i in range(len(res)):
                 res[i] = ConcolicStr(res[i])
-            return ConcolicList(res)
+            return res #ConcolicList(res)
         if not isinstance(sep, ConcolicStr): sep = ConcolicStr(sep)
         sep2 = sep + sep
         sep_len = sep.__len__() # a constant
@@ -283,11 +283,12 @@ class ConcolicStr(str):
                 maxsplit -= 1
             else:
                 raise NotImplementedError
-        if maxsplit == -1:
-            len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self.expr, sep.expr, sep2.expr]], ['str.len', self.expr]], ['str.len', sep.expr]]]
-            return ConcolicList(ans_list, len_expr=len_expr)
-        else:
-            return ConcolicList(ans_list)
+        return ans_list
+        # if maxsplit == -1:
+        #     len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self.expr, sep.expr, sep2.expr]], ['str.len', self.expr]], ['str.len', sep.expr]]]
+        #     return ConcolicList(ans_list, len_expr=len_expr)
+        # else:
+        #     return ConcolicList(ans_list)
 
     def splitlines(self, keepends=False):
         if keepends: raise NotImplementedError
