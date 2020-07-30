@@ -71,7 +71,7 @@ class TestEndpoints(unittest.TestCase):
                     sys.path.append(os.path.abspath(fi[0]).replace(base_name, ""))
                     module = base_name.replace(".py", "") # the 1st argument in the following constructor
                     conbyte.global_utils.engine = conbyte.explore.ExplorationEngine(module, None)
-                    conbyte.global_utils.engine.explore('cvc4', fi[1], 30, 5)
+                    conbyte.global_utils.engine.explore('cvc4', fi[1], 100, 5)
                     _, _, missing_lines, _ = conbyte.global_utils.engine.coverage_statistics()
                     conbyte.global_utils.engine.coverage_data.erase()
                     child.send(missing_lines)
