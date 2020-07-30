@@ -13,4 +13,7 @@ def make_server(title):
     serv.set_server_name("DocXMLRPCServer Test Docs")
     serv.set_server_documentation("This is an XML-RPC server's documentation")
     generated = serv.generate_html_documentation()
-    return '<script>' in generated
+    if '<script>' in generated:
+        return 'dangerous'
+    else:
+        return 'safe'

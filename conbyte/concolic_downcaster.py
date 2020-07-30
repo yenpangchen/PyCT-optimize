@@ -48,15 +48,12 @@ if 'added' not in locals():
                 #if node.func.id == 'type':
                 #    node.func.id = '_custom_type'
             return node
-        def visit_List(self, node: List):
-            for i in range(len(node.elts)):
-                node.elts[i] = ConcolicUpgrader2().visit(node.elts[i])
-            # if len(node.elts) > 0 and (isinstance(node.elts[0], int) or isinstance(node.elts[0], str)):
-            return Call(func=Name(id='ConcolicList', ctx=Load()),
-                        args=[node],
-                        keywords=[])
-            # else:
-            #     return node
+        # def visit_List(self, node: List):
+        #     for i in range(len(node.elts)):
+        #         node.elts[i] = ConcolicUpgrader2().visit(node.elts[i])
+        #     return Call(func=Name(id='ConcolicList', ctx=Load()),
+        #                 args=[node],
+        #                 keywords=[])
         def visit_Assign(self, node):
             node.value = ConcolicUpgrader2().visit(node.value)
             return node

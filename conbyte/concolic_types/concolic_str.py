@@ -22,7 +22,7 @@ class ConcolicStr(str):
                     value_new += '\\u{' + str(hex(ord(ch)))[2:] + '}'
                 else:
                     value_new += ch
-            value = "\"" + value_new + "\"" # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
+            value = '"' + value_new + '"' # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
             self.expr = value
         log.debug("  ConStr, value: %s, expr: %s" % (self, self.expr))
 
@@ -291,10 +291,10 @@ class ConcolicStr(str):
 
     def splitlines(self, keepends=False):
         if keepends: raise NotImplementedError
-        if "\\r\\n" in str.__str__(self): #.value:
-            return self.split("\\r\\n")
+        if "\r\n" in str.__str__(self): #.value:
+            return self.split("\r\n")
         else:
-            return self.split("\\n")
+            return self.split("\n")
 
     def startswith(self, prefix, start=None, end=None): # default arguments are not checked yet
         if start is not None or end is not None: raise NotImplementedError

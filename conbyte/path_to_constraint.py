@@ -30,5 +30,6 @@ class PathToConstraint:
         else:
             conbyte.global_utils.engine.extend_vars = dict()
             conbyte.global_utils.engine.extend_queries = []
+            conbyte.global_utils.engine.num_of_extend_vars = 0
             assert c is not None and cneg is not None
         self.current_constraint = c # 把當前的 constraint 移到我們要的 child

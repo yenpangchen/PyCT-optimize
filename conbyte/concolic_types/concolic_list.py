@@ -53,16 +53,117 @@ class ConcolicList(list):
                 self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
             else: # t == 3
                 self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
-        # log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
+        log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
+
+    def __add__(self, other):
+        raise NotImplementedError
+        if isinstance(other, list):
+            return super().__add__(list(other))
+        else:
+            raise NotImplementedError
 
     # 這個 method 似乎冥冥之中已經被加入 branch 了... 但我不知道原因！！！
     # def __contains__(self, element):
     #     raise NotImplementedError
 
+    def __delitem__(self, key):
+        raise NotImplementedError
+
+    # def __eq__(self, other):
+    #     raise NotImplementedError
+
+    # def __ge__(self, other):
+    #     raise NotImplementedError
+
+    # def __getattribute__(self, name):
+    #     raise NotImplementedError
+
+    def __getitem__(self, key):
+        if self.expr:
+            from .concolic_str import ConcolicStr
+            if not isinstance(key, ConcolicInt):
+                if isinstance(key, slice): # TODO: SMT 先暫不處理 slice 的 type
+                    return ConcolicList(super().__getitem__(key))
+                key = ConcolicInt(key)
+            if key < 0: key += self.__len__()
+            if isinstance(super().__getitem__(key), int):
+                return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+            else:
+                return ConcolicStr(str.__str__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+        else:
+            return super().__getitem__(key)
+
+    # def __gt__(self, other):
+    #     raise NotImplementedError
+
+    def __iadd__(self, other):
+        raise NotImplementedError
+
+    def __imul__(self, other):
+        raise NotImplementedError
+
+    def __iter__(self):
+        if self.expr:
+            index = ConcolicInt(0)
+            while index < self.__len__():
+                result = self.__getitem__(index)
+                index += ConcolicInt(1)
+                yield result
+        else:
+            index = 0
+            while index < super().__len__():
+                result = super().__getitem__(index)
+                index += 1
+                yield result
+
+    # def __le__(self, other):
+    #     raise NotImplementedError
+
+    def __len__(self):
+        if self.expr:
+            return ConcolicInt(super().__len__(), ['__len__', self.expr])
+        else:
+            return ConcolicInt(super().__len__())
+
+    # def __lt__(self, other):
+    #     raise NotImplementedError
+
+    def __mul__(self, mul):
+        raise NotImplementedError
+        array = []
+        for i in range(mul):
+            for value in list(self): #.value:
+                array.append(value)
+        return ConcolicList(array)
+
+    # def __ne__(self, other):
+    #     raise NotImplementedError
+
+    # def __repr__(self):
+    #     raise NotImplementedError
+
+    # def __reversed__(self):
+    #     raise NotImplementedError
+
+    # def __rmul__(self, value):
+    #     raise NotImplementedError
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        if self.expr:
+            if not isinstance(key, ConcolicInt): key = ConcolicInt(key)
+            if isinstance(value, int) and not isinstance(value, ConcolicInt): value = ConcolicInt(value)
+            if isinstance(value, str) and not isinstance(value, ConcolicStr): value = ConcolicStr(value)
+            if key < 0: key += self.__len__()
+            self.expr = ['list', ['store', ['array', self.expr], key.expr, value.expr], ['__len__', self.expr]]
+
+    # def __sizeof__(self):
+    #     raise NotImplementedError
+
     def append(self, element):
         super().append(element)
         if not hasattr(element, 'expr'):
-            return #raise NotImplementedError
+            raise NotImplementedError
         else:
             if self.expr:
                 self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
@@ -81,9 +182,68 @@ class ConcolicList(list):
                     raise NotImplementedError
                 self.expr = ['store', self.expr, 0, element.expr]
                 self.expr = ['list', self.expr, 1]
-
-        # self.size += 1
         log.debug("  List append: %s" % element)
+
+    def clear(self):
+        raise NotImplementedError
+
+    # def copy(self):
+    #     raise NotImplementedError
+
+    # def count(self, value):
+    #     raise NotImplementedError
+
+    # temporarily disable for passing some testcases
+    # def extend(self, iterable):
+    #     raise NotImplementedError
+
+    # def index(self, value, start=0, stop=9223372036854775807):
+    #     return ConcolicInt(super().index(target))
+        # index = 0
+        # for val in self.value:
+        #     if val == target:
+        #         return ConcolicInt(index)
+        #     index += 1
+        # return ConcolicInt(-1)
+
+    def insert(self, index, value):
+        raise NotImplementedError
+        super().insert(index, value)
+
+    def pop(self, index=-1):
+        if index == -1:
+            # self.size -= 1
+            self.expr = ['list', ['array', self.expr], ['-', ['__len__', self.expr], 1]]
+            return super().pop()
+        else:
+            raise NotImplementedError
+            # if index.value < self.size:
+                # self.size -= 1
+            return self.value.pop(int.__int__(index)) #.value)
+            # else:
+                # return None
+
+    def remove(self, target):
+        raise NotImplementedError
+        index = 0
+        for val in self.value:
+            if val.value == target.value:
+                self.value.pop(index)
+                # self.size -= 1
+                break
+            index += 1
+
+    def reverse(self):
+        raise NotImplementedError
+        self.value.reverse()
+
+    def sort(self, key=None, reverse=False):
+        raise NotImplementedError
+
+    # custom function to perform downgrading
+    def parent(self):
+        from conbyte.global_utils import downgrade
+        return list(map(downgrade, list(self)))
 
     # def get_index(self, index=0):
     #     if isinstance(index, ConcolicInt):
@@ -128,143 +288,33 @@ class ConcolicList(list):
     #         return "  List: nil"
     #     return "  List: %s" % ",".join(val.__str__() for val in self.value)
 
-    # def __add__(self, other):
-    #     log.debug(self)
-    #     if isinstance(other, list):
-    #         return super().__add__(list(other))
-    #     else:
-    #         raise NotImplementedError
-
     # def __radd__(self, other):
     #     self.value += other.value
     #     # self.size += other .size
     #     return self
 
-    def __len__(self):
-        if self.expr:
-            return ConcolicInt(super().__len__(), ['__len__', self.expr])
-        else:
-            return ConcolicInt(super().__len__())
+    # def store(self, index, value):
+    #     if isinstance(index, ConcolicInt):
+    #         index = index.value
 
-    def __iter__(self):
-        if self.expr:
-            index = ConcolicInt(0)
-            while index < self.__len__():
-                result = self.__getitem__(index)
-                index += ConcolicInt(1)
-                yield result
-        else:
-            index = 0
-            while index < super().__len__():
-                result = super().__getitem__(index)
-                index += 1
-                yield result
+    #     self.value[index] = value
 
-    def __getitem__(self, key):
-        if self.expr:
-            from .concolic_str import ConcolicStr
-            if not isinstance(key, ConcolicInt):
-                if isinstance(key, slice): # TODO: SMT 先暫不處理 slice 的 type
-                    return ConcolicList(super().__getitem__(key))
-                key = ConcolicInt(key)
-            if key < 0: key += self.__len__()
-            if isinstance(super().__getitem__(key), int):
-                return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
-            else:
-                return ConcolicStr(str.__str__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
-        else:
-            return super().__getitem__(key)
+    # def reverse(self):
+    #     self.value = reversed(self.value)
 
-    def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-        if not isinstance(key, ConcolicInt): key = ConcolicInt(key)
-        if not isinstance(value, ConcolicInt): value = ConcolicInt(value)
-        if key < 0: key += self.__len__()
-        self.expr = ['list', ['store', ['array', self.expr], key.expr, value.expr], ['__len__', self.expr]]
-        # self.value[key] = value
+    # def do_del(self, index):
+    #     value = index.value
+    #     del self.value[value]
+    #     # self.size -= 1
 
-    # def __delitem__(self, key):
-    #     del self.value[key]
-
-    def __mul__(self, mul):
-        array = []
-        for i in range(mul):
-            for value in list(self): #.value:
-                array.append(value)
-        return ConcolicList(array)
-
-    def store(self, index, value):
-        if isinstance(index, ConcolicInt):
-            index = index.value
-
-        self.value[index] = value
-
-    def reverse(self):
-        self.value = reversed(self.value)
-
-    # def insert(self, index, value):
-    #     # self.size += 1
-    #     # if isinstance(index, ConcolicInt):
-    #         # index = index.value
-    #     super().insert(index, value)
-
-    def do_del(self, index):
-        value = index.value
-        del self.value[value]
-        # self.size -= 1
-
-    def index(self, target):
-        return ConcolicInt(super().index(target))
-        # index = 0
-        # for val in self.value:
-        #     if val == target:
-        #         return ConcolicInt(index)
-        #     index += 1
-
-        # return ConcolicInt(-1)
-
-    def mul(self, other):
-        self.value *= other.value
-        return self
+    # def mul(self, other):
+    #     self.value *= other.value
+    #     return self
 
     # def add(self, other):
     #     self.value += other.value
     #     # self.size += other.size
     #     return self
-
-    def remove(self, target):
-        index = 0
-        for val in self.value:
-            if val.value == target.value:
-                self.value.pop(index)
-                # self.size -= 1
-                break
-            index += 1
-
-    def pop(self, index=None):
-        if index is None:
-            # self.size -= 1
-            self.expr = ['list', ['array', self.expr], ['-', ['__len__', self.expr], 1]]
-            return super().pop()
-        else:
-            raise NotImplementedError
-            # if index.value < self.size:
-                # self.size -= 1
-            return self.value.pop(int.__int__(index)) #.value)
-            # else:
-                # return None
-
-    def reverse(self):
-        self.value.reverse()
-
-    def extend(self, target):
-        super().__iadd__(target)
-        # self = self.add(target)
-
-    def parent(self):
-        from conbyte.global_utils import downgrade
-        return list(map(downgrade, list(self)))
-
 
 # class Concolic_tuple(ConcolicBool):
 #     def __init__(self, value):

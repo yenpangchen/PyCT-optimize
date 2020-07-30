@@ -32,6 +32,7 @@ class Solver:
             cmd += ["--tlimit=" + str(timeout)]
         ######################################################################################
         formulas = Solver._build_formulas_from_constraint(constraint)
+        # print(formulas)
         ######################################################################################
         if query_store is not None:
             filename = os.path.join(query_store, f"{Solver.cnt}.smt2")
@@ -167,8 +168,9 @@ class Solver:
                     value = int(value)
             elif conbyte.global_utils.engine.var_to_types[name] == "String":
                 assert value.startswith('"') and value.endswith('"')
-                value = value[1:-1] # .replace("\"", "", 1).replace("\"", "", -1)
-                value = value.replace('""', '"')
+                value = value[1:-1]
+                value = value.replace('""', '"').replace("\\t", "\t").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\")
+                # Note the order above must be in reverse with its encoding method (line 18 in concolic_str.py)
             elif conbyte.global_utils.engine.var_to_types[name] == "ListOfInt":
                 value = Solver._get_list_of_int(value)
             elif conbyte.global_utils.engine.var_to_types[name] == "ListOfStr":
