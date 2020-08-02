@@ -1,4 +1,5 @@
-import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, sys, traceback
+import builtins, coverage, func_timeout, importlib, inspect, json, logging, multiprocessing, os, sys, traceback
+from conbyte.expression import Expression
 import conbyte.global_utils, conbyte.path_to_constraint, conbyte.solver
 from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.concolic_types.concolic_str import ConcolicStr
@@ -8,27 +9,27 @@ log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000)
 
 class ExplorationEngine:
-    def __init__(self, module, entry):
-        self.module_name = module # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
-        self.entry = module if entry is None else entry
+    def __init__(self):
         self.constraints_to_solve = [] # 指的是還沒、但即將被 solver 解出 model 的 constraint
         self.path = conbyte.path_to_constraint.PathToConstraint()
         self.inputs = []
         self.errors = []
         self.results = []
         self.coverage_data = coverage.CoverageData()
-        self.coverage = coverage.Coverage(branch=True, source=[self.module_name])
-        self.var_to_types = dict()
-        self.extend_vars = dict()
+        self.var_to_types = {}
+        self.extend_vars = {}
         self.extend_queries = []
         self.num_of_extend_vars = 0
 
-    def explore(self, solver, ini_vars, max_iterations, timeout=None, query_store=None):
+    def explore(self, solver, filename, entry, ini_vars, max_iterations, timeout=None, query_store=None):
+        self.__init__()
+        self.module_name = os.path.basename(filename).replace(".py", "") # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
+        self.coverage = coverage.Coverage(branch=True, source=[self.module_name])
+        self.var_to_types = {}
         if query_store is not None:
             if not os.path.isdir(query_store):
                 raise IOError("Query folder {} not found".format(query_store))
-        self.var_to_types = dict()
-        cont = self._one_execution(ini_vars) # the 1st execution
+        cont = self._one_execution(filename, entry, ini_vars) # the 1st execution
         iterations = 1
         while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
             ##############################################################
@@ -36,27 +37,28 @@ class ExplorationEngine:
             # and try to solve for it. After that we'll obtain a model as
             # a list of arguments and continue the next iteration with it.
             constraint = self.constraints_to_solve.pop(0)
-            model = conbyte.solver.Solver.find_model_from_constraint(solver, constraint, timeout, query_store)
+            model = conbyte.solver.Solver.find_model_from_constraint(self, solver, constraint, timeout, query_store)
             log.debug("Solving: %s" % constraint)
             ##############################################################
             if model is not None:
                 log.info("=== Iterations: %s ===" % iterations); iterations += 1
                 args = list(model.values()) # from model to argument
-                cont = self._one_execution(args) # other consecutive executions following the 1st execution
+                cont = self._one_execution(filename, entry, args) # other consecutive executions following the 1st execution
         return iterations - 1
 
-    def _one_execution(self, init_vars):
+    def _one_execution(self, filename, entry, init_vars):
+        entry = self.module_name if entry is None else entry
         parent, child = multiprocessing.Pipe()
-        pid = os.fork()
-        if pid == 0: # child process
+        if os.fork() == 0: # child process
+            sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
             log.info("Inputs: " + str(init_vars))
             builtins.len = lambda x: x.__len__()
             self.path.current_constraint = self.path.root_constraint
             import conbyte.concolic_downcaster
-            execute = getattr(__import__(self.module_name), self.entry)
+            execute = getattr(__import__(self.module_name), entry)
+            conc_args = self._get_concolic_parameters(execute, init_vars)
             success = False; result = None
             try:
-                conc_args = self._get_concolic_parameters(execute, init_vars)
                 result = conbyte.global_utils.downgrade(func_timeout.func_timeout(5, execute, args=conc_args))
                 success = True
                 log.info("Return: %s" % result)
@@ -67,35 +69,25 @@ class ExplorationEngine:
                 sys.exit(1)
             except Exception as e:
                 print('Current Input Vector:', init_vars)
-                print(e)
-                # traceback.print_exc()
+                print(e)#; traceback.print_exc()
                 log.error("Execution exception for: %s" % init_vars)
-            child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types])
-            # child.send(success)
-            # child.send(init_vars)
-            # child.send(result)
-            # child.send(self.constraints_to_solve)
-            # child.send(self.path)
-            # child.send(self.var_to_types)
-            child.close()
+            child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types]); child.close()
             os._exit(os.EX_OK)
         else: # parent process
-            success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types = parent.recv()
-            # success = parent.recv()
-            # init_vars = parent.recv()
-            # result = parent.recv()
-            # self.constraints_to_solve = parent.recv()
-            # self.path = parent.recv()
-            # self.var_to_types = parent.recv()
-            parent.close()
+            success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()
             if not success:
                 self.errors.append(init_vars)
             else:
                 self.inputs.append(init_vars); self.results.append(result)
-                self.coverage.start(); ans = getattr(__import__(self.module_name), self.entry)(*init_vars); self.coverage.stop()
+                sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
+                self.coverage.start() # The following line aims to enforce the function definition lines to be counted into coverage data if the same testcase is executed again.
+                if self.module_name in sys.modules: importlib.reload(__import__(self.module_name))
+                ans = getattr(__import__(self.module_name), entry)(*init_vars)
+                self.coverage.stop()
+                self.coverage_data.update(self.coverage.get_data())
+                sys.path.pop()
                 if result != ans: print('Input:', init_vars, '／My answer:', result, '／Correct answer:', ans)
                 assert result == ans
-                self.coverage_data.update(self.coverage.get_data())
             for file in self.coverage_data.measured_files():
                 _, _, missing_lines, _ = self.coverage.analysis(file)
                 if len(missing_lines) > 0: print(file, missing_lines); return True
@@ -121,16 +113,13 @@ class ExplorationEngine:
         copy_vars = []
         for v in para.values():
             if isinstance(v.default, int):
-                copy_vars.append(ConcolicInt(v.default, v.name))
+                copy_vars.append(ConcolicInt(v.default, Expression(v.name, self)))
             elif isinstance(v.default, str):
-                copy_vars.append(ConcolicStr(v.default, v.name))
+                copy_vars.append(ConcolicStr(v.default, Expression(v.name, self)))
             elif isinstance(v.default, list):
                 for i in range(len(v.default)):
                     v.default[i] = conbyte.global_utils.upgrade(v.default[i])
-                if len(v.default) == 0:
-                    copy_vars.append(ConcolicList(v.default, v.name, ctype=self.var_to_types[v.name]))
-                else:
-                    copy_vars.append(ConcolicList(v.default, v.name))
+                copy_vars.append(ConcolicList(v.default, Expression(v.name, self)))
             elif v.default is not None:
                 raise NotImplementedError
         return copy_vars
@@ -167,7 +156,7 @@ class ExplorationEngine:
         print("")
 
     def result_to_json(self):
-        res = dict()
+        res = {}
         res["inputs"] = self.inputs
         res["error_inputs"] = self.errors
         res["total_lines"], res["executed_lines"], _, res["executed_branches"] = self.coverage_statistics()

@@ -1,38 +1,40 @@
 # Copyright: see copyright.txt
 
 import logging
-import conbyte.global_utils
+from conbyte.expression import Expression
+# import conbyte.global_utils
 
 log = logging.getLogger("ct.con.bool")
 
 class ConcolicBool:
-    def __init__(self, value, expr=None):
+    def __init__(self, value: bool, expr_engine: Expression=None):
         assert type(value) is bool
-        self.hasvar = expr is not None
         self.value = value
-        if expr is None:
-            self.expr = str(self.value).lower()
+        self.engine = None
+        if expr_engine:
+            self.expr = expr_engine.expr
+            self.engine = expr_engine.engine
         else:
-            self.expr = expr
-            # if isinstance(self.expr, list):
-            #     self.expr = conbyte.global_utils.add_extended_vars_and_queries('Bool', self.expr)
+            self.expr = str(self.value).lower()
+        # if isinstance(self.expr, list):
+        #     self.expr = conbyte.global_utils.add_extended_vars_and_queries('Bool', self.expr)
         log.debug("  ConBool, value %s, expr: %s" % (self.value, self.expr))
 
     def __bool__(self):
-        if self.hasvar:
-            conbyte.global_utils.engine.path.which_branch(self)
+        if self.engine:
+            self.engine.path.which_branch(self)
         return self.value
 
     def __index__(self):
         from conbyte.concolic_types.concolic_int import ConcolicInt
         value = int.__int__(self.value)
-        if self.hasvar:
-            return ConcolicInt(value, ["ite", ["=", self.expr, "true"], 1, 0])
+        if self.engine:
+            return ConcolicInt(value, Expression(["ite", ["=", self.expr, "true"], 1, 0], self.engine))
         else:
             return ConcolicInt(value)
 
-    def __str__(self):
-        return "{ConType, value: %s, expr: %s)" % (self.value, self.expr)
+    # def __str__(self):
+    #     return "{ConType, value: %s, expr: %s)" % (self.value, self.expr)
 
     # custom method to get the primitive value
     def parent(self):
@@ -104,7 +106,7 @@ class ConcolicBool:
     def __xor__(self, other):
         value = self.value ^ other.value
         expr = ["xor", self.expr, other.expr]
-        return ConcolicBool(value, expr)
+        return ConcolicBool(value, Expression(expr, self.engine))
 
     # TODO
     # def __and__(self, other):

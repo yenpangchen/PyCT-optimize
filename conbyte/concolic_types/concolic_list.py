@@ -1,4 +1,5 @@
 from .concolic_bool import *
+from conbyte.expression import Expression
 from .concolic_int import *
 from conbyte.predicate import Predicate
 
@@ -11,7 +12,7 @@ Classes:
 """
 
 class ConcolicList(list):
-    def __init__(self, value, expr=None, len_expr=None, ctype=None):
+    def __init__(self, value: list, expr_engine: Expression=None): # , len_expr=None):
         from .concolic_str import ConcolicStr
         import conbyte.global_utils
         assert isinstance(value, list)
@@ -24,9 +25,10 @@ class ConcolicList(list):
         # elif isinstance(value[0], types[1]): t = 0
         # elif isinstance(value[0], types[4]): t = 3
         # else: raise NotImplementedError
-        self.expr = None
-        if expr is not None:
-            self.expr = expr
+        self.expr = self.engine = None
+        if expr_engine:
+            self.expr = expr_engine.expr
+            self.engine = expr_engine.engine
         else:
             ###########
             # Here are some examples of transforming lists into expressions.
@@ -48,11 +50,11 @@ class ConcolicList(list):
                     self.expr = ['list', self.expr, len(value)]
                 else:
                     self.expr = ['list', self.expr, len_expr]
-        if isinstance(self.expr, list):
+        if isinstance(self.expr, list) and self.engine:
             if t == 0:
-                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
+                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr, self.engine)
             else: # t == 3
-                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
+                self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr, self.engine)
         log.debug("  List: %s" % ",".join(val.__str__() for val in list(self)))
 
     def __add__(self, other):
@@ -87,9 +89,9 @@ class ConcolicList(list):
                 key = ConcolicInt(key)
             if key < 0: key += self.__len__()
             if isinstance(super().__getitem__(key), int):
-                return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+                return ConcolicInt(int.__int__(super().__getitem__(key)), Expression(['select', ['array', self.expr], key.expr], self.engine))
             else:
-                return ConcolicStr(str.__str__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
+                return ConcolicStr(str.__str__(super().__getitem__(key)), Expression(['select', ['array', self.expr], key.expr], self.engine))
         else:
             return super().__getitem__(key)
 
@@ -121,7 +123,7 @@ class ConcolicList(list):
 
     def __len__(self):
         if self.expr:
-            return ConcolicInt(super().__len__(), ['__len__', self.expr])
+            return ConcolicInt(super().__len__(), Expression(['__len__', self.expr], self.engine))
         else:
             return ConcolicInt(super().__len__())
 
@@ -167,12 +169,13 @@ class ConcolicList(list):
         else:
             if self.expr:
                 self.expr = ['list', ['store', ['array', self.expr], ['__len__', self.expr], element.expr], ['+', 1, ['__len__', self.expr]]]
-                if isinstance(element, int):
-                    self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr)
-                elif isinstance(element, str):
-                    self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr)
-                else:
-                    raise NotImplementedError
+                if self.engine:
+                    if isinstance(element, int):
+                        self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfInt', self.expr, self.engine)
+                    elif isinstance(element, str):
+                        self.expr = conbyte.global_utils.add_extended_vars_and_queries('ListOfStr', self.expr, self.engine)
+                    else:
+                        raise NotImplementedError
             else: # append to an empty list
                 if isinstance(element, int):
                     self.expr = [['as', 'const', ['Array', 'Int', 'Int']], 0]
@@ -214,7 +217,7 @@ class ConcolicList(list):
         if index == -1:
             # self.size -= 1
             self.expr = ['list', ['array', self.expr], ['-', ['__len__', self.expr], 1]]
-            return super().pop()
+            return super().pop() # 這裡其實還沒實作完全... (應該要帶 expression)
         else:
             raise NotImplementedError
             # if index.value < self.size:

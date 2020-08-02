@@ -8,7 +8,7 @@ class Solver:
     cnt = 0 # for query_store
 
     @staticmethod
-    def find_model_from_constraint(solver, constraint, timeout=1, query_store=None):
+    def find_model_from_constraint(engine, solver, constraint, timeout=1, query_store=None):
         ######################################################################################
         # Build the command from the solver type
         if solver == "z3seq":
@@ -31,7 +31,7 @@ class Solver:
             timeout *= 1000
             cmd += ["--tlimit=" + str(timeout)]
         ######################################################################################
-        formulas = Solver._build_formulas_from_constraint(constraint)
+        formulas = Solver._build_formulas_from_constraint(engine, constraint)
         # print(formulas)
         ######################################################################################
         if query_store is not None:
@@ -56,11 +56,11 @@ class Solver:
                 status = "UNSAT"
             elif "sat" in status:
                 status = "SAT"
-                model = Solver._get_model(outputs[1:])
+                model = Solver._get_model(engine, outputs[1:])
             elif "timeout" in status:
                 status = "TIMEOUT"
             elif "unknown" in status and "error" not in output:
-                model = Solver._get_model(outputs[1:])
+                model = Solver._get_model(engine, outputs[1:])
             else:
                 status = "UNKNOWN"
         log.debug("%s smt, Result: %s" % (Solver.cnt, status))
@@ -75,7 +75,7 @@ class Solver:
     ########################################################
     @staticmethod
     def _get_list_of_int(expr):
-        ans_dict = dict()
+        ans_dict = {}
         ans_default = None
         ans_len = None
         assert expr.startswith('(list ') and expr.endswith(')')
@@ -117,7 +117,7 @@ class Solver:
     ########################################################
     @staticmethod
     def _get_list_of_str(expr):
-        ans_dict = dict()
+        ans_dict = {}
         ans_default = None
         ans_len = None
         assert expr.startswith('(list ') and expr.endswith(')')
@@ -155,25 +155,25 @@ class Solver:
         return ans_list
 
     @staticmethod
-    def _get_model(models):
-        model = dict()
+    def _get_model(engine, models):
+        model = {}
         for line in models:
             # print('LINE', line)
             assert line.startswith('((') and line.endswith('))')
             name, value = line[2:-2].split(" ", 1)
-            if conbyte.global_utils.engine.var_to_types[name] == "Int":
+            if engine.var_to_types[name] == "Int":
                 if "(" in value:
                     value = -int(value.replace("(", "").replace(")", "").split(" ")[1])
                 else:
                     value = int(value)
-            elif conbyte.global_utils.engine.var_to_types[name] == "String":
+            elif engine.var_to_types[name] == "String":
                 assert value.startswith('"') and value.endswith('"')
                 value = value[1:-1]
                 value = value.replace('""', '"').replace("\\t", "\t").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\")
                 # Note the order above must be in reverse with its encoding method (line 18 in concolic_str.py)
-            elif conbyte.global_utils.engine.var_to_types[name] == "ListOfInt":
+            elif engine.var_to_types[name] == "ListOfInt":
                 value = Solver._get_list_of_int(value)
-            elif conbyte.global_utils.engine.var_to_types[name] == "ListOfStr":
+            elif engine.var_to_types[name] == "ListOfStr":
                 value = Solver._get_list_of_str(value)
             else:
                 raise NotImplementedError
@@ -188,19 +188,18 @@ class Solver:
         return model
 
     @staticmethod
-    def _build_formulas_from_constraint(constraint):
+    def _build_formulas_from_constraint(engine, constraint):
         asserts, query, extend_vars, extend_queries = constraint.get_asserts_and_query()
-        assignments = dict()
-        assignments['declarevars'] = "(declare-datatypes ((ListOfInt 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
-        assignments['declarevars'] += "(declare-datatypes ((ListOfStr 0)) (((list (array (Array Int String)) (__len__ Int)))))\n"
-        for (name, var) in conbyte.global_utils.engine.var_to_types.items():
-            assignments['declarevars'] += f"(declare-fun {name} () {var})\n"
+        declare_vars = "(declare-datatypes ((ListOfInt 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
+        declare_vars += "(declare-datatypes ((ListOfStr 0)) (((list (array (Array Int String)) (__len__ Int)))))\n"
+        for (name, var) in engine.var_to_types.items():
+            declare_vars += f"(declare-fun {name} () {var})\n"
             if var.startswith("List"):
-                assignments['declarevars'] += f"(assert (>= (__len__ {name}) 0))\n"
+                declare_vars += f"(assert (>= (__len__ {name}) 0))\n"
         for (name, var) in extend_vars.items():
-            assignments['declarevars'] += f"(declare-fun {name} () {var})\n"
-        assignments['query'] = "\n".join(assertion.get_formula() for assertion in asserts)
-        assignments['query'] += '\n' + query.get_formula() + '\n'
-        assignments['query'] += "\n".join(extend_queries)
-        assignments['getvars'] = "\n".join(f"(get-value ({name}))" for name in conbyte.global_utils.engine.var_to_types.keys())
-        return string.Template("\n$declarevars\n$query\n(check-sat)\n$getvars").substitute(assignments).strip()
+            declare_vars += f"(declare-fun {name} () {var})\n"
+        queries = "\n".join(assertion.get_formula() for assertion in asserts)
+        queries += '\n' + query.get_formula() + '\n'
+        queries += "\n".join(extend_queries)
+        get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
+        return f"\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}"

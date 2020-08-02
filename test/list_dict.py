@@ -9,7 +9,7 @@ def list_dict(a, b):
     fir_d = {}
     fir_d[a] = 2
 
-    sec_d = dict()
+    sec_d = {}
     sec_d['a'] = 2
     t = sec_d['a']
 

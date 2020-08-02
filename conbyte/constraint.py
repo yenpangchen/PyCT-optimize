@@ -20,7 +20,7 @@ class Constraint:
 
         # collect the assertions
         asserts = []
-        extend_vars = dict()
+        extend_vars = {}
         extend_queries = []
         tmp = self.parent
         while tmp.last_predicate is not None: # 目前根據 path_to_constraint 的 constructor 猜測，它負責檢測是不是 root constraint

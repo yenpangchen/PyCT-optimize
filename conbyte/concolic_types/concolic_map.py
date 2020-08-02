@@ -8,7 +8,7 @@
 #     def __init__(self, value=None):
 #         self.expr = "MAP"
 #         if value is None:
-#             self.value = dict()
+#             self.value = {}
 #             self.size = 0
 #             log.debug("  MAP: empty")
 #             return

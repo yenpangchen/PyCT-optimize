@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse, logging, os, sys
-import conbyte.explore, conbyte.global_utils
+import conbyte.explore
 
 # Our main program starts now!
 parser = argparse.ArgumentParser()
@@ -54,11 +54,8 @@ else:
 
 #####################################################################################################################
 # This section creates an explorer instance and starts our analysis procedure!
-base_name = os.path.basename(args.file)
-sys.path.append(os.path.abspath(args.file).replace(base_name, "")) # filename = os.path.abspath(args.file)
-module = base_name.replace(".py", "") # the 1st argument in the following constructor
-conbyte.global_utils.engine = conbyte.explore.ExplorationEngine(module, args.entry)
-print("\n# of iterations:", conbyte.global_utils.engine.explore(args.solver, eval(args.inputs), args.iteration, args.timeout, args.query))
+engine = conbyte.explore.ExplorationEngine()
+print("\n# of iterations:", engine.explore(args.solver, args.file, args.entry, eval(args.inputs), args.iteration, args.timeout, args.query))
 #####################################################################################################################
 
 ###############################################################################
@@ -66,16 +63,16 @@ print("\n# of iterations:", conbyte.global_utils.engine.explore(args.solver, eva
 if args.quiet: sys.exit(0)
 if not args.get_json:
     print("\nGenerated inputs")
-    for inputs in conbyte.global_utils.engine.inputs:
+    for inputs in engine.inputs:
         print(inputs)
-    if len(conbyte.global_utils.engine.errors) > 0: print("\nError inputs")
-    for inputs in conbyte.global_utils.engine.errors:
+    if len(engine.errors) > 0: print("\nError inputs")
+    for inputs in engine.errors:
         print(inputs)
-    conbyte.global_utils.engine.print_coverage()
+    engine.print_coverage()
 else:
-    print(conbyte.global_utils.engine.result_to_json()); print()
-result_list = list(zip(conbyte.global_utils.engine.inputs, conbyte.global_utils.engine.results))
+    print(engine.result_to_json()); print()
+result_list = list(zip(engine.inputs, engine.results))
 print("# of input vectors:", len(result_list))
 print(result_list); print()
-print(bool(conbyte.global_utils.engine.coverage_statistics()[2]))
+print(bool(engine.coverage_statistics()[2]))
 ###############################################################################

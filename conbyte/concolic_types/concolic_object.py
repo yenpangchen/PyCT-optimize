@@ -2,7 +2,7 @@
 
 # class ConcolicObject(ConcolicBool):
 #     def __init__(self):
-#         self.attrs = dict()
+#         self.attrs = {}
 
 #     def store_attr(self, name, value):
 #         self.attrs[name] = value

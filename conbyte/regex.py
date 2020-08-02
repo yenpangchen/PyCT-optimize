@@ -109,7 +109,7 @@ class RegexPattern:
         self.pattern_nodes = None
 
         # Cache smt formula by method 'match', 'search', 'etc'
-        self.re_expr = dict()
+        self.re_expr = {}
 
         self.can_do = True
         self.compiled = False
