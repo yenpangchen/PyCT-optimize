@@ -24,7 +24,7 @@ class ExplorationEngine:
     def explore(self, solver, filename, entry, ini_vars, max_iterations, timeout=None, query_store=None):
         self.__init__()
         self.module_name = os.path.basename(filename).replace(".py", "") # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
-        self.coverage = coverage.Coverage(branch=True, source=[self.module_name])
+        self.coverage = coverage.Coverage(data_file=f'/mnt/e/.coverage_{filename.replace("/", "_")}', branch=True, source=[self.module_name])
         self.var_to_types = {}
         if query_store is not None:
             if not os.path.isdir(query_store):
@@ -73,25 +73,27 @@ class ExplorationEngine:
                 log.error("Execution exception for: %s" % init_vars)
             child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types]); child.close()
             os._exit(os.EX_OK)
-        else: # parent process
-            success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()
-            if not success:
-                self.errors.append(init_vars)
-            else:
-                self.inputs.append(init_vars); self.results.append(result)
+        success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()
+        if not success:
+            self.errors.append(init_vars)
+        else:
+            self.inputs.append(init_vars); self.results.append(result)
+            parent, child = multiprocessing.Pipe()
+            if os.fork() == 0: # child process
                 sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
-                self.coverage.start() # The following line aims to enforce the function definition lines to be counted into coverage data if the same testcase is executed again.
-                if self.module_name in sys.modules: importlib.reload(__import__(self.module_name))
+                self.coverage.start()
                 ans = getattr(__import__(self.module_name), entry)(*init_vars)
-                self.coverage.stop()
-                self.coverage_data.update(self.coverage.get_data())
-                sys.path.pop()
-                if result != ans: print('Input:', init_vars, '／My answer:', result, '／Correct answer:', ans)
-                assert result == ans
-            for file in self.coverage_data.measured_files():
-                _, _, missing_lines, _ = self.coverage.analysis(file)
-                if len(missing_lines) > 0: print(file, missing_lines); return True
-            return False
+                self.coverage.stop(); self.coverage.save() # send coverage data to my parent
+                child.send(ans); child.close(); os._exit(os.EX_OK)
+            ans = parent.recv(); parent.close()
+            self.coverage.load() # retrieve coverage data from my child
+            self.coverage_data.update(self.coverage.get_data())
+            if result != ans: print('Input:', init_vars, '／My answer:', result, '／Correct answer:', ans)
+            assert result == ans
+        for file in self.coverage_data.measured_files():
+            _, _, missing_lines, _ = self.coverage.analysis(file)
+            if len(missing_lines) > 0: print(file, missing_lines); return True
+        return False
 
     def _get_concolic_parameters(self, func, init_vars):
         para = inspect.signature(func).parameters.copy() # 要加 copy，否則 para 不給修改

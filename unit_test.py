@@ -49,7 +49,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_44(self): self._execute("target_int/lib_int/nntplib__parse_datetime.py", ["20190723121212"]) # OK (備註：每數次獨立測試中會有一次是失誤的，即便固定 random-seed 也是一樣)
     def test_45(self): self._execute("target_int/lib_int/smtpd_parseargs.py", ["", ""]) # OK with deadcode [28, 35, 40]
     def test_46(self): self._execute("target_int/lib_int/wsgiref_check_status.py", [""]) # OK
-    def test_47(self): self._execute("test/xss/make_server.py", [""]) # OK
+    def test_47(self): self._execute("test/xss/make_server.py", ["", "", ""]) # OK
 
     def _execute(self, filename, inputs):
         self.iteration_max = 3
@@ -75,7 +75,7 @@ class TestCodeSnippets(unittest.TestCase):
             status &= self.assert_equal(iteration, missing_lines, [28, 35, 40])
         else:
             status &= self.assert_false(iteration, missing_lines)
-        return not (iteration == self.iteration_max or status) # termination condition
+        return not (iteration == self.iteration_max or status) # := not (termination condition)
 
     def assert_equal(self, iteration, a, b):
         if iteration == self.iteration_max: self.assertEqual(a, b)

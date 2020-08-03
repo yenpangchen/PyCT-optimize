@@ -543,7 +543,7 @@ class ConcolicStr(str):
             value = val_l != val_r
             expr = ['not', ["=", self.expr, other.expr]]
         elif operator == ">":
-            assert len(val_l) == 1 and len(val_r) == 1
+            # assert len(val_l) == 1 and len(val_r) == 1
             value = val_l > val_r
             expr = ['not', ['str.<=', self.expr, other.expr]]
             # expr = ["str.in.re", self.expr, ["re.range", other.expr, "\"\\xff\""]]
@@ -555,12 +555,12 @@ class ConcolicStr(str):
             # expr = ["str.in.re", self.expr, ["re.range", "\"\\x00\"", other.expr]]
             # expr = ["and", ["not", ["=", self.expr, other.expr]], expr]
         elif operator == ">=":
-            assert len(val_l) == 1 and len(val_r) == 1
+            # assert len(val_l) == 1 and len(val_r) == 1
             value = val_l >= val_r
             expr = ['not', ['str.<', self.expr, other.expr]]
             # expr = ["str.in.re", self.expr, ["re.range", other.expr, "\"\\xff\""]]
         elif operator == "<=":
-            assert len(val_l) == 1 and len(val_r) == 1
+            # assert len(val_l) == 1 and len(val_r) == 1
             value = val_l <= val_r
             expr = ['str.<=', self.expr, other.expr]
             # expr = ["str.in.re", self.expr, ["re.range", "\"\\x00\"", other.expr]]
