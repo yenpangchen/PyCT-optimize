@@ -16,6 +16,7 @@ class ExplorationEngine:
         self.errors = []
         self.results = []
         self.coverage_data = coverage.CoverageData()
+        self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
         self.extend_vars = {}
         self.extend_queries = []
@@ -24,13 +25,13 @@ class ExplorationEngine:
     def explore(self, solver, filename, entry, ini_vars, max_iterations, timeout=None, query_store=None):
         self.__init__()
         self.module_name = os.path.basename(filename).replace(".py", "") # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
-        self.coverage = coverage.Coverage(data_file=f'/mnt/e/.coverage_{filename.replace("/", "_")}', branch=True, source=[self.module_name])
+        self.coverage = coverage.Coverage(data_file=None, branch=True, source=[self.module_name])
         self.var_to_types = {}
         if query_store is not None:
             if not os.path.isdir(query_store):
                 raise IOError("Query folder {} not found".format(query_store))
-        cont = self._one_execution(filename, entry, ini_vars) # the 1st execution
         iterations = 1
+        cont = self._one_execution(iterations, filename, entry, ini_vars) # the 1st execution
         while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
@@ -43,10 +44,10 @@ class ExplorationEngine:
             if model is not None:
                 log.info("=== Iterations: %s ===" % iterations); iterations += 1
                 args = list(model.values()) # from model to argument
-                cont = self._one_execution(filename, entry, args) # other consecutive executions following the 1st execution
+                cont = self._one_execution(iterations, filename, entry, args) # other consecutive executions following the 1st execution
         return iterations - 1
 
-    def _one_execution(self, filename, entry, init_vars):
+    def _one_execution(self, iterations, filename, entry, init_vars):
         entry = self.module_name if entry is None else entry
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
@@ -81,18 +82,29 @@ class ExplorationEngine:
             parent, child = multiprocessing.Pipe()
             if os.fork() == 0: # child process
                 sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
-                self.coverage.start()
-                ans = getattr(__import__(self.module_name), entry)(*init_vars)
-                self.coverage.stop(); self.coverage.save() # send coverage data to my parent
-                child.send(ans); child.close(); os._exit(os.EX_OK)
-            ans = parent.recv(); parent.close()
-            self.coverage.load() # retrieve coverage data from my child
-            self.coverage_data.update(self.coverage.get_data())
+                self.coverage.start(); ans = getattr(__import__(self.module_name), entry)(*init_vars); self.coverage.stop()
+                self.coverage_data.update(self.coverage.get_data())
+                if iterations == 1:
+                    for file in self.coverage_data.measured_files():
+                        _, _, missing_lines, _ = self.coverage.analysis(file)
+                        self.coverage_accumulated_missing_lines[file] = set(missing_lines)
+                else: # iterations > 1
+                    for file in self.coverage_data.measured_files():
+                        _, _, missing_lines, _ = self.coverage.analysis(file)
+                        self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
+                child.send(ans)
+                child.send(self.coverage_data)
+                child.send(self.coverage_accumulated_missing_lines)
+                child.close(); os._exit(os.EX_OK)
+            ans = parent.recv()
+            self.coverage_data = parent.recv()
+            self.coverage_accumulated_missing_lines = parent.recv()
+            parent.close()
             if result != ans: print('Input:', init_vars, '／My answer:', result, '／Correct answer:', ans)
             assert result == ans
         for file in self.coverage_data.measured_files():
-            _, _, missing_lines, _ = self.coverage.analysis(file)
-            if len(missing_lines) > 0: print(file, missing_lines); return True
+            missing_lines = self.coverage_accumulated_missing_lines[file]
+            if missing_lines: print(file, missing_lines); return True
         return False
 
     def _get_concolic_parameters(self, func, init_vars):
@@ -132,19 +144,20 @@ class ExplorationEngine:
         executed_branches = 0
         missing_lines = {}
         for file in self.coverage_data.measured_files():
-            _, executable_lines, m_lines, _ = self.coverage.analysis(file)
+            _, executable_lines, _, _ = self.coverage.analysis(file)
+            m_lines = self.coverage_accumulated_missing_lines[file]
 
             total_lines += len(set(executable_lines))
             executed_lines += len(set(executable_lines)) - len(m_lines) # len(set(self.coverage_data.lines(file)))
-            executed_branches += len(set(self.coverage_data.arcs(file)))
+            executed_branches += 0 #len(set(self.coverage_data.arcs(file)))
 
             # executable_lines starting from 1 do discard the 'def xx():' line
             # m_lines = []
             # for line in set(executable_lines[1:]):
             #     if line not in self.coverage_data.lines(file):
             #         m_lines.append(line)
-            if len(m_lines) > 0:
-                missing_lines[file] = m_lines
+            if m_lines:
+                missing_lines[file] = sorted(list(m_lines))
         return total_lines, executed_lines, missing_lines, executed_branches
 
     def print_coverage(self):

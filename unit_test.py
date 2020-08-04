@@ -52,7 +52,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_47(self): self._execute("test/xss/make_server.py", ["", "", ""]) # OK
 
     def _execute(self, filename, inputs):
-        self.iteration_max = 3
+        self.iteration_max = 4
         engine = conbyte.explore.ExplorationEngine()
         iteration = 0
         while iteration == 0 or self._check_coverage(iteration, filename, missing_lines):

@@ -73,6 +73,5 @@ else:
     print(engine.result_to_json()); print()
 result_list = list(zip(engine.inputs, engine.results))
 print("# of input vectors:", len(result_list))
-print(result_list); print()
-print(bool(engine.coverage_statistics()[2]))
+print(result_list)
 ###############################################################################
