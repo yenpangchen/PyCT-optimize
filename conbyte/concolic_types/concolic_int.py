@@ -12,18 +12,17 @@ Classes:
 
 class ConcolicInt(int):
     def __new__(cls, value: int, expr_engine: Expression=None):
-        return int.__new__(cls, value)
-
-    def __init__(self, value: int, expr_engine: Expression=None):
-        self.engine = None
+        obj = int.__new__(cls, value)
+        obj.engine = None
         if expr_engine:
-            self.expr = expr_engine.expr
-            self.engine = expr_engine.engine
+            obj.expr = expr_engine.expr
+            obj.engine = expr_engine.engine
         else:
-            self.expr = value
-        # if isinstance(self.expr, list):
-        #     self.expr = global_utils.add_extended_vars_and_queries('Int', self.expr)
-        log.debug("  ConInt, value: %s, expr: %s" % (self, self.expr))
+            obj.expr = value
+        # if isinstance(obj.expr, list):
+        #     obj.expr = global_utils.add_extended_vars_and_queries('Int', obj.expr)
+        log.debug("  ConInt, value: %s, expr: %s" % (obj, obj.expr))
+        return obj
 
     def __abs__(self):
         value = int.__int__(self).__abs__()
@@ -46,6 +45,7 @@ class ConcolicInt(int):
     #     return int.__int__(self).__divmod__(value)
 
     def __eq__(self, other):
+        if not isinstance(other, int): return ConcolicBool(False)
         value = int.__int__(self).__eq__(int.__int__(other))
         if self.engine:
             if not isinstance(other, ConcolicInt): other = ConcolicInt(other)
@@ -103,8 +103,8 @@ class ConcolicInt(int):
         return hash(int.__int__(self))
 
     def __index__(self):
+        return int.__int__(self)
         raise NotImplementedError
-        # return int.__int__(self) #.value
 
     def __int__(self):
         if self.engine:
@@ -248,8 +248,8 @@ class ConcolicInt(int):
         return ConcolicInt(int.__int__(self).__lshift__(value))
         raise NotImplementedError
 
-    def __rshift__(self, value):
-        raise NotImplementedError
+    # def __rshift__(self, value):
+    #     raise NotImplementedError
 
 ops = [("add", "+", "+"),
        ("sub", "-", "-"),

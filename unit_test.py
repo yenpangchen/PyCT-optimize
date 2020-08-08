@@ -49,10 +49,10 @@ class TestCodeSnippets(unittest.TestCase):
     def test_44(self): self._execute("target_int/lib_int/nntplib__parse_datetime.py", ["20190723121212"]) # OK (備註：每數次獨立測試中會有一次是失誤的，即便固定 random-seed 也是一樣)
     def test_45(self): self._execute("target_int/lib_int/smtpd_parseargs.py", ["", ""]) # OK with deadcode [28, 35, 40]
     def test_46(self): self._execute("target_int/lib_int/wsgiref_check_status.py", [""]) # OK
-    def test_47(self): self._execute("test/xss/make_server.py", ["", "", ""]) # OK
+    def test_47(self): self._execute("test/xss/self_checking.py", ["", "", ""]) # OK
 
     def _execute(self, filename, inputs):
-        self.iteration_max = 4
+        self.iteration_max = 2
         engine = conbyte.explore.ExplorationEngine()
         iteration = 0
         while iteration == 0 or self._check_coverage(iteration, filename, missing_lines):

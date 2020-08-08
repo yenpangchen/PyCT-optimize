@@ -13,18 +13,17 @@ Classes:
 
 class ConcolicFloat(float):
     def __new__(cls, value: float, expr_engine: Expression=None):
-        return float.__new__(cls, value)
-
-    def __init__(self, value: float, expr_engine: Expression=None):
-        self.engine = None
+        obj = float.__new__(cls, value)
+        obj.engine = None
         if expr_engine:
-            self.expr = expr_engine.expr
-            self.engine = expr_engine.engine
+            obj.expr = expr_engine.expr
+            obj.engine = expr_engine.engine
         else:
-            self.expr = value
-        # if isinstance(self.expr, list):
-        #     self.expr = global_utils.add_extended_vars_and_queries('Real', self.expr)
-        # log.debug("  ConFloat, value: %s, expr: %s" % (self, self.expr))
+            obj.expr = value
+        # if isinstance(obj.expr, list):
+        #     obj.expr = global_utils.add_extended_vars_and_queries('Real', obj.expr)
+        # log.debug("  ConFloat, value: %s, expr: %s" % (obj, obj.expr))
+        return obj
 
     def __int__(self):
         from conbyte.concolic_types.concolic_int import ConcolicInt

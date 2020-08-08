@@ -55,7 +55,7 @@ class ExplorationEngine:
             log.info("Inputs: " + str(init_vars))
             builtins.len = lambda x: x.__len__()
             self.path.current_constraint = self.path.root_constraint
-            import conbyte.concolic_downcaster
+            import conbyte.concolic_wrapper
             execute = getattr(__import__(self.module_name), entry)
             conc_args = self._get_concolic_parameters(execute, init_vars)
             success = False; result = None

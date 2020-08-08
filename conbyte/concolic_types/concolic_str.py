@@ -7,13 +7,11 @@ log = logging.getLogger("ct.con.str")
 
 class ConcolicStr(str):
     def __new__(cls, value: str, expr_engine: Expression=None):
-        return str.__new__(cls, value)
-
-    def __init__(self, value: str, expr_engine: Expression=None):
-        self.engine = None
+        obj = str.__new__(cls, value)
+        obj.engine = None
         if expr_engine:
-            self.expr = expr_engine.expr
-            self.engine = expr_engine.engine
+            obj.expr = expr_engine.expr
+            obj.engine = expr_engine.engine
         else:
             value = value.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t").replace('"', '""')
             value_new = ""
@@ -23,10 +21,11 @@ class ConcolicStr(str):
                 else:
                     value_new += ch
             value = '"' + value_new + '"' # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
-            self.expr = value
-        # if isinstance(self.expr, list):
-        #     self.expr = global_utils.add_extended_vars_and_queries('String', self.expr)
-        log.debug("  ConStr, value: %s, expr: %s" % (self, self.expr))
+            obj.expr = value
+        # if isinstance(obj.expr, list):
+        #     obj.expr = global_utils.add_extended_vars_and_queries('String', obj.expr)
+        # log.debug("  ConStr, value: %s, expr: %s" % (obj, obj.expr))
+        return obj
 
     #########################################################################
     # All methods stated in the url are implemented in the following section.
@@ -181,7 +180,7 @@ class ConcolicStr(str):
     def lstrip(self, chars=None):
         if chars is None: chars = ConcolicStr(" ") # ConcolicStr("\" \"", " ")
         if int.__int__(len(chars)) == 0: return self
-        if int.__int__(len(chars)) > 1: raise NotImplementedError
+        if int.__int__(len(chars)) > 1: return super().lstrip(chars) # raise NotImplementedError
         assert len(str.__str__(chars)) == 1
         expr = self.expr
         value = str.__str__(self) #.value
@@ -248,6 +247,7 @@ class ConcolicStr(str):
         raise NotImplementedError
 
     def rpartition(self, sep):
+        return super().rpartition(sep)
         raise NotImplementedError
 
     def rsplit(self, sep=None, maxsplit=-1):
@@ -256,6 +256,7 @@ class ConcolicStr(str):
     # TODO: Temp
     def rstrip(self, chars=None):
         if chars is None: chars = ConcolicStr(" ") # ConcolicStr("\" \"", " ")
+        if not isinstance(chars, ConcolicStr): chars = ConcolicStr(chars)
         if int.__int__(len(chars)) == 0: return self
         if int.__int__(len(chars)) > 1: raise NotImplementedError
         assert int.__int__(len(chars)) == 1
@@ -467,6 +468,7 @@ class ConcolicStr(str):
                 if isinstance(x, ConcolicStr):
                     res += x
                 else:
+                    if not isinstance(x, str): x = str(x)
                     res += ConcolicStr(x)
         return res
         raise NotImplementedError

@@ -18,7 +18,7 @@ class ConcolicBool:
             self.expr = str(self.value).lower()
         # if isinstance(self.expr, list):
         #     self.expr = conbyte.global_utils.add_extended_vars_and_queries('Bool', self.expr)
-        log.debug("  ConBool, value %s, expr: %s" % (self.value, self.expr))
+        # log.debug("  ConBool, value %s, expr: %s" % (self.value, self.expr))
 
     def __bool__(self):
         if self.engine:
