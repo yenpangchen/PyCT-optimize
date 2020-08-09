@@ -3,44 +3,50 @@
 # https://github.com/abarnert/floatliteralhack
 ##########################################################################################
 
-import _ast, importlib, sys
-from ast import NodeTransformer, Num, Call, Name, Load, Constant, parse, ImportFrom, alias, \
-                fix_missing_locations, Attribute, List
-import inspect
-import traceback
+from ast import Attribute, Call, Constant, Import, ImportFrom, Load, Name, NodeTransformer, alias, fix_missing_locations, parse
+import importlib, inspect, sys, traceback
+from conbyte.concolic_types.concolic_int import ConcolicInt
+from conbyte.concolic_types.concolic_str import ConcolicStr
+
+#################################################################
+# It is extremely important to note that node.args[i] may contain
+# subroutines! That is to say, if we want to replace the original
+# statement with another one, we must ensure each of node.args[i]
+# appears only once in our new statement.
+#################################################################
+
+# def _type(obj):
+#     res = type(obj)
+#     if res is ConcolicInt: return int
+#     if res is ConcolicStr: return str
+#     return res
+
+def _int(obj):
+    if isinstance(obj, (ConcolicInt, ConcolicStr)): return obj.__int__()
+    return int(obj)
 
 class ConcolicWrapper(NodeTransformer):
     def visit_Constant(self, node: Constant):
-        if type(node.value) == int:
-            return Call(func=Name(id='ConcolicInt', ctx=Load()),
-                        args=[Constant(value=node.value, kind=None)],
-                        keywords=[])
-        if type(node.value) == str:
-            return Call(func=Name(id='ConcolicStr', ctx=Load()),
-                        args=[Constant(value=node.value, kind=None)],
-                        keywords=[])
+        if isinstance(node.value, int):
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_int', ctx=Load()), attr='ConcolicInt', ctx=Load()), args=[node], keywords=[])
+        if isinstance(node.value, str):
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_str', ctx=Load()), attr='ConcolicStr', ctx=Load()), args=[node], keywords=[])
         return node
 
 class ConcolicWrapper2(NodeTransformer):
     def visit_Call(self, node: Call):
         for i in range(len(node.args)):
             node.args[i] = ConcolicWrapper2().visit(node.args[i])
-        if type(node.func) == Name:
+        if isinstance(node.func, Name):
             if node.func.id == 'int':
-                #############################################################
-                # TODO: We've not considered the case int('...', base=N) yet.
-                #############################################################
-                if len(node.args) == 1:
-                    return Call(func=Attribute(value=node.args[0], attr='__int__', ctx=Load()),
-                                args=[],
-                                keywords=[])
-                return node
+                if len(node.args) == 1: # TODO: We've not considered the case int('...', base=N) yet.
+                    return Call(func=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_wrapper', ctx=Load()), attr='_int', ctx=Load()), args=node.args, keywords=[])
             if node.func.id == 'str':
-                return Call(func=Attribute(value=node.args[0], attr='__str__', ctx=Load()),
-                            args=[],
-                            keywords=[])
+                return Call(func=Attribute(value=node.args[0], attr='__str__', ctx=Load()), args=[], keywords=[])
             if node.func.id == 'range':
-                node.func.id = 'ConcolicRange'
+                return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_range', ctx=Load()), attr='ConcolicRange', ctx=Load()), args=node.args, keywords=[])
+            # if node.func.id == 'type' and len(node.args) == 1:
+            #     return Call(func=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_wrapper', ctx=Load()), attr='_type', ctx=Load()), args=node.args, keywords=[])
         return node
     # def visit_List(self, node: List):
     #     for i in range(len(node.elts)):
@@ -52,28 +58,34 @@ class ConcolicWrapper2(NodeTransformer):
         node.value = ConcolicWrapper2().visit(node.value)
         return node
 
-def _call_with_frames_removed(f, *args, **kwargs):
-    return f(*args, **kwargs)
+class ConcolicWrapper3(NodeTransformer):
+    def visit_Call(self, node: Call):
+        for i in range(len(node.args)):
+            node.args[i] = ConcolicWrapper3().visit(node.args[i])
+        if isinstance(node.func, Name): # precompute type(u"") -> str in our RPyC example
+            if node.func.id == 'type' and len(node.args) == 1:
+                if isinstance(node.args[0], Constant) and isinstance(node.args[0].value, str):
+                    return Name(id='str', ctx=Load())
+        return node
+
+def _call_with_frames_removed(func, *args, **kwargs):
+    return func(*args, **kwargs)
 
 class ConcolicLoader(importlib.machinery.SourceFileLoader):
     def source_to_code(self, data, path):
         source = importlib.util.decode_source(data)
         tree = _call_with_frames_removed(parse, source)
+        # special treatment for statements like "from __future__ import ..."
+        tree.body = tree.body[next((i for i, x in enumerate(tree.body) if isinstance(x, ImportFrom) and x.module == '__future__'), 0):]
         i = 0
-        while len(tree.body) > i and isinstance(tree.body[i], _ast.ImportFrom) and tree.body[i].module == '__future__':
+        while i < len(tree.body) and isinstance(tree.body[i], ImportFrom) and tree.body[i].module == '__future__':
             i += 1
-        tree.body.insert(i, ImportFrom(module='conbyte.concolic_types.concolic_int',
-                                    names=[alias(name='ConcolicInt', asname=None)],
-                                    level=0))
-        tree.body.insert(i, ImportFrom(module='conbyte.concolic_types.concolic_str',
-                                    names=[alias(name='ConcolicStr', asname=None)],
-                                    level=0))
-        tree.body.insert(i, ImportFrom(module='conbyte.concolic_types.concolic_list',
-                                    names=[alias(name='ConcolicList', asname=None)],
-                                    level=0))
-        tree.body.insert(i, ImportFrom(module='conbyte.concolic_types.concolic_range',
-                                    names=[alias(name='ConcolicRange', asname=None)],
-                                    level=0))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_int', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_str', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_list', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_range', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_wrapper', asname=None)]))
+        tree = ConcolicWrapper3().visit(tree)
         tree = ConcolicWrapper().visit(tree)
         tree = ConcolicWrapper2().visit(tree)
         fix_missing_locations(tree)
@@ -89,7 +101,7 @@ class ConcolicFinder(type(_real_pathfinder)):
         # print(fullname, path, spec, sep='\n'); print()
         if not spec: return spec
         loader = spec.loader
-        if not (fullname.startswith('conbyte') or fullname == 'rpyc.core.brine'):
+        if not fullname.startswith('conbyte'):
             try:
                 module = importlib.util.module_from_spec(spec)
                 inspect.getsource(module) # this line is used to check if the source is available
@@ -97,8 +109,8 @@ class ConcolicFinder(type(_real_pathfinder)):
             except Exception as exception:
                 msg = str(exception)
                 if not (isinstance(exception, OSError) and msg in ['could not get source code',
-                                                                'source code not available']) \
-                and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
+                                                                   'source code not available']) \
+                    and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
                     traceback.print_exc()
                     sys.exit(0)
         return loader

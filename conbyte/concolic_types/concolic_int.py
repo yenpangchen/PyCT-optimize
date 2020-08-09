@@ -12,6 +12,7 @@ Classes:
 
 class ConcolicInt(int):
     def __new__(cls, value: int, expr_engine: Expression=None):
+        if isinstance(value, ConcolicInt): return value
         obj = int.__new__(cls, value)
         obj.engine = None
         if expr_engine:
@@ -102,9 +103,8 @@ class ConcolicInt(int):
     def __hash__(self):
         return hash(int.__int__(self))
 
-    def __index__(self):
+    def __index__(self): # must return the primitive version for the use of low-level C functions
         return int.__int__(self)
-        raise NotImplementedError
 
     def __int__(self):
         if self.engine:

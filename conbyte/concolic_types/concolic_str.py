@@ -7,6 +7,7 @@ log = logging.getLogger("ct.con.str")
 
 class ConcolicStr(str):
     def __new__(cls, value: str, expr_engine: Expression=None):
+        if isinstance(value, ConcolicStr): return value
         obj = str.__new__(cls, value)
         obj.engine = None
         if expr_engine:

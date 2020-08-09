@@ -52,7 +52,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_47(self): self._execute("test/xss/self_checking.py", ["", "", ""]) # OK
 
     def _execute(self, filename, inputs):
-        self.iteration_max = 2
+        self.iteration_max = 10
         engine = conbyte.explore.ExplorationEngine()
         iteration = 0
         while iteration == 0 or self._check_coverage(iteration, filename, missing_lines):
