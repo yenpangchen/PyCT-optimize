@@ -34,29 +34,29 @@ class TestCodeSnippets(unittest.TestCase):
     def test_29(self): self._execute("test/targets/leetcode/substring.py", [""]) # OK
     def test_30(self): self._execute("test/targets/leetcode/substring2.py", [""]) # OK
     def test_31(self): self._execute("test/targets/leetcode/ugly_number.py", [0]) # OK
-    def test_32(self): self._execute("target_int/leetcode_int/add_binary.py", ["", ""]) # OK
-    def test_33(self): self._execute("target_int/leetcode_int/addStrings.py", ["", ""]) # OK
-    def test_34(self): self._execute("target_int/leetcode_int/numDecodings.py", [""]) # OK
-    def test_35(self): self._execute("target_int/leetcode_int/restoreIpAddresses.py", [""]) # OK
-    # def test_36(self): self._execute("target_int/leetcode_int/validIPAddress.py", [""]) # TODO 本來就還不行
-    def test_37(self): self._execute("target_int/leetcode_int/validWordAbbreviation.py", ["", ""]) # OK
-    def test_38(self): self._execute("target_int/lib_int/datetime__parse_hh_mm_ss_ff.py", [""]) # OK
-    def test_39(self): self._execute("target_int/lib_int/datetime__parse_isoformat_date.py", [""]) # OK
-    def test_40(self): self._execute("target_int/lib_int/distutils_get_build_version.py", ["MSC v.1212 abc"]) # OK with deadcode [26, 30], but [""] cannot lead to full coverage...
-    # def test_41(self): self._execute("target_int/lib_int/email__parsedate_tz.py", ["Mon, 16 Nov 2009 13:32:02 +0100"]) # TODO 本來就還不行
-    def test_42(self): self._execute("target_int/lib_int/http_parse_request.py", ["HTTP/1.0"]) # OK
-    # def test_43(self): self._execute("target_int/lib_int/ipaddress__ip_int_from_string.py", [""]) # TODO 本來就還不行
-    def test_44(self): self._execute("target_int/lib_int/nntplib__parse_datetime.py", ["000000000000"]) # OK, at least 11 digits for avoiding errors, and 12 digits for full coverage
-    def test_45(self): self._execute("target_int/lib_int/smtpd_parseargs.py", ["", ""]) # OK with deadcode [28, 35, 40]
-    def test_46(self): self._execute("target_int/lib_int/wsgiref_check_status.py", [""]) # OK
-    def test_47(self): self._execute("test/xss/self_checking.py", ["", "", ""]) # OK
+    def test_32(self): self._execute("test/target_int/leetcode_int/add_binary.py", ["", ""]) # OK
+    def test_33(self): self._execute("test/target_int/leetcode_int/addStrings.py", ["", ""]) # OK
+    def test_34(self): self._execute("test/target_int/leetcode_int/numDecodings.py", [""]) # OK
+    def test_35(self): self._execute("test/target_int/leetcode_int/restoreIpAddresses.py", [""]) # OK
+    # def test_36(self): self._execute("test/target_int/leetcode_int/validIPAddress.py", [""]) # TODO 本來就還不行
+    def test_37(self): self._execute("test/target_int/leetcode_int/validWordAbbreviation.py", ["", ""]) # OK
+    def test_38(self): self._execute("test/target_int/lib_int/datetime__parse_hh_mm_ss_ff.py", [""]) # OK
+    def test_39(self): self._execute("test/target_int/lib_int/datetime__parse_isoformat_date.py", [""]) # OK
+    def test_40(self): self._execute("test/target_int/lib_int/distutils_get_build_version.py", ["MSC v.1212 abc"]) # OK with deadcode [26, 30], but [""] cannot lead to full coverage...
+    # def test_41(self): self._execute("test/target_int/lib_int/email__parsedate_tz.py", ["Mon, 16 Nov 2009 13:32:02 +0100"]) # TODO 本來就還不行
+    def test_42(self): self._execute("test/target_int/lib_int/http_parse_request.py", [""]) # OK
+    # def test_43(self): self._execute("test/target_int/lib_int/ipaddress__ip_int_from_string.py", [""]) # TODO 本來就還不行
+    def test_44(self): self._execute("test/target_int/lib_int/nntplib__parse_datetime.py", ["000000000000"]) # OK, at least 11 digits for avoiding errors, and 12 digits for full coverage
+    def test_45(self): self._execute("test/target_int/lib_int/smtpd_parseargs.py", ["", ""]) # OK with deadcode [28, 35, 40]
+    def test_46(self): self._execute("test/target_int/lib_int/wsgiref_check_status.py", [""]) # OK
+    def test_47(self): self._execute("test/realworld/self_checking.py", ["", "", ""]) # OK
 
     def _execute(self, filename, inputs):
         self.iteration_max = 1
         engine = conbyte.explore.ExplorationEngine()
         iteration = 0
         while iteration == 0 or self._check_coverage(iteration, filename, missing_lines):
-            engine.explore('cvc4', filename, None, inputs, 160, 10, self._missing_lines(filename))
+            engine.explore('cvc4', filename, None, inputs, 200, 10, self._missing_lines(filename))
             _, _, missing_lines, _ = engine.coverage_statistics() # missing_lines: dict
             print(filename, list(zip(engine.inputs, engine.results)))
             iteration += 1
@@ -66,9 +66,9 @@ class TestCodeSnippets(unittest.TestCase):
             return {11, 26}
         elif filename == "test/targets/multiplication_or_sum.py":
             return {6}
-        elif filename == "target_int/lib_int/distutils_get_build_version.py":
+        elif filename == "test/target_int/lib_int/distutils_get_build_version.py":
             return {26, 30}
-        elif filename == "target_int/lib_int/smtpd_parseargs.py":
+        elif filename == "test/target_int/lib_int/smtpd_parseargs.py":
             return {28, 35, 40}
         else:
             return {} # empty dictionary
