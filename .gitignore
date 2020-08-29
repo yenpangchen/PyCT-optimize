@@ -33,4 +33,4 @@ runtime/
 
 # Test environment
 script.sh
-test/playground/
+ignore/

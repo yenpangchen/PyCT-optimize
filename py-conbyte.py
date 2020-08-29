@@ -11,7 +11,7 @@ parser.add_argument("file", metavar="path_to_target_file.py", help="specify the 
 parser.add_argument("inputs", metavar="input_args", help="specify the input arguments")
 parser.add_argument("-e", "--entry", dest="entry", action="store", help="specify entry point, if different from path_to_target_file.py", default=None)
 parser.add_argument("-m", "--max_iter", dest="iteration", action="store", help="specify max iterations", type=int, default=50)
-parser.add_argument("-t", "--timeout", dest="timeout", action="store", help="specify solver timeout (default = 1sec)", default=None)
+parser.add_argument("-t", "--timeout", dest="timeout", action="store", help="specify solver timeout (default = 10 sec)", default=10)
 
 # Logging configuration
 parser.add_argument("-d", "--debug", dest='debug', action="store_true", help="enable debug logging")

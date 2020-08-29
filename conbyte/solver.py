@@ -8,7 +8,7 @@ class Solver:
     cnt = 0 # for query_store
 
     @staticmethod
-    def find_model_from_constraint(engine, solver, constraint, timeout=1, query_store=None):
+    def find_model_from_constraint(engine, solver, constraint, timeout=10, query_store=None):
         ######################################################################################
         # Build the command from the solver type
         if solver == "z3seq":

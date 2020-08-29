@@ -22,7 +22,7 @@ class ExplorationEngine:
         self.extend_queries = []
         self.num_of_extend_vars = 0
 
-    def explore(self, solver, filename, entry, ini_vars, max_iterations, timeout=None, query_store=None):
+    def explore(self, solver, filename, entry, ini_vars, max_iterations, timeout=10, deadcode=None, query_store=None):
         self.__init__()
         self.module_name = os.path.basename(filename).replace(".py", "") # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
         self.coverage = coverage.Coverage(data_file=None, branch=True, source=[self.module_name])
@@ -31,7 +31,7 @@ class ExplorationEngine:
             if not os.path.isdir(query_store):
                 raise IOError("Query folder {} not found".format(query_store))
         iterations = 1
-        cont = self._one_execution(iterations, filename, entry, ini_vars) # the 1st execution
+        cont = self._one_execution(iterations, filename, entry, ini_vars, deadcode) # the 1st execution
         while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
@@ -44,10 +44,10 @@ class ExplorationEngine:
             if model is not None:
                 log.info("=== Iterations: %s ===" % iterations); iterations += 1
                 args = list(model.values()) # from model to argument
-                cont = self._one_execution(iterations, filename, entry, args) # other consecutive executions following the 1st execution
+                cont = self._one_execution(iterations, filename, entry, args, deadcode) # other consecutive executions following the 1st execution
         return iterations - 1
 
-    def _one_execution(self, iterations, filename, entry, init_vars):
+    def _one_execution(self, iterations, filename, entry, init_vars, deadcode):
         entry = self.module_name if entry is None else entry
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
@@ -104,7 +104,9 @@ class ExplorationEngine:
             assert result == ans
         for file in self.coverage_data.measured_files():
             missing_lines = self.coverage_accumulated_missing_lines[file]
-            if missing_lines: print(file, missing_lines); return True
+            if missing_lines:
+                if not (file == os.path.abspath(filename) and deadcode == missing_lines):
+                    print(file, missing_lines); return True
         return False
 
     def _get_concolic_parameters(self, func, init_vars):
@@ -157,7 +159,7 @@ class ExplorationEngine:
             #     if line not in self.coverage_data.lines(file):
             #         m_lines.append(line)
             if m_lines:
-                missing_lines[file] = sorted(list(m_lines))
+                missing_lines[file] = m_lines
         return total_lines, executed_lines, missing_lines, executed_branches
 
     def print_coverage(self):
