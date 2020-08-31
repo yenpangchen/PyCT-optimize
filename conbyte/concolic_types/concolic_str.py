@@ -45,14 +45,8 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if start is not None or end is not None: raise NotImplementedError
         if not isinstance(suffix, ConcolicStr): suffix = ConcolicStr(suffix)
         value = str.__str__(self).endswith(str.__str__(suffix))
-        if self.engine:
-            expr = ["str.suffixof", suffix, self]
-            return ConcolicBool(value, expr)
-        elif suffix.engine:
-            expr = ["str.suffixof", suffix, self]
-            return ConcolicBool(value, expr)
-        else:
-            return ConcolicBool(value)
+        expr = ["str.suffixof", suffix, self]
+        return ConcolicBool(value, expr)
 
     # def expandtabs(self, tabsize=8):
     #     raise NotImplementedError
@@ -75,16 +69,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         else:
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start))
             expr = ["str.indexof", self, sub, start]
-        if self.engine:
-            return ConcolicInt(value, expr)
-        elif sub.engine:
-            return ConcolicInt(value, expr)
-        elif start.engine:
-            return ConcolicInt(value, expr)
-        elif end and end.engine:
-            return ConcolicInt(value, expr)
-        else:
-            return ConcolicInt(value)
+        return ConcolicInt(value, expr)
 
     # def format(self, *args, **kwargs):
     #     raise NotImplementedError
@@ -111,11 +96,8 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def isdigit(self):
         value = str.__str__(self).isdigit()
-        if self.engine:
-            expr = ["str.in.re", self, ["re.+", ["re.range", "\"0\"", "\"9\""]]]
-            return ConcolicBool(value, expr)
-        else:
-            return ConcolicBool(value)
+        expr = ["str.in.re", self, ["re.+", ["re.range", "\"0\"", "\"9\""]]]
+        return ConcolicBool(value, expr)
 
     # def isidentifier(self):
     #     raise NotImplementedError
@@ -180,12 +162,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                     ["str.substr", expr, 1, ["-", ["str.len", expr], 1]],
                     expr
                     ]
-        if self.engine:
-            return ConcolicStr(value, expr)
-        elif chars.engine:
-            return ConcolicStr(value, expr)
-        else:
-            return ConcolicStr(value)
+        return ConcolicStr(value, expr)
 
     @staticmethod
     def maketrans(x, y=-1, z=-1): # default arguments are not checked yet
@@ -215,16 +192,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             n_expr = ["str.replace", expr, old, new]
             if count > 0:
                 count -= 1
-        if self.engine:
-            return ConcolicStr(n_value, n_expr)
-        elif old.engine:
-            return ConcolicStr(n_value, n_expr)
-        elif new.engine:
-            return ConcolicStr(n_value, n_expr)
-        elif type(count) is ConcolicInt and count.engine:
-            return ConcolicStr(n_value, n_expr)
-        else:
-            return ConcolicStr(n_value)
+        return ConcolicStr(n_value, n_expr)
 
     def rfind(self, sub, start=-1, end=-1): # default arguments are not checked yet
         return ConcolicInt(str.__str__(self).rfind(sub, start, end))
@@ -258,12 +226,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                     ["str.substr", expr, 0, ["-", ["str.len", expr], 1]],
                     expr
                    ]
-        if self.engine:
-            return ConcolicStr(value, expr)
-        elif chars.engine:
-            return ConcolicStr(value, expr)
-        else:
-            return ConcolicStr(value)
+        return ConcolicStr(value, expr)
 
     # TODO: Temp
     def split(self, sep=None, maxsplit=-1):
@@ -309,14 +272,8 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if start is not None or end is not None: raise NotImplementedError
         if not isinstance(prefix, ConcolicStr): prefix = ConcolicStr(prefix)
         value = str.__str__(self).startswith(str.__str__(prefix)) #.value)
-        if self.engine:
-            expr = ["str.prefixof", prefix, self]
-            return ConcolicBool(value, expr)
-        elif prefix.engine:
-            expr = ["str.prefixof", prefix, self]
-            return ConcolicBool(value, expr)
-        else:
-            return ConcolicBool(value)
+        expr = ["str.prefixof", prefix, self]
+        return ConcolicBool(value, expr)
 
     # TODO: Temp
     def strip(self, chars=None):
@@ -350,26 +307,14 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     def __add__(self, other):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         value = str.__str__(self) + str.__str__(other)
-        if self.engine:
-            expr = ["str.++", self, other]
-            return ConcolicStr(value, expr)
-        elif other.engine:
-            expr = ["str.++", self, other]
-            return ConcolicStr(value, expr)
-        else:
-            return ConcolicStr(value)
+        expr = ["str.++", self, other]
+        return ConcolicStr(value, expr)
 
     def __contains__(self, other):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         value = str.__str__(self).__contains__(str.__str__(other))
-        if self.engine:
-            expr = ["str.contains", self, other]
-            return ConcolicBool(value, expr)
-        elif other.engine:
-            expr = ["str.contains", self, other]
-            return ConcolicBool(value, expr)
-        else:
-            return ConcolicBool(value)
+        expr = ["str.contains", self, other]
+        return ConcolicBool(value, expr)
 
     def __eq__(self, other):
         if other is None: return False
@@ -386,12 +331,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 key += len(self)
             value = str.__str__(self)[int.__int__(key)]
             expr = ["str.at", self, key]
-            if self.engine:
-                return ConcolicStr(value, expr)
-            elif key.engine:
-                return ConcolicStr(value, expr)
-            else:
-                return ConcolicStr(value)
+            return ConcolicStr(value, expr)
         if not isinstance(key, slice): raise NotImplementedError
         if key.step is not None: raise NotImplementedError
         return self.substr(key.start, key.stop)
@@ -416,11 +356,8 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __len__(self):
         value = len(str.__str__(self)) #.value)
-        if self.engine:
-            expr = ["str.len", self]
-            return ConcolicInt(value, expr)
-        else:
-            return ConcolicInt(value)
+        expr = ["str.len", self]
+        return ConcolicInt(value, expr)
 
     def __lt__(self, other):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
@@ -515,14 +452,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             stop = self.__len__()
         value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
         expr = ["str.substr", self, start, (stop-start)]
-        if self.engine:
-            return ConcolicStr(value, expr)
-        elif start.engine:
-            return ConcolicStr(value, expr)
-        elif stop.engine:
-            return ConcolicStr(value, expr)
-        else:
-            return ConcolicStr(value)
+        return ConcolicStr(value, expr)
 
     def compare_op(self, operator, other):
         val_l = str.__str__(self) #.value
@@ -558,39 +488,23 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             # expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
         else:
             raise NotImplementedError
-        if self.engine:
-            return ConcolicBool(value, expr)
-        elif other.engine:
-            return ConcolicBool(value, expr)
-        else:
-            return ConcolicBool(value)
+        return ConcolicBool(value, expr)
 
     """
        Global functions
     """
-    # def len(self):
-    #     value = len(self.value)
-    #     expr = ["str.len", self]
-    #     return ConcolicInt(value, expr)
+
     def __int__(self):
-        if self.engine:
-            self.isnumber().__bool__()
-            expr = ["ite", ["str.prefixof", "\"-\"", self],
-                    ["-", ["str.to.int",
-                        ["str.substr", self, "1", ["-", ["str.len", self], "1"]]
-                        ]
-                    ],
-                    ["str.to.int", self]
-                ]
-            return ConcolicInt(int(str.__str__(self)), expr)
-        else:
-            return ConcolicInt(int(str.__str__(self)))
-    # def escape_value(self):
-    #     return self.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
-    #     # value = self.value.replace("\n", "\\n")
-    #     # value = value.replace("\r", "\\r")
-    #     # value = value.replace("\t", "\\t")
-    #     # return value
+        self.isnumber().__bool__()
+        expr = ["ite", ["str.prefixof", "\"-\"", self],
+                ["-", ["str.to.int",
+                    ["str.substr", self, "1", ["-", ["str.len", self], "1"]]
+                    ]
+                ],
+                ["str.to.int", self]
+            ]
+        return ConcolicInt(int(str.__str__(self)), expr)
+
     def isnumber(self):
         expr = ["ite", ["str.prefixof", "\"-\"", self],
                ["and",
@@ -609,11 +523,4 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
               ]
         my_str = str.__str__(self)
         if my_str.startswith('-'): my_str = my_str[1:]
-        if self.engine:
-            return ConcolicBool(my_str.isdigit(), expr)
-        else:
-            return ConcolicBool(my_str.isdigit())
-    # def store(self, index, value):
-    #     if isinstance(index, ConcolicInt):
-    #         index = index.value
-    #     self.value[index] = value
+        return ConcolicBool(my_str.isdigit(), expr)

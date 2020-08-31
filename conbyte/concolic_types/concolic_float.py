@@ -25,19 +25,10 @@ class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
     def __int__(self):
         from conbyte.concolic_types.concolic_int import ConcolicInt
         value = float.__int__(self)
-        if self.engine:
-            return ConcolicInt(value, ['to_int', self])
-        else:
-            return ConcolicInt(value)
+        return ConcolicInt(value, ['to_int', self])
 
     def __truediv__(self, other):
         if not isinstance(other, ConcolicFloat): other = ConcolicFloat(other)
         value = float.__float__(self) / float.__float__(other)
-        if self.engine:
-            expr = ['/', self, other]
-            return ConcolicFloat(value, expr)
-        elif other.engine:
-            expr = ['/', self, other]
-            return ConcolicFloat(value, expr)
-        else:
-            return ConcolicFloat(value)
+        expr = ['/', self, other]
+        return ConcolicFloat(value, expr)

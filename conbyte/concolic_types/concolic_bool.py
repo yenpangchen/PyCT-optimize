@@ -25,10 +25,7 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
     def __index__(self):
         from conbyte.concolic_types.concolic_int import ConcolicInt
         value = int.__int__(unwrap(self))
-        if self.engine:
-            return ConcolicInt(value, ["ite", ["=", self, "true"], 1, 0])
-        else:
-            return ConcolicInt(value)
+        return ConcolicInt(value, ["ite", ["=", self, "true"], 1, 0])
 
     # TODO
     def __xor__(self, other):
