@@ -27,6 +27,10 @@ def _int(obj):
 
 class ConcolicWrapper(NodeTransformer):
     def visit_Constant(self, node: Constant):
+        if isinstance(node.value, bool):
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_bool', ctx=Load()), attr='ConcolicBool', ctx=Load()), args=[node], keywords=[])
+        if isinstance(node.value, float):
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_float', ctx=Load()), attr='ConcolicFloat', ctx=Load()), args=[node], keywords=[])
         if isinstance(node.value, int):
             return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_int', ctx=Load()), attr='ConcolicInt', ctx=Load()), args=[node], keywords=[])
         if isinstance(node.value, str):
@@ -80,6 +84,8 @@ class ConcolicLoader(importlib.machinery.SourceFileLoader):
         i = 0
         while i < len(tree.body) and isinstance(tree.body[i], ImportFrom) and tree.body[i].module == '__future__':
             i += 1
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_bool', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_float', asname=None)]))
         tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_int', asname=None)]))
         tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_str', asname=None)]))
         tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_list', asname=None)]))

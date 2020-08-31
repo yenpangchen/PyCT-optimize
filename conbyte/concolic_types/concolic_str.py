@@ -1,28 +1,17 @@
-from .concolic_bool import *
-from conbyte.expression import Expression
-from .concolic_int import *
-from .concolic_list import *
+import logging
+from conbyte.concolic_types.concolic import Concolic, MetaFinal
+from conbyte.concolic_types.concolic_bool import ConcolicBool
+from conbyte.concolic_types.concolic_int import ConcolicInt
+from conbyte.global_utils import py2smt, unwrap
 # import logging
 log = logging.getLogger("ct.con.str")
 
-class ConcolicStr(str):
-    def __new__(cls, value: str, expr_engine: Expression=None):
-        if isinstance(value, ConcolicStr): return value
-        obj = str.__new__(cls, value)
-        obj.engine = None
-        if expr_engine:
-            obj.expr = expr_engine.expr
-            obj.engine = expr_engine.engine
-        else:
-            value = value.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t").replace('"', '""')
-            value_new = ""
-            for ch in value:
-                if ord(ch) > 127: # unicode characters
-                    value_new += '\\u{' + str(hex(ord(ch)))[2:] + '}'
-                else:
-                    value_new += ch
-            value = '"' + value_new + '"' # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
-            obj.expr = value
+class ConcolicStr(str, Concolic, metaclass=MetaFinal):
+    def __new__(cls, value, expr=None, engine=None):
+        assert type(value) is str
+        obj = super().__new__(cls, value)
+        obj.expr = expr if expr is not None else py2smt(value)
+        obj.engine = engine if engine is not None else Concolic._find_engine_in_expression(expr)
         # if isinstance(obj.expr, list):
         #     obj.expr = global_utils.add_extended_vars_and_queries('String', obj.expr)
         # log.debug("  ConStr, value: %s, expr: %s" % (obj, obj.expr))
@@ -57,11 +46,11 @@ class ConcolicStr(str):
         if not isinstance(suffix, ConcolicStr): suffix = ConcolicStr(suffix)
         value = str.__str__(self).endswith(str.__str__(suffix))
         if self.engine:
-            expr = ["str.suffixof", suffix.expr, self.expr]
-            return ConcolicBool(value, Expression(expr, self.engine))
+            expr = ["str.suffixof", suffix, self]
+            return ConcolicBool(value, expr)
         elif suffix.engine:
-            expr = ["str.suffixof", suffix.expr, self.expr]
-            return ConcolicBool(value, Expression(expr, suffix.engine))
+            expr = ["str.suffixof", suffix, self]
+            return ConcolicBool(value, expr)
         else:
             return ConcolicBool(value)
 
@@ -75,25 +64,25 @@ class ConcolicStr(str):
         if not isinstance(sub, ConcolicStr): sub = ConcolicStr(sub)
         if L < 2: start = ConcolicInt(0)
         else: start = args[1]
-        if not isinstance(start, ConcolicStr): start = ConcolicInt(start)
+        if not isinstance(start, ConcolicInt): start = ConcolicInt(start)
         if L < 3: end = None
         else: end = args[2]
         if L > 3: raise TypeError('find() takes at most 3 arguments (' + L + ' given)')
         if end is not None:
             if not isinstance(end, ConcolicInt): end = ConcolicInt(end)
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start), int.__int__(end))
-            expr = ["str.indexof", self.substr(start, end).expr, sub.expr, start.expr]
+            expr = ["str.indexof", self.substr(start, end), sub, start]
         else:
             value = str.__str__(self).find(str.__str__(sub), int.__int__(start))
-            expr = ["str.indexof", self.expr, sub.expr, start.expr]
+            expr = ["str.indexof", self, sub, start]
         if self.engine:
-            return ConcolicInt(value, Expression(expr, self.engine))
+            return ConcolicInt(value, expr)
         elif sub.engine:
-            return ConcolicInt(value, Expression(expr, sub.engine))
+            return ConcolicInt(value, expr)
         elif start.engine:
-            return ConcolicInt(value, Expression(expr, start.engine))
+            return ConcolicInt(value, expr)
         elif end and end.engine:
-            return ConcolicInt(value, Expression(expr, end.engine))
+            return ConcolicInt(value, expr)
         else:
             return ConcolicInt(value)
 
@@ -123,8 +112,8 @@ class ConcolicStr(str):
     def isdigit(self):
         value = str.__str__(self).isdigit()
         if self.engine:
-            expr = ["str.in.re", self.expr, ["re.+", ["re.range", "\"0\"", "\"9\""]]]
-            return ConcolicBool(value, Expression(expr, self.engine))
+            expr = ["str.in.re", self, ["re.+", ["re.range", "\"0\"", "\"9\""]]]
+            return ConcolicBool(value, expr)
         else:
             return ConcolicBool(value)
 
@@ -153,9 +142,9 @@ class ConcolicStr(str):
         return ConcolicStr(str.__str__(self).join(array))
         raise NotImplementedError
         # if isinstance(array, ConcolicList):
-        #     orig = ConcolicStr(self.value, self.expr)
+        #     orig = ConcolicStr(self.value, self)
         #     self.value = ""
-        #     self.expr = "\"\""
+        #     self = "\"\""
         #     for element in array.value:
         #         if isinstance(element, ConcolicInt):
         #             append = ConcolicStr(element.get_str())
@@ -183,18 +172,18 @@ class ConcolicStr(str):
         if int.__int__(len(chars)) == 0: return self
         if int.__int__(len(chars)) > 1: return super().lstrip(chars) # raise NotImplementedError
         assert len(str.__str__(chars)) == 1
-        expr = self.expr
+        expr = self
         value = str.__str__(self) #.value
         while value.startswith(str.__str__(chars)): #.value):
             value = value[1:]
-            expr = ["ite", ["str.prefixof", chars.expr, expr],
+            expr = ["ite", ["str.prefixof", chars, expr],
                     ["str.substr", expr, 1, ["-", ["str.len", expr], 1]],
                     expr
                     ]
         if self.engine:
-            return ConcolicStr(value, Expression(expr, self.engine))
+            return ConcolicStr(value, expr)
         elif chars.engine:
-            return ConcolicStr(value, Expression(expr, chars.engine))
+            return ConcolicStr(value, expr)
         else:
             return ConcolicStr(value)
 
@@ -211,29 +200,29 @@ class ConcolicStr(str):
         if not isinstance(old, ConcolicStr): old = ConcolicStr(old)
         if not isinstance(new, ConcolicStr): new = ConcolicStr(new)
         value = str.__str__(self) #.value
-        expr = self.expr
+        expr = self
         count = int.__int__(count) #.value
         if count == 0:
             return ConcolicStr(value, expr)
         n_value = value.replace(str.__str__(old), str.__str__(new), 1)
-        n_expr = ["str.replace", expr, old.expr, new.expr]
+        n_expr = ["str.replace", expr, old, new]
         if count > 0:
             count -= 1
         while n_value != value and (count == -1 or count > 0):
             value = n_value
             expr = n_expr
             n_value = value.replace(str.__str__(old), str.__str__(new), 1)
-            n_expr = ["str.replace", expr, old.expr, new.expr]
+            n_expr = ["str.replace", expr, old, new]
             if count > 0:
                 count -= 1
         if self.engine:
-            return ConcolicStr(n_value, Expression(n_expr, self.engine))
+            return ConcolicStr(n_value, n_expr)
         elif old.engine:
-            return ConcolicStr(n_value, Expression(n_expr, old.engine))
+            return ConcolicStr(n_value, n_expr)
         elif new.engine:
-            return ConcolicStr(n_value, Expression(n_expr, new.engine))
+            return ConcolicStr(n_value, n_expr)
         elif type(count) is ConcolicInt and count.engine:
-            return ConcolicStr(n_value, Expression(n_expr, count.engine))
+            return ConcolicStr(n_value, n_expr)
         else:
             return ConcolicStr(n_value)
 
@@ -261,18 +250,18 @@ class ConcolicStr(str):
         if int.__int__(len(chars)) == 0: return self
         if int.__int__(len(chars)) > 1: raise NotImplementedError
         assert int.__int__(len(chars)) == 1
-        expr = self.expr
+        expr = self
         value = str.__str__(self) #.value
         while value.endswith(str.__str__(chars)): #.value):
             value = value[:-1]
-            expr = ["ite", ["str.suffixof", chars.expr, expr],
+            expr = ["ite", ["str.suffixof", chars, expr],
                     ["str.substr", expr, 0, ["-", ["str.len", expr], 1]],
                     expr
                    ]
         if self.engine:
-            return ConcolicStr(value, Expression(expr, self.engine))
+            return ConcolicStr(value, expr)
         elif chars.engine:
-            return ConcolicStr(value, Expression(expr, chars.engine))
+            return ConcolicStr(value, expr)
         else:
             return ConcolicStr(value)
 
@@ -304,7 +293,7 @@ class ConcolicStr(str):
                 raise NotImplementedError
         return ans_list
         # if maxsplit == -1:
-        #     len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self.expr, sep.expr, sep2.expr]], ['str.len', self.expr]], ['str.len', sep.expr]]]
+        #     len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self, sep, sep2]], ['str.len', self]], ['str.len', sep]]]
         #     return ConcolicList(ans_list, len_expr=len_expr)
         # else:
         #     return ConcolicList(ans_list)
@@ -321,11 +310,11 @@ class ConcolicStr(str):
         if not isinstance(prefix, ConcolicStr): prefix = ConcolicStr(prefix)
         value = str.__str__(self).startswith(str.__str__(prefix)) #.value)
         if self.engine:
-            expr = ["str.prefixof", prefix.expr, self.expr]
-            return ConcolicBool(value, Expression(expr, self.engine))
+            expr = ["str.prefixof", prefix, self]
+            return ConcolicBool(value, expr)
         elif prefix.engine:
-            expr = ["str.prefixof", prefix.expr, self.expr]
-            return ConcolicBool(value, Expression(expr, prefix.engine))
+            expr = ["str.prefixof", prefix, self]
+            return ConcolicBool(value, expr)
         else:
             return ConcolicBool(value)
 
@@ -362,11 +351,11 @@ class ConcolicStr(str):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         value = str.__str__(self) + str.__str__(other)
         if self.engine:
-            expr = ["str.++", self.expr, other.expr]
-            return ConcolicStr(value, Expression(expr, self.engine))
+            expr = ["str.++", self, other]
+            return ConcolicStr(value, expr)
         elif other.engine:
-            expr = ["str.++", self.expr, other.expr]
-            return ConcolicStr(value, Expression(expr, other.engine))
+            expr = ["str.++", self, other]
+            return ConcolicStr(value, expr)
         else:
             return ConcolicStr(value)
 
@@ -374,11 +363,11 @@ class ConcolicStr(str):
         if not isinstance(other, ConcolicStr): other = ConcolicStr(other)
         value = str.__str__(self).__contains__(str.__str__(other))
         if self.engine:
-            expr = ["str.contains", self.expr, other.expr]
-            return ConcolicBool(value, Expression(expr, self.engine))
+            expr = ["str.contains", self, other]
+            return ConcolicBool(value, expr)
         elif other.engine:
-            expr = ["str.contains", self.expr, other.expr]
-            return ConcolicBool(value, Expression(expr, other.engine))
+            expr = ["str.contains", self, other]
+            return ConcolicBool(value, expr)
         else:
             return ConcolicBool(value)
 
@@ -396,11 +385,11 @@ class ConcolicStr(str):
             if key < 0:
                 key += len(self)
             value = str.__str__(self)[int.__int__(key)]
-            expr = ["str.at", self.expr, key.expr]
+            expr = ["str.at", self, key]
             if self.engine:
-                return ConcolicStr(value, Expression(expr, self.engine))
+                return ConcolicStr(value, expr)
             elif key.engine:
-                return ConcolicStr(value, Expression(expr, key.engine))
+                return ConcolicStr(value, expr)
             else:
                 return ConcolicStr(value)
         if not isinstance(key, slice): raise NotImplementedError
@@ -428,8 +417,8 @@ class ConcolicStr(str):
     def __len__(self):
         value = len(str.__str__(self)) #.value)
         if self.engine:
-            expr = ["str.len", self.expr]
-            return ConcolicInt(value, Expression(expr, self.engine))
+            expr = ["str.len", self]
+            return ConcolicInt(value, expr)
         else:
             return ConcolicInt(value)
 
@@ -493,7 +482,7 @@ class ConcolicStr(str):
 
     def __str__(self):
         return str.__str__(self) # why???
-        # return self # "{ConStr, value: %s, expr: %s)" % (self.escape_value(), self.expr)
+        # return self # "{ConStr, value: %s, expr: %s)" % (self.escape_value(), self)
 
     ################################################################
     # Other helper methods are implemented in the following section.
@@ -525,13 +514,13 @@ class ConcolicStr(str):
         if int.__int__(stop) > self.__len__():
             stop = self.__len__()
         value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
-        expr = ["str.substr", self.expr, start.expr, (stop-start).expr]
+        expr = ["str.substr", self, start, (stop-start)]
         if self.engine:
-            return ConcolicStr(value, Expression(expr, self.engine))
+            return ConcolicStr(value, expr)
         elif start.engine:
-            return ConcolicStr(value, Expression(expr, start.engine))
+            return ConcolicStr(value, expr)
         elif stop.engine:
-            return ConcolicStr(value, Expression(expr, stop.engine))
+            return ConcolicStr(value, expr)
         else:
             return ConcolicStr(value)
 
@@ -541,38 +530,38 @@ class ConcolicStr(str):
         val_r = str.__str__(other) #.value
         if operator == "==":
             value = val_l == val_r
-            expr = ["=", self.expr, other.expr]
+            expr = ["=", self, other]
         elif operator == "!=":
             value = val_l != val_r
-            expr = ['not', ["=", self.expr, other.expr]]
+            expr = ['not', ["=", self, other]]
         elif operator == ">":
             # assert len(val_l) == 1 and len(val_r) == 1
             value = val_l > val_r
-            expr = ['not', ['str.<=', self.expr, other.expr]]
-            # expr = ["str.in.re", self.expr, ["re.range", other.expr, "\"\\xff\""]]
-            # expr = ["and", ["not", ["=", self.expr, other.expr]], expr]
+            expr = ['not', ['str.<=', self, other]]
+            # expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
+            # expr = ["and", ["not", ["=", self, other]], expr]
         elif operator == "<":
             # assert len(val_l) == 1 and len(val_r) == 1
             value = val_l < val_r
-            expr = ['str.<', self.expr, other.expr]
-            # expr = ["str.in.re", self.expr, ["re.range", "\"\\x00\"", other.expr]]
-            # expr = ["and", ["not", ["=", self.expr, other.expr]], expr]
+            expr = ['str.<', self, other]
+            # expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
+            # expr = ["and", ["not", ["=", self, other]], expr]
         elif operator == ">=":
             # assert len(val_l) == 1 and len(val_r) == 1
             value = val_l >= val_r
-            expr = ['not', ['str.<', self.expr, other.expr]]
-            # expr = ["str.in.re", self.expr, ["re.range", other.expr, "\"\\xff\""]]
+            expr = ['not', ['str.<', self, other]]
+            # expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
         elif operator == "<=":
             # assert len(val_l) == 1 and len(val_r) == 1
             value = val_l <= val_r
-            expr = ['str.<=', self.expr, other.expr]
-            # expr = ["str.in.re", self.expr, ["re.range", "\"\\x00\"", other.expr]]
+            expr = ['str.<=', self, other]
+            # expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
         else:
             raise NotImplementedError
         if self.engine:
-            return ConcolicBool(value, Expression(expr, self.engine))
+            return ConcolicBool(value, expr)
         elif other.engine:
-            return ConcolicBool(value, Expression(expr, other.engine))
+            return ConcolicBool(value, expr)
         else:
             return ConcolicBool(value)
 
@@ -581,19 +570,19 @@ class ConcolicStr(str):
     """
     # def len(self):
     #     value = len(self.value)
-    #     expr = ["str.len", self.expr]
+    #     expr = ["str.len", self]
     #     return ConcolicInt(value, expr)
     def __int__(self):
         if self.engine:
             self.isnumber().__bool__()
-            expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
+            expr = ["ite", ["str.prefixof", "\"-\"", self],
                     ["-", ["str.to.int",
-                        ["str.substr", self.expr, "1", ["-", ["str.len", self.expr], "1"]]
+                        ["str.substr", self, "1", ["-", ["str.len", self], "1"]]
                         ]
                     ],
-                    ["str.to.int", self.expr]
+                    ["str.to.int", self]
                 ]
-            return ConcolicInt(int(str.__str__(self)), Expression(expr, self.engine))
+            return ConcolicInt(int(str.__str__(self)), expr)
         else:
             return ConcolicInt(int(str.__str__(self)))
     # def escape_value(self):
@@ -603,17 +592,17 @@ class ConcolicStr(str):
     #     # value = value.replace("\t", "\\t")
     #     # return value
     def isnumber(self):
-        expr = ["ite", ["str.prefixof", "\"-\"", self.expr],
+        expr = ["ite", ["str.prefixof", "\"-\"", self],
                ["and",
                 ["ite", ["=", "(- 1)",
-                        ["str.to.int", ["str.substr", self.expr, "1", ["-", ["str.len", self.expr], "1"]]]
+                        ["str.to.int", ["str.substr", self, "1", ["-", ["str.len", self], "1"]]]
                        ],
                  "false",
                  "true"
                 ],
-                [">", ["str.len", self.expr], "1"]
+                [">", ["str.len", self], "1"]
                ],
-               ["ite", ["=", "(- 1)", ["str.to.int", self.expr]],
+               ["ite", ["=", "(- 1)", ["str.to.int", self]],
                  "false",
                  "true"
                ]
@@ -621,7 +610,7 @@ class ConcolicStr(str):
         my_str = str.__str__(self)
         if my_str.startswith('-'): my_str = my_str[1:]
         if self.engine:
-            return ConcolicBool(my_str.isdigit(), Expression(expr, self.engine))
+            return ConcolicBool(my_str.isdigit(), expr)
         else:
             return ConcolicBool(my_str.isdigit())
     # def store(self, index, value):

@@ -1,5 +1,4 @@
 import builtins, coverage, func_timeout, importlib, inspect, json, logging, multiprocessing, os, sys, traceback
-from conbyte.expression import Expression
 import conbyte.global_utils, conbyte.path_to_constraint, conbyte.solver
 from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.concolic_types.concolic_str import ConcolicStr
@@ -60,7 +59,7 @@ class ExplorationEngine:
             conc_args = self._get_concolic_parameters(execute, init_vars)
             success = False; result = None
             try:
-                result = conbyte.global_utils.downgrade(func_timeout.func_timeout(5, execute, args=conc_args))
+                result = conbyte.global_utils.unwrap(func_timeout.func_timeout(5, execute, args=conc_args))
                 success = True
                 log.info("Return: %s" % result)
             except func_timeout.FunctionTimedOut:
@@ -70,7 +69,7 @@ class ExplorationEngine:
                 sys.exit(1)
             except Exception as e:
                 print('Current Input Vector:', init_vars)
-                print(e)#; traceback.print_exc()
+                print(e); traceback.print_exc()
                 log.error("Execution exception for: %s" % init_vars)
             child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types]); child.close()
             os._exit(os.EX_OK)
@@ -129,13 +128,13 @@ class ExplorationEngine:
         copy_vars = []
         for v in para.values():
             if isinstance(v.default, int):
-                copy_vars.append(ConcolicInt(v.default, Expression(v.name, self)))
+                copy_vars.append(ConcolicInt(v.default, v.name, self))
             elif isinstance(v.default, str):
-                copy_vars.append(ConcolicStr(v.default, Expression(v.name, self)))
-            elif isinstance(v.default, list):
-                for i in range(len(v.default)):
-                    v.default[i] = conbyte.global_utils.upgrade(v.default[i])
-                copy_vars.append(ConcolicList(v.default, Expression(v.name, self)))
+                copy_vars.append(ConcolicStr(v.default, v.name, self))
+            # elif isinstance(v.default, list):
+            #     for i in range(len(v.default)):
+            #         v.default[i] = conbyte.global_utils.upgrade(v.default[i])
+            #     copy_vars.append(ConcolicList(v.default, Expression(v.name, self)))
             elif v.default is not None:
                 raise NotImplementedError
         return copy_vars

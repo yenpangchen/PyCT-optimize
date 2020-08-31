@@ -1,5 +1,4 @@
 from .concolic_bool import *
-from conbyte.expression import Expression
 from .concolic_int import *
 from conbyte.predicate import Predicate
 
@@ -12,7 +11,7 @@ Classes:
 """
 
 class ConcolicList(list):
-    def __init__(self, value: list, expr_engine: Expression=None): # , len_expr=None):
+    def __init__(self, value: list, expr_engine=None): # , len_expr=None):
         from .concolic_str import ConcolicStr
         import conbyte.global_utils
         assert isinstance(value, list)
@@ -89,9 +88,9 @@ class ConcolicList(list):
                 key = ConcolicInt(key)
             if key < 0: key += self.__len__()
             if isinstance(super().__getitem__(key), int):
-                return ConcolicInt(int.__int__(super().__getitem__(key)), Expression(['select', ['array', self.expr], key.expr], self.engine))
+                return ConcolicInt(int.__int__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
             else:
-                return ConcolicStr(str.__str__(super().__getitem__(key)), Expression(['select', ['array', self.expr], key.expr], self.engine))
+                return ConcolicStr(str.__str__(super().__getitem__(key)), ['select', ['array', self.expr], key.expr])
         else:
             return super().__getitem__(key)
 
@@ -123,7 +122,7 @@ class ConcolicList(list):
 
     def __len__(self):
         if self.expr:
-            return ConcolicInt(super().__len__(), Expression(['__len__', self.expr], self.engine))
+            return ConcolicInt(super().__len__(), ['__len__', self.expr])
         else:
             return ConcolicInt(super().__len__())
 
@@ -245,8 +244,8 @@ class ConcolicList(list):
 
     # custom function to perform downgrading
     def parent(self):
-        from conbyte.global_utils import downgrade
-        return list(map(downgrade, list(self)))
+        from conbyte.global_utils import unwrap
+        return list(map(unwrap, list(self)))
 
     # def get_index(self, index=0):
     #     if isinstance(index, ConcolicInt):

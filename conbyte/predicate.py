@@ -1,5 +1,7 @@
 # Copyright - see copyright.txt
 
+from conbyte.concolic_types.concolic import Concolic
+
 class Predicate:
     def __init__(self, expr, value):
         self.expr = expr
@@ -24,6 +26,8 @@ class Predicate:
                         return False
                 return True
         else:
+            if isinstance(expr1, Concolic) and isinstance(expr2, Concolic):
+                return self._eq_worker(expr1.expr, expr2.expr)
             return expr1 == expr2
 
     def get_formula(self):
@@ -35,6 +39,8 @@ class Predicate:
 
     @staticmethod
     def _get_formula(expr):
+        if isinstance(expr, Concolic):
+            return Predicate._get_formula(expr.expr)
         if isinstance(expr, list):
             formula = "( "
             for exp in expr:

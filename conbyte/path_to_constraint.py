@@ -1,6 +1,7 @@
 # Copyright: see copyright.txt
 import logging
-import conbyte.constraint, conbyte.global_utils, conbyte.predicate
+import conbyte.constraint, conbyte.predicate
+from conbyte.global_utils import unwrap
 
 log = logging.getLogger("ct.pathconstraint")
 
@@ -11,11 +12,11 @@ class PathToConstraint:
         self.current_constraint = self.root_constraint
 
     def which_branch(self, conbool):
-        if conbool.expr == 'nil': log.debug("Skip nil"); return
-        if isinstance(conbool.expr, bool): return # Pure bool type assignment is normally not codition branch
-        p = conbyte.predicate.Predicate(conbool.expr, conbool.value)
+        # if conbool.expr == 'nil': log.debug("Skip nil"); return
+        # if isinstance(conbool.expr, bool): return # Pure bool type assignment is normally not codition branch
+        p = conbyte.predicate.Predicate(conbool.expr, unwrap(conbool))
         c = self.current_constraint.find_child(p)
-        pneg = conbyte.predicate.Predicate(conbool.expr, not conbool.value)
+        pneg = conbyte.predicate.Predicate(conbool.expr, not unwrap(conbool))
         cneg = self.current_constraint.find_child(pneg)
         if c is None and cneg is None:
             c = self.current_constraint.add_child(p, conbool.engine.extend_vars, conbool.engine.extend_queries)
