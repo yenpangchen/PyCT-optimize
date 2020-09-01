@@ -2,7 +2,7 @@ import logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
 from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.global_utils import ConcolicObject, py2smt, unwrap
-# import logging
+
 log = logging.getLogger("ct.con.str")
 
 class ConcolicStr(str, Concolic, metaclass=MetaFinal):
@@ -13,7 +13,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         obj.engine = engine if engine is not None else Concolic._find_engine_in_expression(expr)
         # if isinstance(obj.expr, list):
         #     obj.expr = global_utils.add_extended_vars_and_queries('String', obj.expr)
-        # log.debug("  ConStr, value: %s, expr: %s" % (obj, obj.expr))
+        log.debug(f"  ConStr, value: {value}, expr: {obj.expr}")
         return obj
 
     #########################################################################
@@ -471,7 +471,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
        Global functions
     """
 
-    def __int__(self):
+    def __int2__(self):
         self.isnumber().__bool__()
         expr = ["ite", ["str.prefixof", "\"-\"", self],
                 ["-", ["str.to.int",

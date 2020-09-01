@@ -23,10 +23,10 @@ class TestCodeSnippets(unittest.TestCase):
     def test_18(self): self._execute("test/targets/multiplication_or_sum.py", [0, 0]) # OK with restriction by solver ability [6]
     # def test_19(self): self._execute("test/targets/regex.py", [""]) # TODO
     def test_20(self): self._execute("test/targets/lib/email__header_value_parser.py", [""]) # OK
-    # def test_21(self): self._execute("test/targets/lib/httplib2___negotiatehttp.py", [["1", "2", "3"]]) # TODO: We currently does not support concolic lists.
+    # def test_21(self): self._execute("test/targets/lib/httplib2___negotiatehttp.py", [["1", "2", "3"]]) # TODO: We currently do not support concolic lists.
     def test_22(self): self._execute("test/targets/leetcode/add_digits.py", [0]) # OK
-    # def test_23(self): self._execute("test/targets/leetcode/findUnsortedSubarray.py", [[0]]) # TODO: We currently does not support concolic lists.
-    def test_24(self): self._execute("test/targets/leetcode/fraction_to_decimal.py", [-50, 8]) # OK (but [0,0] cannot lead to full coverage...)
+    # def test_23(self): self._execute("test/targets/leetcode/findUnsortedSubarray.py", [[0]]) # TODO: We currently do not support concolic lists.
+    def test_24(self): self._execute("test/targets/leetcode/fraction_to_decimal.py", [2, 3]) # OK (but [0,0] cannot lead to full coverage...)
     def test_25(self): self._execute("test/targets/leetcode/isLongPressedName.py", ["", ""]) # OK
     def test_26(self): self._execute("test/targets/leetcode/numDecodings.py", [""]) # OK
     def test_27(self): self._execute("test/targets/leetcode/restoreIpAddresses.py", [""]) # OK

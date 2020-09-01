@@ -5,7 +5,6 @@
 class Concolic: #(ABC):
     @staticmethod
     def _find_engine_in_expression(expression):
-        from conbyte.explore import ExplorationEngine
         if isinstance(expression, Concolic):
             return expression.engine
         if isinstance(expression, list):

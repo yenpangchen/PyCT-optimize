@@ -5,6 +5,7 @@
 
 from ast import Attribute, Call, Constant, Import, ImportFrom, Load, Name, NodeTransformer, alias, fix_missing_locations, parse
 import importlib, inspect, sys, traceback
+from conbyte.concolic_types.concolic import Concolic
 from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.concolic_types.concolic_str import ConcolicStr
 
@@ -22,7 +23,7 @@ from conbyte.concolic_types.concolic_str import ConcolicStr
 #     return res
 
 def _int(obj):
-    if isinstance(obj, (ConcolicInt, ConcolicStr)): return obj.__int__()
+    if isinstance(obj, Concolic) and hasattr(obj, '__int2__'): return obj.__int2__()
     return int(obj)
 
 class ConcolicWrapper(NodeTransformer):
