@@ -1,4 +1,4 @@
-import logging
+import copy, logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
 from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.global_utils import ConcolicObject, py2smt, unwrap
@@ -211,10 +211,29 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, center is called")
         return ConcolicObject(super().center(unwrap(width), unwrap(fillchar)))
 
-    # TODO: Concrete value
-    def count(self, sub, start=None, end=None): # default arguments are not checked yet
-        if start is not None or end is not None: raise NotImplementedError
-        return ConcolicObject(str.__str__(self).count(str.__str__(sub)))
+    def count(self, *args): # <method 'count' of 'str' objects>
+        """S.count(sub[, start[, end]]) -> int\n\nReturn the number of non-overlapping occurrences of substring sub in\nstring S[start:end].  Optional arguments start and end are\ninterpreted as in slice notation."""
+        log.debug("  ConStr, count is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        if isinstance(args, tuple): args = list(args)
+        value = super().count(*map(unwrap, args))
+        if not isinstance(args[0], Concolic):
+            try: args[0] = str(args[0])
+            except: args[0] = ''
+            args[0] = self.__class__(args[0])
+        if len(args) < 2: args.append(0)
+        if not isinstance(args[1], Concolic):
+            try: args[1] = int(args[1])
+            except: args[1] = 0
+            args[1] = ConcolicObject(args[1]) # ConcolicInt
+        if len(args) < 3: args.append(self.__len__())
+        if not isinstance(args[2], Concolic):
+            try: args[2] = int(args[2])
+            except: args[2] = self.__len__() # Default values are also ok to have expressions.
+            args[2] = ConcolicObject(args[2]) # ConcolicInt
+        main = self._substr(args[1], args[2])
+        # args[0] = add_extend_vars('String', args[0])
+        tokens = ["ite", ["<=", ["str.len", args[0]], "0"], ["+", "1", ["str.len", main]], ["div", ["-", ["str.len", ["str.replaceall", main, args[0], ["str.++", args[0], args[0]]]], ["str.len", main]], ["str.len", args[0]]]]
+        return ConcolicObject(value, tokens)
 
     def encode(self, /, encoding='utf-8', errors='strict'): # <method 'encode' of 'str' objects> TODO
         """Encode the string using the codec registered for encoding."""
@@ -288,9 +307,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, isdecimal is called")
         return ConcolicObject(super().isdecimal())
 
-    def isdigit(self):
-        value = str.__str__(self).isdigit()
-        expr = ["str.in.re", self, ["re.+", ["re.range", "\"0\"", "\"9\""]]]
+    def isdigit(self, /): # <method 'isdigit' of 'str' objects>
+        """Return True if the string is a digit string, False otherwise.\n\nA string is a digit string if all characters in the string are digits and there\nis at least one character in the string."""
+        log.debug("  ConStr, isdigit is called")
+        value = super().isdigit()
+        expr = ["str.in.re", self, ["re.+", ["re.range", py2smt('0'), py2smt('9')]]]
+        # Question: Is this expression equivalent to ["not", ["=", "-1", ["str.to.int", self]]]?
         return ConcolicObject(value, expr)
 
     def isidentifier(self, /): # <method 'isidentifier' of 'str' objects> TODO
@@ -593,24 +615,14 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             raise NotImplementedError
 
     def _is_int(self):
-        expr = ["ite", ["str.prefixof", "\"-\"", self],
-               ["and",
-                ["ite", ["=", "(- 1)",
-                        ["str.to.int", ["str.substr", self, "1", ["-", ["str.len", self], "1"]]]
-                       ],
-                 "false",
-                 "true"
-                ],
-                [">", ["str.len", self], "1"]
-               ],
-               ["ite", ["=", "(- 1)", ["str.to.int", self]],
-                 "false",
-                 "true"
-               ]
-              ]
-        my_str = str.__str__(self)
-        if my_str.startswith('-'): my_str = my_str[1:]
-        return ConcolicObject(my_str.isdigit(), expr)
+        log.debug("  ConStr, _is_int is called")
+        import re; INT_RE = re.compile(r"^[-]?\d+$"); value = INT_RE.match(unwrap(self)) is not None
+        # TODO: Can this regular expression be written in SMT syntax?
+        # self = add_extend_vars('String', self)
+        expr = ["not", ["=", py2smt(-1), ["ite", ["str.prefixof", py2smt('-'), self],
+                                                 ["str.to.int", ["str.substr", self, "1", ["str.len", self]]],
+                                                 ["str.to.int", self]]]]
+        return ConcolicObject(value, expr)
 
     def _substr(self, start=None, stop=None): # stop is exclusive...
         if stop is None:
@@ -638,15 +650,14 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         return ConcolicObject(value, expr)
 
     def __int2__(self):
-        self._is_int().__bool__()
-        expr = ["ite", ["str.prefixof", "\"-\"", self],
-                ["-", ["str.to.int",
-                    ["str.substr", self, "1", ["-", ["str.len", self], "1"]]
-                    ]
-                ],
-                ["str.to.int", self]
-            ]
-        return ConcolicObject(int(str.__str__(self)), expr)
+        log.debug("  ConStr, __int2__ is called")
+        self._is_int().__bool__() # our handmade branch in order to produce more successful testcases
+        value = int(self)
+        # self = add_extend_vars('String', self)
+        expr = ["ite", ["str.prefixof", py2smt('-'), self],
+                       ["-", ["str.to.int", ["str.substr", self, "1", ["str.len", self]]]],
+                       ["str.to.int", self]] # For better results, avoid using ["str.replace", self, "-", ""] in the above line.
+        return ConcolicObject(value, expr)
 
     def __str2__(self):
         log.debug("  ConStr, __str2__ is called")
