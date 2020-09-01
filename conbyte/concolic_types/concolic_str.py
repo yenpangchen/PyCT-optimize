@@ -399,20 +399,20 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, lower is called")
         return ConcolicObject(super().lower())
 
-    # TODO: Temp
-    def lstrip(self, chars=None):
-        if chars is None: chars = ConcolicObject(" ") # ConcolicObject("\" \"", " ")
-        if int.__int__(len(chars)) == 0: return self
-        if int.__int__(len(chars)) > 1: return super().lstrip(chars) # raise NotImplementedError
-        assert len(str.__str__(chars)) == 1
+    def lstrip(self, chars=None, /): # <method 'lstrip' of 'str' objects> TODO: move from approximation to exact semantics
+        """Return a copy of the string with leading whitespace removed.\n\nIf chars is given and not None, remove characters in chars instead."""
+        log.debug("  ConStr, lstrip is called")
+        value = super().lstrip(unwrap(chars))
+        if not isinstance(chars, Concolic):
+            try: chars = str(chars)
+            except: chars = ' ' # TODO: Is this the only whitespace ???
+            chars = self.__class__(chars)
+        # self = add_extend_vars('String', self)
         expr = self
-        value = str.__str__(self) #.value
-        while value.startswith(str.__str__(chars)): #.value):
-            value = value[1:]
-            expr = ["ite", ["str.prefixof", chars, expr],
-                    ["str.substr", expr, 1, ["-", ["str.len", expr], 1]],
-                    expr
-                    ]
+        s = unwrap(self)
+        while any(map(lambda ch: s.startswith(unwrap(ch)), chars)):
+            s = s[1:]
+            expr = ["ite", ['or'] + list(map(lambda ch: ["str.prefixof", ch, expr], chars)), ["str.substr", expr, "1", ["str.len", expr]], expr]
         return ConcolicObject(value, expr)
 
     # maketrans, <built-in method maketrans of type object at 0x9036c0> (@staticmethod)
@@ -459,7 +459,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 current = current._substr(start=split_index + old_len)
                 count -= 1
         # If our concolic result is different from the standard one, we can only return the standard result.
-        return result if unwrap(result) == value else value
+        return result if unwrap(result) == value else ConcolicObject(value)
 
     def rfind(self, *args, **kwargs): # <method 'rfind' of 'str' objects> TODO
         """S.rfind(sub[, start[, end]]) -> int"""
@@ -487,20 +487,20 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         return ConcolicObject(super().rsplit(unwrap(sep), unwrap(maxsplit)))
 
     # TODO: Temp
-    def rstrip(self, chars=None):
-        if chars is None: chars = ConcolicObject(" ") # ConcolicObject("\" \"", " ")
-        if not isinstance(chars, ConcolicStr): chars = ConcolicStr(chars)
-        if int.__int__(len(chars)) == 0: return self
-        if int.__int__(len(chars)) > 1: raise NotImplementedError
-        assert int.__int__(len(chars)) == 1
+    def rstrip(self, chars=None, /): # <method 'rstrip' of 'str' objects> TODO: move from approximation to exact semantics
+        """Return a copy of the string with trailing whitespace removed.\n\nIf chars is given and not None, remove characters in chars instead."""
+        log.debug("  ConStr, rstrip is called")
+        value = super().rstrip(unwrap(chars))
+        if not isinstance(chars, Concolic):
+            try: chars = str(chars)
+            except: chars = ' ' # TODO: Is this the only whitespace ???
+            chars = self.__class__(chars)
+        # self = add_extend_vars('String', self)
         expr = self
-        value = str.__str__(self) #.value
-        while value.endswith(str.__str__(chars)): #.value):
-            value = value[:-1]
-            expr = ["ite", ["str.suffixof", chars, expr],
-                    ["str.substr", expr, 0, ["-", ["str.len", expr], 1]],
-                    expr
-                   ]
+        s = unwrap(self)
+        while any(map(lambda ch: s.endswith(unwrap(ch)), chars)):
+            s = s[:-1]
+            expr = ["ite", ['or'] + list(map(lambda ch: ["str.suffixof", ch, expr], chars)), ["str.substr", expr, "0", ["-", ["str.len", expr], "1"]], expr]
         return ConcolicObject(value, expr)
 
     # TODO: Temp
@@ -565,9 +565,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         expr = ["str.prefixof", args[0], self._substr(args[1], args[2])]
         return ConcolicObject(value, expr)
 
-    # TODO: Temp
-    def strip(self, chars=None):
-        return self.lstrip(chars).rstrip(chars)
+    def strip(self, chars=None, /): # <method 'strip' of 'str' objects> TODO: not sure whether ".lstrip(chars).rstrip(chars)" is the exact definition or not.
+        """Return a copy of the string with leading and trailing whitespace removed.\n\nIf chars is given and not None, remove characters in chars instead."""
+        log.debug("  ConStr, strip is called")
+        value = super().strip(unwrap(chars))
+        result = self.lstrip(chars).rstrip(chars)
+        return result if unwrap(result) == value else ConcolicObject(value)
 
     def swapcase(self, /): # <method 'swapcase' of 'str' objects> TODO
         """Convert uppercase characters to lowercase and lowercase characters to uppercase."""
