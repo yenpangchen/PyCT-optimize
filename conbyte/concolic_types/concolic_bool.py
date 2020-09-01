@@ -2,7 +2,7 @@
 
 import logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
-from conbyte.global_utils import py2smt, unwrap
+from conbyte.global_utils import ConcolicObject, py2smt, unwrap
 
 log = logging.getLogger("ct.con.bool")
 
@@ -23,12 +23,11 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
         return unwrap(self)
 
     def __index__(self):
-        from conbyte.concolic_types.concolic_int import ConcolicInt
         value = int.__int__(unwrap(self))
-        return ConcolicInt(value, ["ite", ["=", self, "true"], 1, 0])
+        return ConcolicObject(value, ["ite", ["=", self, "true"], 1, 0])
 
     # TODO
     def __xor__(self, other):
         value = self.value ^ other.value
         expr = ["xor", self, other]
-        return ConcolicBool(value, expr)
+        return ConcolicObject(value, expr)

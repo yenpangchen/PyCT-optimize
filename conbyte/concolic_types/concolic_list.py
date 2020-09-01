@@ -43,7 +43,7 @@ class ConcolicList(list):
                 self.expr = [['as', 'const', ['Array', 'Int', types[t]]], types[t+2]]
                 for (i, val) in enumerate(value):
                     assert isinstance(val, types[t+1])
-                    val = conbyte.global_utils.upgrade(val)
+                    val = conbyte.global_utils.ConcolicObject(val)
                     self.expr = ['store', self.expr, i, val.expr]
                 if len_expr is None:
                     self.expr = ['list', self.expr, len(value)]

@@ -1,8 +1,7 @@
 # Copyright: copyright.txt
 import logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
-from conbyte.global_utils import py2smt, unwrap
-from conbyte.concolic_types.concolic_bool import ConcolicBool
+from conbyte.global_utils import ConcolicObject, py2smt, unwrap
 
 log = logging.getLogger("ct.con.int")
 
@@ -25,7 +24,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
     def __abs__(self):
         value = int.__int__(self).__abs__()
         expr = ["ite", [">=", self, 0], self, ["-", 0, self]]
-        return ConcolicInt(value, expr)
+        return ConcolicObject(value, expr)
 
     # def __bool__(self):
     #     return int.__bool__(self)
@@ -34,28 +33,27 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         if self.engine:
             return self
         else:
-            return ConcolicInt(int.__int__(self))
+            return ConcolicObject(int.__int__(self))
 
     # def __divmod__(self, value):
     #     return int.__int__(self).__divmod__(value)
 
     def __eq__(self, other):
-        if not isinstance(other, int): return ConcolicBool(False)
+        if not isinstance(other, int): return ConcolicObject(False)
         value = int.__int__(self).__eq__(int.__int__(other))
         if not isinstance(other, ConcolicInt): other = ConcolicInt(other)
         expr = ["=", self, other]
-        return ConcolicBool(value, expr)
+        return ConcolicObject(value, expr)
 
     def __float__(self):
-        from .concolic_float import ConcolicFloat
         value = int.__float__(self)
-        return ConcolicFloat(value, ['to_real', self])
+        return ConcolicObject(value, ['to_real', self])
 
     def __floor__(self):
         if self.engine:
             return self
         else:
-            return ConcolicInt(int.__int__(self).__floor__())
+            return ConcolicObject(int.__int__(self).__floor__())
 
     def __format__(self, format_spec):
         return int.__int__(self).__format__(format_spec)
@@ -64,13 +62,13 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         value = int.__int__(self).__ge__(int.__int__(other))
         if not isinstance(other, ConcolicInt): other = ConcolicInt(other)
         expr = [">=", self, other]
-        return ConcolicBool(value, expr)
+        return ConcolicObject(value, expr)
 
     def __gt__(self, other):
         value = int.__int__(self).__gt__(int.__int__(other))
         if not isinstance(other, ConcolicInt): other = ConcolicInt(other)
         expr = [">", self, other]
-        return ConcolicBool(value, expr)
+        return ConcolicObject(value, expr)
 
     def __hash__(self):
         return hash(int.__int__(self))
@@ -82,33 +80,33 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         if self.engine:
             return self
         else:
-            return ConcolicInt(int.__int__(self))
+            return ConcolicObject(int.__int__(self))
 
     def __invert__(self):
-        return ConcolicInt(int.__int__(self).__invert__())
+        return ConcolicObject(int.__int__(self).__invert__())
 
     def __le__(self, other):
         value = int.__int__(self).__le__(int.__int__(other))
         if not isinstance(other, ConcolicInt): other = ConcolicInt(other)
         expr = ["<=", self, other]
-        return ConcolicBool(value, expr)
+        return ConcolicObject(value, expr)
 
     def __lt__(self, other):
         value = int.__int__(self).__lt__(int.__int__(other))
         if not isinstance(other, ConcolicInt): other = ConcolicInt(other)
         expr = ["<", self, other]
-        return ConcolicBool(value, expr)
+        return ConcolicObject(value, expr)
 
     def __ne__(self, other):
         value = int.__int__(self).__ne__(int.__int__(other))
         if not isinstance(other, ConcolicInt): other = ConcolicInt(other)
         expr = ["not", ["=", self, other]]
-        return ConcolicBool(value, expr)
+        return ConcolicObject(value, expr)
 
     def __neg__(self):
         value = -int.__int__(self)
         expr = ["-", 0, self]
-        return ConcolicInt(value, expr)
+        return ConcolicObject(value, expr)
 
     def __pos__(self):
         raise NotImplementedError
@@ -152,18 +150,16 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         # raise NotImplementedError
 
     def __str__(self):
-        from conbyte.concolic_types.concolic_str import ConcolicStr # put here to avoid circular import
         value = int.__str__(self)
         expr = ["int.to.str", self]
-        return ConcolicStr(value, expr)
+        return ConcolicObject(value, expr)
 
     def __truediv__(self, other):
         x = self.__float__()
         if isinstance(other, ConcolicInt):
             y = other.__float__()
         elif type(other) is float:
-            from .concolic_float import ConcolicFloat
-            y = ConcolicFloat(other)
+            y = ConcolicObject(other)
         else:
             raise NotImplementedError
         return x / y # operation between two concolic floats
@@ -192,7 +188,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         return int.__int__(self)
 
     def __lshift__(self, value):
-        return ConcolicInt(int.__int__(self).__lshift__(value))
+        return ConcolicObject(int.__int__(self).__lshift__(value))
         raise NotImplementedError
 
     # def __rshift__(self, value):
@@ -216,7 +212,7 @@ def make_method(method, op, op_smt):
     code += "   if not isinstance(other, ConcolicInt):\n"
     code += "      other = ConcolicInt(other)\n"
     code += "   expr = [\"%s\", self, other]\n" % op_smt
-    code += "   return ConcolicInt(value, expr)\n"
+    code += "   return ConcolicObject(value, expr)\n"
     locals_dict = {}
     exec(code, globals(), locals_dict)
     setattr(ConcolicInt, method, locals_dict[method])
@@ -236,14 +232,14 @@ rops = [("radd", "+", "+"),
 def make_rmethod(method, op, op_smt):
     code = "def %s(self, other):\n" % method
     code += "   if type(other) is int:\n"
-    code += "      other = ConcolicInt(other)\n"
+    code += "      other = ConcolicObject(other)\n"
     code += "      value = int.__int__(other) %s int.__int__(self)\n" % op
     code += "      expr = [\"%s\", other, self]\n" % op_smt
-    code += "      return ConcolicInt(value, expr)\n"
+    code += "      return ConcolicObject(value, expr)\n"
     code += "   else:\n"
     code += "      value = other %s int.__int__(self)\n" % op
     code += "      if type(value) is int:\n"
-    code += "         return ConcolicInt(value)\n"
+    code += "         return ConcolicObject(value)\n"
     code += "      else:\n"
     code += "         return value\n"
     locals_dict = {}

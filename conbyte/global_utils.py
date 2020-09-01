@@ -1,23 +1,30 @@
 
 from conbyte.predicate import Predicate
 
-def upgrade(x):
+def ConcolicObject(value, expr=None, engine=None):
     from conbyte.concolic_types.concolic_bool import ConcolicBool
+    from conbyte.concolic_types.concolic_float import ConcolicFloat
     from conbyte.concolic_types.concolic_int import ConcolicInt
     from conbyte.concolic_types.concolic_str import ConcolicStr
-    if type(x) is bool: return ConcolicBool(x)
-    if type(x) is int: return ConcolicInt(x)
-    if type(x) is str: return ConcolicStr(x)
-    return x
+    if type(value) is bool: return ConcolicBool(value, expr, engine)
+    if type(value) is float: return ConcolicFloat(value, expr, engine)
+    if type(value) is int: return ConcolicInt(value, expr, engine)
+    if type(value) is str: return ConcolicStr(value, expr, engine)
+    if isinstance(value, list): # TODO: Are there other types of mutable sequences? What about type slice?
+        return list(map(ConcolicObject, value))
+    return value
 
-def unwrap(x):
+def unwrap(x): # call primitive's casting function to avoid getting stuck when the concolic's function is modified.
     from conbyte.concolic_types.concolic_bool import ConcolicBool
+    from conbyte.concolic_types.concolic_float import ConcolicFloat
     from conbyte.concolic_types.concolic_int import ConcolicInt
     from conbyte.concolic_types.concolic_str import ConcolicStr
     if type(x) is ConcolicBool: return bool.__bool__(x)
+    if type(x) is ConcolicFloat: return float.__float__(x)
     if type(x) is ConcolicInt: return int.__int__(x)
     if type(x) is ConcolicStr: return str.__str__(x)
-    if type(x) is list: x = list(map(unwrap, x))
+    if isinstance(x, list): # TODO: Are there other types of mutable sequences? What about type slice?
+        return list(map(unwrap, x))
     return x
 
 def add_extended_vars_and_queries(typename, expr, engine):

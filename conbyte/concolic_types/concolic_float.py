@@ -2,7 +2,7 @@
 
 import logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
-from conbyte.global_utils import py2smt, unwrap
+from conbyte.global_utils import ConcolicObject, py2smt, unwrap
 
 # log = logging.getLogger("ct.con.float")
 
@@ -23,12 +23,11 @@ class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
         return obj
 
     def __int__(self):
-        from conbyte.concolic_types.concolic_int import ConcolicInt
         value = float.__int__(self)
-        return ConcolicInt(value, ['to_int', self])
+        return ConcolicObject(value, ['to_int', self])
 
     def __truediv__(self, other):
         if not isinstance(other, ConcolicFloat): other = ConcolicFloat(other)
         value = float.__float__(self) / float.__float__(other)
         expr = ['/', self, other]
-        return ConcolicFloat(value, expr)
+        return ConcolicObject(value, expr)

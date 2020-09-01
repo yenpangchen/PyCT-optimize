@@ -133,7 +133,7 @@ class ExplorationEngine:
                 copy_vars.append(ConcolicStr(v.default, v.name, self))
             # elif isinstance(v.default, list):
             #     for i in range(len(v.default)):
-            #         v.default[i] = conbyte.global_utils.upgrade(v.default[i])
+            #         v.default[i] = conbyte.global_utils.ConcolicObject(v.default[i])
             #     copy_vars.append(ConcolicList(v.default, Expression(v.name, self)))
             elif v.default is not None:
                 raise NotImplementedError
