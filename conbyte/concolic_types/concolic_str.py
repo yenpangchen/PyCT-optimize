@@ -232,8 +232,8 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             args[2] = ConcolicObject(args[2]) # ConcolicInt
         main = self._substr(args[1], args[2])
         # args[0] = add_extend_vars('String', args[0])
-        tokens = ["ite", ["<=", ["str.len", args[0]], "0"], ["+", "1", ["str.len", main]], ["div", ["-", ["str.len", ["str.replaceall", main, args[0], ["str.++", args[0], args[0]]]], ["str.len", main]], ["str.len", args[0]]]]
-        return ConcolicObject(value, tokens)
+        expr = ["ite", ["<=", ["str.len", args[0]], "0"], ["+", "1", ["str.len", main]], ["div", ["-", ["str.len", ["str.replaceall", main, args[0], ["str.++", args[0], args[0]]]], ["str.len", main]], ["str.len", args[0]]]]
+        return ConcolicObject(value, expr)
 
     def encode(self, /, encoding='utf-8', errors='strict'): # <method 'encode' of 'str' objects> TODO
         """Encode the string using the codec registered for encoding."""
@@ -252,24 +252,26 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, expandtabs is called")
         return ConcolicObject(super().expandtabs(unwrap(tabsize)))
 
-    def find(self, *args):
-        L = len(args)
-        if L < 1: raise TypeError('find() takes at least 1 argument (' + L + ' given)')
-        sub = args[0]
-        if not isinstance(sub, ConcolicStr): sub = ConcolicStr(sub)
-        if L < 2: start = ConcolicObject(0)
-        else: start = args[1]
-        if not isinstance(start, ConcolicInt): start = ConcolicInt(start)
-        if L < 3: end = None
-        else: end = args[2]
-        if L > 3: raise TypeError('find() takes at most 3 arguments (' + L + ' given)')
-        if end is not None:
-            if not isinstance(end, ConcolicInt): end = ConcolicInt(end)
-            value = str.__str__(self).find(str.__str__(sub), int.__int__(start), int.__int__(end))
-            expr = ["str.indexof", self._substr(start, end), sub, start]
-        else:
-            value = str.__str__(self).find(str.__str__(sub), int.__int__(start))
-            expr = ["str.indexof", self, sub, start]
+    def find(self, *args): # <method 'find' of 'str' objects>
+        """S.find(sub[, start[, end]]) -> int\n\nReturn the lowest index in S where substring sub is found,\nsuch that sub is contained within S[start:end].  Optional\narguments start and end are interpreted as in slice notation.\n\nReturn -1 on failure."""
+        log.debug("  ConStr, find is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        if isinstance(args, tuple): args = list(args)
+        value = super().find(*map(unwrap, args))
+        if not isinstance(args[0], Concolic):
+            try: args[0] = str(args[0])
+            except: args[0] = ''
+            args[0] = self.__class__(args[0])
+        if len(args) < 2: args.append(0)
+        if not isinstance(args[1], Concolic):
+            try: args[1] = int(args[1])
+            except: args[1] = 0
+            args[1] = ConcolicObject(args[1]) # ConcolicInt
+        if len(args) < 3: args.append(self.__len__())
+        if not isinstance(args[2], Concolic):
+            try: args[2] = int(args[2])
+            except: args[2] = self.__len__() # Default values are also ok to have expressions.
+            args[2] = ConcolicObject(args[2]) # ConcolicInt
+        expr = ["+", args[1], ["str.indexof", self._substr(args[1], args[2]), args[0], "0"]]
         return ConcolicObject(value, expr)
 
     def format(self, *args, **kwargs): # <method 'format' of 'str' objects> TODO
@@ -282,10 +284,27 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, format_map is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
         return ConcolicObject(super().format_map(*args, **kwargs))
 
-    def index(self, *args):
-        res = self.find(args)
-        if res == -1: str.__str__(self).index(args) # raise the built-in error
-        return res
+    def index(self, *args): # <method 'index' of 'str' objects>
+        """S.index(sub[, start[, end]]) -> int\n\nReturn the lowest index in S where substring sub is found,\nsuch that sub is contained within S[start:end].  Optional\narguments start and end are interpreted as in slice notation.\n\nRaises ValueError when the substring is not found."""
+        log.debug("  ConStr, index is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        if isinstance(args, tuple): args = list(args)
+        value = super().index(*map(unwrap, args))
+        if not isinstance(args[0], Concolic):
+            try: args[0] = str(args[0])
+            except: args[0] = ''
+            args[0] = self.__class__(args[0])
+        if len(args) < 2: args.append(0)
+        if not isinstance(args[1], Concolic):
+            try: args[1] = int(args[1])
+            except: args[1] = 0
+            args[1] = ConcolicObject(args[1]) # ConcolicInt
+        if len(args) < 3: args.append(self.__len__())
+        if not isinstance(args[2], Concolic):
+            try: args[2] = int(args[2])
+            except: args[2] = self.__len__() # Default values are also ok to have expressions.
+            args[2] = ConcolicObject(args[2]) # ConcolicInt
+        expr = ["str.indexof", self._substr(args[1], args[2]), args[0], "0"]
+        return ConcolicObject(value, expr)
 
     def isalnum(self, /): # <method 'isalnum' of 'str' objects> TODO
         """Return True if the string is an alpha-numeric string, False otherwise.\n\nA string is alpha-numeric if all characters in the string are alpha-numeric and\nthere is at least one character in the string."""
