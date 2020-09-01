@@ -240,11 +240,26 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, encode is called")
         return ConcolicObject(super().encode(unwrap(encoding), unwrap(errors)))
 
-    def endswith(self, suffix, start=None, end=None): # default arguments are not checked yet
-        if start is not None or end is not None: raise NotImplementedError
-        if not isinstance(suffix, ConcolicStr): suffix = ConcolicStr(suffix)
-        value = str.__str__(self).endswith(str.__str__(suffix))
-        expr = ["str.suffixof", suffix, self]
+    def endswith(self, *args): # <method 'endswith' of 'str' objects>
+        """S.endswith(suffix[, start[, end]]) -> bool\n\nReturn True if S ends with the specified suffix, False otherwise.\nWith optional start, test S beginning at that position.\nWith optional end, stop comparing S at that position.\nsuffix can also be a tuple of strings to try."""
+        log.debug("  ConStr, endswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        if isinstance(args, tuple): args = list(args)
+        value = super().endswith(*map(unwrap, args)) # TODO: still not deal with the case when suffix is a tuple!!!
+        if not isinstance(args[0], Concolic):
+            try: args[0] = str(args[0])
+            except: args[0] = ''
+            args[0] = self.__class__(args[0])
+        if len(args) < 2: args.append(0)
+        if not isinstance(args[1], Concolic):
+            try: args[1] = int(args[1])
+            except: args[1] = 0
+            args[1] = ConcolicObject(args[1]) # ConcolicInt
+        if len(args) < 3: args.append(self.__len__())
+        if not isinstance(args[2], Concolic):
+            try: args[2] = int(args[2])
+            except: args[2] = self.__len__() # Default values are also ok to have expressions.
+            args[2] = ConcolicObject(args[2]) # ConcolicInt
+        expr = ["str.suffixof", args[0], self._substr(args[1], args[2])]
         return ConcolicObject(value, expr)
 
     def expandtabs(self, /, tabsize=8): # <method 'expandtabs' of 'str' objects> TODO
@@ -407,27 +422,44 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, partition is called")
         return ConcolicObject(super().partition(unwrap(sep)))
 
-    # TODO: Temp
-    def replace(self, old, new, count=-1):
-        if not isinstance(old, ConcolicStr): old = ConcolicStr(old)
-        if not isinstance(new, ConcolicStr): new = ConcolicStr(new)
-        value = str.__str__(self) #.value
-        expr = self
-        count = int.__int__(count) #.value
-        if count == 0:
-            return ConcolicObject(value, expr)
-        n_value = value.replace(str.__str__(old), str.__str__(new), 1)
-        n_expr = ["str.replace", expr, old, new]
-        if count > 0:
-            count -= 1
-        while n_value != value and (count == -1 or count > 0):
-            value = n_value
-            expr = n_expr
-            n_value = value.replace(str.__str__(old), str.__str__(new), 1)
-            n_expr = ["str.replace", expr, old, new]
-            if count > 0:
+    def replace(self, old, new, count=-1, /): # <method 'replace' of 'str' objects> TODO: move from approximation to exact semantics
+        """Return a copy with all occurrences of substring old replaced by new.\n\n  count\n    Maximum number of occurrences to replace.\n    -1 (the default value) means replace all occurrences.\n\nIf the optional argument count is given, only the first count occurrences are\nreplaced."""
+        log.debug("  ConStr, replace is called")
+        value = super().replace(unwrap(old), unwrap(new), unwrap(count))
+        if not isinstance(old, Concolic):
+            try: old = str(old)
+            except: old = ''
+            old = self.__class__(old)
+        if not isinstance(new, Concolic):
+            try: new = str(new)
+            except: new = ''
+            new = self.__class__(new)
+        if not isinstance(count, Concolic):
+            try: count = int(count)
+            except: count = -1
+            count = ConcolicObject(count) # ConcolicInt
+        old_len = old.__len__() # a cached concolic constant for speeding up
+        result = self.__class__('')
+        current = self # current substring after several rounds of "replace"
+        while True:
+            if count == 0 or (split_index := current.find(old)) == -1:
+                result += current
+                break
+            elif count < 0:
+                v = unwrap(current).replace(unwrap(old), unwrap(new), unwrap(count))
+                expr = ["str.replaceall", current, old, new]
+                result += ConcolicObject(v, expr)
+                break
+            else: # if count > 0:
+                # <--- result ---><------------- current ---------------------->
+                # <--- result ---><------><-- old --><------------------------->
+                # <------- result -------><------ new ------><-------- current -------->
+                result += current._substr(end=split_index)
+                result += new
+                current = current._substr(start=split_index + old_len)
                 count -= 1
-        return ConcolicObject(n_value, n_expr)
+        # If our concolic result is different from the standard one, we can only return the standard result.
+        return result if unwrap(result) == value else value
 
     def rfind(self, *args, **kwargs): # <method 'rfind' of 'str' objects> TODO
         """S.rfind(sub[, start[, end]]) -> int"""
@@ -489,10 +521,10 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 ans_list.append(substr)
                 break
             elif maxsplit == -1:
-                ans_list.append(substr._substr(stop=split_index))
+                ans_list.append(substr._substr(end=split_index))
                 substr = substr._substr(start=split_index+sep_len)
             elif maxsplit > 0:
-                ans_list.append(substr._substr(stop=split_index))
+                ans_list.append(substr._substr(end=split_index))
                 substr = substr._substr(start=split_index+sep_len)
                 maxsplit -= 1
             else:
@@ -511,11 +543,26 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         else:
             return self.split("\n")
 
-    def startswith(self, prefix, start=None, end=None): # default arguments are not checked yet
-        if start is not None or end is not None: raise NotImplementedError
-        if not isinstance(prefix, ConcolicStr): prefix = ConcolicStr(prefix)
-        value = str.__str__(self).startswith(str.__str__(prefix)) #.value)
-        expr = ["str.prefixof", prefix, self]
+    def startswith(self, *args): # <method 'startswith' of 'str' objects>
+        """S.startswith(prefix[, start[, end]]) -> bool\n\nReturn True if S starts with the specified prefix, False otherwise.\nWith optional start, test S beginning at that position.\nWith optional end, stop comparing S at that position.\nprefix can also be a tuple of strings to try."""
+        log.debug("  ConStr, startswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        if isinstance(args, tuple): args = list(args)
+        value = super().startswith(*map(unwrap, args)) # TODO: still not deal with the case when prefix is a tuple!!!
+        if not isinstance(args[0], Concolic):
+            try: args[0] = str(args[0])
+            except: args[0] = ''
+            args[0] = self.__class__(args[0])
+        if len(args) < 2: args.append(0)
+        if not isinstance(args[1], Concolic):
+            try: args[1] = int(args[1])
+            except: args[1] = 0
+            args[1] = ConcolicObject(args[1]) # ConcolicInt
+        if len(args) < 3: args.append(self.__len__())
+        if not isinstance(args[2], Concolic):
+            try: args[2] = int(args[2])
+            except: args[2] = self.__len__() # Default values are also ok to have expressions.
+            args[2] = ConcolicObject(args[2]) # ConcolicInt
+        expr = ["str.prefixof", args[0], self._substr(args[1], args[2])]
         return ConcolicObject(value, expr)
 
     # TODO: Temp
@@ -643,11 +690,11 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                                                  ["str.to.int", self]]]]
         return ConcolicObject(value, expr)
 
-    def _substr(self, start=None, stop=None): # stop is exclusive...
-        if stop is None:
-            stop = len(self)
-        if not isinstance(stop, ConcolicInt):
-            stop = ConcolicObject(stop)
+    def _substr(self, start=None, end=None): # end is exclusive...
+        if end is None:
+            end = len(self)
+        if not isinstance(end, ConcolicInt):
+            end = ConcolicObject(end)
         if start is None:
             start = ConcolicObject(0)
         if not isinstance(start, ConcolicInt):
@@ -658,14 +705,14 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             start = ConcolicObject(0)
         if int.__int__(start) >= self.__len__():
             start = self.__len__()
-        if int.__int__(stop) < 0:
-            stop += self.__len__()
-        if int.__int__(stop) < 0:
-            stop = ConcolicObject(0)
-        if int.__int__(stop) > self.__len__():
-            stop = self.__len__()
-        value = str.__str__(self)[int.__int__(start):int.__int__(stop)]
-        expr = ["str.substr", self, start, (stop-start)]
+        if int.__int__(end) < 0:
+            end += self.__len__()
+        if int.__int__(end) < 0:
+            end = ConcolicObject(0)
+        if int.__int__(end) > self.__len__():
+            end = self.__len__()
+        value = str.__str__(self)[int.__int__(start):int.__int__(end)]
+        expr = ["str.substr", self, start, end-start]
         return ConcolicObject(value, expr)
 
     def __int2__(self):
