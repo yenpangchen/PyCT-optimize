@@ -1,4 +1,5 @@
-# Copyright: copyright.txt
+# Copyright: see copyright.txt
+
 import logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
 from conbyte.global_utils import ConcolicObject, py2smt, unwrap
@@ -60,10 +61,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         log.debug("  ConInt, __eq__ is called")
         return self._bin_op('__eq__', value)
 
-    def __float__(self, /): # <slot wrapper '__float__' of 'int' objects>
-        """float(self)"""
-        log.debug("  ConInt, __float__ is called")
-        return super().__float__() # TODO: Can we return the concolic version?
+    # def __float__(self, /): # <slot wrapper '__float__' of 'int' objects>
+    #     """float(self)"""
 
     def __floor__(self, *args, **kwargs): # <method '__floor__' of 'int' objects>
         """Flooring an Integral returns itself."""
@@ -110,10 +109,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
 
     # __init_subclass__, <built-in method __init_subclass__ of type object at 0x903260>
 
-    def __int__(self, /): # <slot wrapper '__int__' of 'int' objects>
-        """int(self)"""
-        log.debug("  ConInt, __int__ is called")
-        return super().__int__() # TODO: Can we return the concolic version?
+    # def __int__(self, /): # <slot wrapper '__int__' of 'int' objects>
+    #     """int(self)"""
 
     def __invert__(self, /): # <slot wrapper '__invert__' of 'int' objects> TODO
         """~self"""
@@ -192,10 +189,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
 
     # __reduce_ex__, <method '__reduce_ex__' of 'object' objects>
 
-    def __repr__(self, /): # <slot wrapper '__repr__' of 'int' objects>
-        """Return repr(self)."""
-        log.debug("  ConInt, __repr__ is called")
-        return super().__repr__() # TODO: Can we return the concolic version?
+    # def __repr__(self, /): # <slot wrapper '__repr__' of 'int' objects>
+    #     """Return repr(self)."""
 
     def __rfloordiv__(self, value, /): # <slot wrapper '__rfloordiv__' of 'int' objects>
         """Return value//self."""

@@ -32,6 +32,7 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
         # is actually calling int's implementation and may not be what we want.
         if isinstance(other, Concolic):
             if hasattr(other, '__bool2__'): other = other.__bool2__()
+            # TODO: We currently don't support bitwise operations between integers.
         else:
             try: other = bool(other)
             except: other = False

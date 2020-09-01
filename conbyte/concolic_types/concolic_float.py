@@ -1,4 +1,4 @@
-# Copyright: copyright.txt
+# Copyright: see copyright.txt
 
 import logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal

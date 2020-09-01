@@ -1,4 +1,4 @@
-# Copyright - see copyright.txt
+# Copyright: see copyright.txt
 
 from conbyte.concolic_types.concolic import Concolic
 

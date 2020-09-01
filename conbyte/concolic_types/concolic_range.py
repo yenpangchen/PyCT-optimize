@@ -1,4 +1,4 @@
-# Copyright: copyright.txt
+# Copyright: see copyright.txt
 from .concolic_bool import *
 from .concolic_int import *
 

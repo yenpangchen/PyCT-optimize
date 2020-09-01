@@ -55,7 +55,7 @@ else:
 #####################################################################################################################
 # This section creates an explorer instance and starts our analysis procedure!
 engine = conbyte.explore.ExplorationEngine()
-print("\n# of iterations:", engine.explore(args.solver, args.file, args.entry, eval(args.inputs), args.iteration, args.timeout, args.query))
+print("\n# of iterations:", engine.explore(args.solver, args.file, args.entry, eval(args.inputs), args.iteration, args.timeout, None, args.query))
 #####################################################################################################################
 
 ###############################################################################
