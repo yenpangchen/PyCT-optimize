@@ -405,7 +405,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         value = super().lstrip(unwrap(chars))
         if not isinstance(chars, Concolic):
             try: chars = str(chars)
-            except: chars = ' ' # TODO: Is this the only whitespace ???
+            except: chars = ' ' # TODO: Only this kind of whitespace?
             chars = self.__class__(chars)
         # self = add_extend_vars('String', self)
         expr = self
@@ -493,7 +493,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         value = super().rstrip(unwrap(chars))
         if not isinstance(chars, Concolic):
             try: chars = str(chars)
-            except: chars = ' ' # TODO: Is this the only whitespace ???
+            except: chars = ' ' # TODO: Only this kind of whitespace?
             chars = self.__class__(chars)
         # self = add_extend_vars('String', self)
         expr = self
@@ -503,45 +503,38 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             expr = ["ite", ['or'] + list(map(lambda ch: ["str.suffixof", ch, expr], chars)), ["str.substr", expr, "0", ["-", ["str.len", expr], "1"]], expr]
         return ConcolicObject(value, expr)
 
-    # TODO: Temp
-    def split(self, sep=None, maxsplit=-1):
-        if sep is None:
-            res = str.__str__(self).split(sep, maxsplit) #raise NotImplementedError
-            for i in range(len(res)):
-                res[i] = ConcolicObject(res[i])
-            return res #ConcolicList(res)
-        if not isinstance(sep, ConcolicStr): sep = ConcolicStr(sep)
-        sep2 = sep + sep
-        sep_len = sep.__len__() # a constant
-        ans_list = []
-        substr = self
-        while True:
-            split_index = substr.find(sep)
-            if split_index == -1 or maxsplit == 0:
-                ans_list.append(substr)
-                break
-            elif maxsplit == -1:
-                ans_list.append(substr._substr(end=split_index))
-                substr = substr._substr(start=split_index+sep_len)
-            elif maxsplit > 0:
-                ans_list.append(substr._substr(end=split_index))
-                substr = substr._substr(start=split_index+sep_len)
-                maxsplit -= 1
+    def split(self, /, sep=None, maxsplit=-1): # <method 'split' of 'str' objects> TODO: move from approximation to exact semantics
+        """Return a list of the words in the string, using sep as the delimiter string.\n\n  sep\n    The delimiter according which to split the string.\n    None (the default value) means split according to any whitespace,\n    and discard empty strings from the result.\n  maxsplit\n    Maximum number of splits to do.\n    -1 (the default value) means no limit."""
+        log.debug("  ConStr, split is called")
+        value = super().split(unwrap(sep), unwrap(maxsplit))
+        if not isinstance(sep, ConcolicStr):
+            if sep is None: sep = ' ' # TODO: Only this kind of whitespace?
             else:
-                raise NotImplementedError
-        return ans_list
-        # if maxsplit == -1:
-        #     len_expr = ['+', 1, ['div', ['-', ['str.len', ['str.replaceall', self, sep, sep2]], ['str.len', self]], ['str.len', sep]]]
-        #     return ConcolicList(ans_list, len_expr=len_expr)
-        # else:
-        #     return ConcolicList(ans_list)
+                try: sep = str(sep)
+                except: sep = ' '
+            sep = self.__class__(sep)
+        result = []
+        sep_len = len(sep) # a cached concolic constant for speeding up
+        current = self # current substring after several rounds of "split"
+        while True:
+            if maxsplit == 0 or (split_index := current.find(sep)) == -1:
+                result.append(current)
+                break
+            else: # maxsplit != 0
+                result.append(current._substr(end=split_index))
+                current = current._substr(start=split_index + sep_len)
+                if maxsplit > 0:
+                    maxsplit -= 1
+        # Since our concolic list is not mature enough, we can only return a primitive list containing concolic strings.
+        # If our concolic result is different from the standard one, we can only return the standard result.
+        return result if list(map(unwrap, result)) == value else ConcolicObject(value)
 
-    def splitlines(self, keepends=False):
-        if keepends: raise NotImplementedError
-        if "\r\n" in str.__str__(self): #.value:
-            return self.split("\r\n")
-        else:
-            return self.split("\n")
+    def splitlines(self, /, keepends=False): # <method 'splitlines' of 'str' objects> TODO: move from approximation to exact computation
+        """Return a list of the lines in the string, breaking at line boundaries.\n\nLine breaks are not included in the resulting list unless keepends is given and\ntrue."""
+        log.debug("  ConStr, splitlines is called")
+        value = super().splitlines(unwrap(keepends))
+        result = self.split("\r\n") if super().__contains__("\r\n") else self.split("\n")
+        return result if list(map(unwrap, result)) == value else ConcolicObject(value)
 
     def startswith(self, *args): # <method 'startswith' of 'str' objects>
         """S.startswith(prefix[, start[, end]]) -> bool\n\nReturn True if S starts with the specified prefix, False otherwise.\nWith optional start, test S beginning at that position.\nWith optional end, stop comparing S at that position.\nprefix can also be a tuple of strings to try."""
