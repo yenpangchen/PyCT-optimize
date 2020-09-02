@@ -1,6 +1,7 @@
+# Copyright: see copyright.txt
+
 import copy, logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
-from conbyte.concolic_types.concolic_int import ConcolicInt
 from conbyte.global_utils import ConcolicObject, py2smt, unwrap
 
 log = logging.getLogger("ct.con.str")
@@ -9,8 +10,8 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     def __new__(cls, value, expr=None, engine=None):
         assert type(value) is str
         obj = super().__new__(cls, value)
-        obj.expr = expr if expr is not None else py2smt(value)
         obj.engine = engine if engine is not None else Concolic._find_engine_in_expression(expr)
+        obj.expr = expr if expr is not None and obj.engine is not None else py2smt(value)
         # if isinstance(obj.expr, list):
         #     obj.expr = global_utils.add_extended_vars_and_queries('String', obj.expr)
         log.debug(f"  ConStr, value: {value}, expr: {obj.expr}")
@@ -51,17 +52,45 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     #     """Return getattr(self, name)."""
 
     # TODO: 罪魁禍首
-    def __getitem__(self, key):
+    # def __getitem__(self, key):
+    #     if isinstance(key, int):
+    #         if not isinstance(key, Concolic): key = ConcolicObject(key)
+    #         if key < 0:
+    #             key += len(self)
+    #         value = str.__str__(self)[int.__int__(key)]
+    #         expr = ["str.at", self, key]
+    #         return ConcolicObject(value, expr)
+    #     if not isinstance(key, slice): raise NotImplementedError
+    #     if key.step is not None: raise NotImplementedError
+    #     return self._substr(key.start, key.stop)
+
+    def __getitem__(self, key, /): # <slot wrapper '__getitem__' of 'str' objects>
+        """Return self[key]."""
+        log.debug("  ConStr, __getitem__ is called")
+        value = super().__getitem__(unwrap(key))
         if isinstance(key, int):
-            if not isinstance(key, ConcolicInt): key = ConcolicInt(key)
+            if not isinstance(key, Concolic): key = ConcolicObject(int(key)) # ConcolicInt
             if key < 0:
-                key += len(self)
-            value = str.__str__(self)[int.__int__(key)]
+                key += self.__len__()
+                if key < 0:
+                    key = ConcolicObject(0)
+            # key_ = ["+", key, ["str.len", self]]
+            # key = ["ite", ["<", key, "0"], ["ite", ["<", key_, "0"], "0", key_], key]
             expr = ["str.at", self, key]
             return ConcolicObject(value, expr)
-        if not isinstance(key, slice): raise NotImplementedError
-        if key.step is not None: raise NotImplementedError
-        return self._substr(key.start, key.stop)
+        if isinstance(key, slice): # TODO: From here we simply assume key is a slice object, and we don't consider the "step" attribute.
+            start = key.start
+            if not isinstance(start, Concolic):
+                try: start = int(start)
+                except: start = 0
+                start = ConcolicObject(start) # ConcolicInt
+            stop = key.stop
+            if not isinstance(stop, Concolic):
+                try: stop = int(stop)
+                except: stop = self.__len__()
+                stop = ConcolicObject(stop) # ConcolicInt
+            if value == unwrap(co:=self._substr(start, stop)): return co
+        return ConcolicObject(value)
 
     # def __getnewargs__(...): # <method '__getnewargs__' of 'str' objects>
 
@@ -679,36 +708,31 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     def _is_int(self):
         log.debug("  ConStr, _is_int is called")
         import re; INT_RE = re.compile(r"^[-]?\d+$"); value = INT_RE.match(unwrap(self)) is not None
-        # TODO: Can this regular expression be written in SMT syntax?
         # self = add_extend_vars('String', self)
-        expr = ["not", ["=", py2smt(-1), ["ite", ["str.prefixof", py2smt('-'), self],
-                                                 ["str.to.int", ["str.substr", self, "1", ["str.len", self]]],
-                                                 ["str.to.int", self]]]]
+        expr = ["str.in.re", ["ite", ["str.prefixof", py2smt('-'), self],
+                                     ["str.substr", self, "1", ["str.len", self]],
+                                     self], # For better results, avoid using ["str.replace", self, "-", ""] in the above line.
+                             ["re.+", ["re.range", py2smt('0'), py2smt('9')]]]
         return ConcolicObject(value, expr)
 
     def _substr(self, start=None, end=None): # end is exclusive...
-        if end is None:
-            end = len(self)
-        if not isinstance(end, ConcolicInt):
-            end = ConcolicObject(end)
-        if start is None:
-            start = ConcolicObject(0)
-        if not isinstance(start, ConcolicInt):
-            start = ConcolicObject(start)
-        if int.__int__(start) < 0:
+        log.debug("  ConStr, _substr is called")
+        if start is None: start = ConcolicObject(0) # ConcolicInt
+        if end is None: end = self.__len__() # ConcolicInt
+        value = super().__getitem__(slice(unwrap(start), unwrap(end)))
+        if start < 0:
             start += self.__len__()
-        if int.__int__(start) < 0:
-            start = ConcolicObject(0)
-        if int.__int__(start) >= self.__len__():
-            start = self.__len__()
-        if int.__int__(end) < 0:
+            if start < 0:
+                start = ConcolicObject(0)
+        if end < 0:
             end += self.__len__()
-        if int.__int__(end) < 0:
-            end = ConcolicObject(0)
-        if int.__int__(end) > self.__len__():
-            end = self.__len__()
-        value = str.__str__(self)[int.__int__(start):int.__int__(end)]
-        expr = ["str.substr", self, start, end-start]
+            if end < 0:
+                end = ConcolicObject(0)
+        # start_ = ["+", start, ["str.len", self]]
+        # start = ["ite", ["<", start, "0"], ["ite", ["<", start_, "0"], "0", start_], start]
+        # end_ = ["+", end, ["str.len", self]]
+        # end = ["ite", ["<", end, "0"], ["ite", ["<", end_, "0"], "0", end_], end]
+        expr = ["str.substr", self, start, ["-", end, start]]
         return ConcolicObject(value, expr)
 
     def __int2__(self):

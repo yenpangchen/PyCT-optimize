@@ -10,8 +10,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
     def __new__(cls, value, expr=None, engine=None):
         assert type(value) is int
         obj = super().__new__(cls, value)
-        obj.expr = expr if expr is not None else py2smt(value)
         obj.engine = engine if engine is not None else Concolic._find_engine_in_expression(expr)
+        obj.expr = expr if expr is not None and obj.engine is not None else py2smt(value)
         # if isinstance(obj.expr, list):
         #     obj.expr = global_utils.add_extended_vars_and_queries('Int', obj.expr)
         log.debug(f"  ConInt, value: {value}, expr: {obj.expr}")
@@ -21,7 +21,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         """abs(self)"""
         log.debug("  ConInt, __abs__ is called")
         value = super().__abs__()
-        expr = ["abs", self] # ["ite", [">=", self, 0], self, ["-", self]]
+        expr = ["abs", self]
         return ConcolicObject(value, expr)
 
     def __add__(self, value, /): # <slot wrapper '__add__' of 'int' objects>
@@ -369,9 +369,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['+', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['+', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__eq__':
             value = super().__eq__(unwrap(other))
             if isinstance(other, Concolic):
@@ -381,9 +382,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['=', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['=', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__floordiv__':
             value = super().__floordiv__(unwrap(other))
             if isinstance(other, Concolic):
@@ -395,8 +397,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 try: other = int(other)
                 except: other = 1
                 other = self.__class__(other)
-            tokens = ['div', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['div', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__ge__':
             value = super().__ge__(unwrap(other))
             if isinstance(other, Concolic):
@@ -406,9 +408,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['>=', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['>=', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__gt__':
             value = super().__gt__(unwrap(other))
             if isinstance(other, Concolic):
@@ -418,9 +421,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['>', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['>', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__le__':
             value = super().__le__(unwrap(other))
             if isinstance(other, Concolic):
@@ -430,9 +434,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['<=', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['<=', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__lt__':
             value = super().__lt__(unwrap(other))
             if isinstance(other, Concolic):
@@ -442,9 +447,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['<', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['<', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__mod__':
             value = super().__mod__(unwrap(other))
             if isinstance(other, Concolic):
@@ -456,16 +462,16 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 try: other = int(other)
                 except: other = 1
                 other = self.__class__(other)
-            tokens = ['mod', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['mod', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__mul__':
             value = super().__mul__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = int(other)
                 except: other = 1
                 other = ConcolicObject(other)
-            tokens = ['*', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['*', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__ne__':
             value = super().__ne__(unwrap(other))
             if isinstance(other, Concolic):
@@ -475,9 +481,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['not', ['=', self, other]]
-            return ConcolicObject(value, tokens)
+            expr = ['not', ['=', self, other]]
+            return ConcolicObject(value, expr)
         elif op == '__radd__':
             value = super().__radd__(unwrap(other))
             if isinstance(other, Concolic):
@@ -487,9 +494,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['+', other, self]
-            return ConcolicObject(value, tokens)
+            expr = ['+', other, self]
+            return ConcolicObject(value, expr)
         elif op == '__rfloordiv__':
             value = super().__rfloordiv__(unwrap(other))
             if isinstance(other, Concolic):
@@ -500,8 +508,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 try: other = int(other)
                 except: other = 1
                 other = self.__class__(other)
-            tokens = ['div', other, self]
-            return ConcolicObject(value, tokens)
+            expr = ['div', other, self]
+            return ConcolicObject(value, expr)
         elif op == '__rmod__':
             value = super().__rmod__(unwrap(other))
             if isinstance(other, Concolic):
@@ -512,8 +520,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 try: other = int(other)
                 except: other = 1
                 other = self.__class__(other)
-            tokens = ['mod', other, self]
-            return ConcolicObject(value, tokens)
+            expr = ['mod', other, self]
+            return ConcolicObject(value, expr)
         elif op == '__rmul__':
             value = super().__rmul__(unwrap(other))
             if isinstance(other, Concolic):
@@ -525,9 +533,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 1.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['*', other, self]
-            return ConcolicObject(value, tokens)
+            expr = ['*', other, self]
+            return ConcolicObject(value, expr)
         elif op == '__rsub__':
             value = super().__rsub__(unwrap(other))
             if isinstance(other, Concolic):
@@ -537,9 +546,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['-', other, self]
-            return ConcolicObject(value, tokens)
+            expr = ['-', other, self]
+            return ConcolicObject(value, expr)
         elif op == '__rtruediv__':
             value = super().__rtruediv__(unwrap(other))
             if isinstance(other, Concolic):
@@ -549,9 +559,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['/', other, self]
-            return ConcolicObject(value, tokens)
+            expr = ['/', other, self]
+            return ConcolicObject(value, expr)
         elif op == '__sub__':
             value = super().__sub__(unwrap(other))
             if isinstance(other, Concolic):
@@ -561,9 +572,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 0.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['-', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['-', self, other]
+            return ConcolicObject(value, expr)
         elif op == '__truediv__':
             value = super().__truediv__(unwrap(other))
             if isinstance(other, Concolic):
@@ -573,8 +585,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             else:
                 try: other = float(other)
                 except: other = 1.0
+                if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
-            tokens = ['/', self, other]
-            return ConcolicObject(value, tokens)
+            expr = ['/', self, other]
+            return ConcolicObject(value, expr)
         else:
             raise NotImplementedError
