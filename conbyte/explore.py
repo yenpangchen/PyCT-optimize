@@ -59,7 +59,7 @@ class ExplorationEngine:
             conc_args = self._get_concolic_parameters(execute, init_vars)
             success = False; result = None
             try:
-                result = conbyte.global_utils.unwrap(func_timeout.func_timeout(5, execute, args=conc_args))
+                result = conbyte.global_utils.unwrap(func_timeout.func_timeout(15, execute, args=conc_args))
                 success = True
                 log.info("Return: %s" % result)
             except func_timeout.FunctionTimedOut:

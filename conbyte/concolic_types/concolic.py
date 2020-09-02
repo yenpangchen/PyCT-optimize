@@ -4,12 +4,12 @@
 
 class Concolic: #(ABC):
     @staticmethod
-    def _find_engine_in_expression(expression):
-        if isinstance(expression, Concolic):
-            return expression.engine
-        if isinstance(expression, list):
-            for e in expression:
-                if (engine := Concolic._find_engine_in_expression(e)) is not None:
+    def _find_engine_in_expr(expr):
+        if isinstance(expr, Concolic):
+            return expr.engine
+        if isinstance(expr, list):
+            for e in expr:
+                if (engine := Concolic._find_engine_in_expr(e)) is not None:
                     return engine
         return None
 

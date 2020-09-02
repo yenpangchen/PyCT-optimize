@@ -31,30 +31,35 @@ class Predicate:
             return expr1 == expr2
 
     def get_formula(self):
-        formula =  self._get_formula(self.expr)
+        formula =  self._get_formula_deep(self.expr)
         if self.value:
             return "(assert " + formula + ")"
         else:
             return "(assert (not " + formula + "))"
 
     @staticmethod
-    def _get_formula(expr):
-        if isinstance(expr, Concolic):
-            return Predicate._get_formula(expr.expr)
+    def _get_formula_deep(expr):
+        return Predicate._get_formula(expr, True)
+
+    @staticmethod
+    def _get_formula_shallow(expr):
+        return Predicate._get_formula(expr, False)
+
+    @staticmethod
+    def _get_formula(expr, mode):
+        if isinstance(expr, Concolic): # Please note that this branch must be placed first!
+            if mode:
+                return Predicate._get_formula(expr.expr, mode)
+            else:
+                return expr.value
+        if isinstance(expr, str):
+            return expr
         if isinstance(expr, list):
             formula = "( "
             for exp in expr:
-                formula += Predicate._get_formula(exp) + " "
+                formula += Predicate._get_formula(exp, mode) + " "
             return formula + " )"
-        else:
-            if isinstance(expr, int):
-                if expr < 0:
-                    ret = "(- %s)" % -expr
-                else:
-                    ret = str(int.__int__(expr))
-                return ret
-            else:
-                return str(expr)
+        raise NotImplementedError
 
     def __str__(self):
         return "Result: %s\tExpr: %s" % (self.value, self.expr)

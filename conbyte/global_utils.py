@@ -27,12 +27,12 @@ def unwrap(x): # call primitive's casting function to avoid getting stuck when t
         return list(map(unwrap, x))
     return x
 
-def add_extended_vars_and_queries(typename, expr, engine):
-    name = 'extend_vars_' + str(engine.num_of_extend_vars)
-    engine.extend_vars[name] = typename
-    engine.num_of_extend_vars += 1
-    engine.extend_queries.append('(assert ' + Predicate._get_formula(['=', name, expr]) + ')')
-    return name
+# def add_extended_vars_and_queries(typename, expr, engine):
+#     name = 'extend_vars_' + str(engine.num_of_extend_vars)
+#     engine.extend_vars[name] = typename
+#     engine.num_of_extend_vars += 1
+#     engine.extend_queries.append('(assert ' + Predicate._get_formula_deep(['=', name, expr]) + ')')
+#     return name
 
 def py2smt(x): # convert the Python object into the smtlib2 string constant
     if type(x) is bool: return 'true' if x else 'false'

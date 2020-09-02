@@ -1,5 +1,7 @@
 import logging, os, string, subprocess, sys
-import conbyte.global_utils
+from conbyte.concolic_types.concolic import Concolic
+from conbyte.global_utils import py2smt
+from conbyte.predicate import Predicate
 
 log = logging.getLogger("ct.solver")
 
@@ -203,3 +205,22 @@ class Solver:
         queries += "\n".join(extend_queries)
         get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
         return f"\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}"
+
+    @staticmethod
+    def _expr_has_engines_and_equals_value(expr, value):
+        if (e:=Concolic._find_engine_in_expr(expr)):
+            # return e
+            cmd = ["cvc4", "--produce-models", "--lang", "smt", "--quiet", "--strings-exp", "--tlimit=5000"]
+            if isinstance(value, float):# TODO: Floating point operations may cause subtle errors.
+                formulas = f"(assert (and (<= (- (/ 1 1000000000000000)) (- {Predicate._get_formula_shallow(expr)} {py2smt(value)})) (<= (- {Predicate._get_formula_shallow(expr)} {py2smt(value)}) (/ 1 1000000000000000))))\n(check-sat)"
+            else:
+                formulas = f"(assert (= {Predicate._get_formula_shallow(expr)} {py2smt(value)}))\n(check-sat)"
+            try: completed_process = subprocess.run(cmd, input=formulas.encode(), capture_output=True)
+            except subprocess.CalledProcessError as e: print(e.output)
+            try:
+                if completed_process.stdout.decode().splitlines()[0] == 'sat': return e
+                raise Exception # move to the following block
+            except:
+                print(formulas); print(completed_process.stdout.decode().splitlines()); print()
+                import traceback; traceback.print_stack(); quit()
+        return None

@@ -3,6 +3,7 @@
 import logging
 from conbyte.concolic_types.concolic import Concolic, MetaFinal
 from conbyte.global_utils import ConcolicObject, py2smt, unwrap
+from conbyte.solver import Solver
 
 log = logging.getLogger("ct.con.float")
 
@@ -10,8 +11,9 @@ class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
     def __new__(cls, value, expr=None, engine=None):
         assert type(value) is float
         obj = super().__new__(cls, value)
-        obj.engine = engine if engine is not None else Concolic._find_engine_in_expression(expr)
-        obj.expr = expr if expr is not None and obj.engine is not None else py2smt(value)
+        obj.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
+        obj.value = py2smt(value)
+        obj.expr = expr if expr is not None and obj.engine is not None else obj.value
         # if isinstance(obj.expr, list):
         #     obj.expr = global_utils.add_extended_vars_and_queries('Real', obj.expr)
         log.debug(f"  ConFloat, value: {value}, expr: {obj.expr}")
