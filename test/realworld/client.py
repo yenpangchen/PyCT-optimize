@@ -9,7 +9,6 @@
 #######################################################################################
 
 import rpyc
-# from conbyte.concolic.str import ConcolicStr
 
 def startswith(x, prefixes):
     while x > 0:
@@ -19,16 +18,16 @@ def startswith(x, prefixes):
 
 # https://en.wikipedia.org/wiki/Payment_card_number#Issuer_identification_number_(IIN)
 def client(x: int) -> str:
-    # proxy = rpyc.connect("localhost", 8080 + isinstance(x, ConcolicStr)).root
     proxy = rpyc.connect("localhost", 8080).root
     if proxy:
         if pow(10, 15-1) <= x and proxy.check_luhn(x):
             if pow(10, 16-1) <= x:
-                # if x < pow(10, 16) and (startswith(x, range(51, 56)) or startswith(x, range(2221, 2721))):
-                    # return 'Mastercard'
-                if x < pow(10, 19) and startswith(x, range(3528, 3590)):
-                    return 'JCB'
-            if x < pow(10, 15) and startswith(x, [34, 37]):
+                if x < pow(10, 19):
+                    if startswith(x, range(3528, 3590)):
+                        return 'JCB'
+                    if x < pow(10, 16) and (startswith(x, range(51, 56)) or startswith(x, range(2221, 2721))):
+                        return 'Mastercard'
+            elif startswith(x, (34, 37)):
                 return 'American Express'
         return 'Unknown'
     # return 'Server Error'

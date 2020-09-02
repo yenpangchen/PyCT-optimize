@@ -66,7 +66,7 @@ class ExplorationEngine:
                 print('Current Input Vector:', init_vars)
                 traceback.print_exc()
                 log.error("Execution Timeout: %s" % init_vars)
-                sys.exit(1)
+                # sys.exit(1)
             except Exception as e:
                 print('Current Input Vector:', init_vars)
                 print(e); traceback.print_exc()
