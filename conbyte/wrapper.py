@@ -9,13 +9,6 @@ from conbyte.concolic.concolic import Concolic
 from conbyte.concolic.int import ConcolicInt
 from conbyte.concolic.str import ConcolicStr
 
-#################################################################
-# It is extremely important to note that node.args[i] may contain
-# subroutines! That is to say, if we want to replace the original
-# statement with another one, we must ensure each of node.args[i]
-# appears only once in our new statement.
-#################################################################
-
 # def _type(obj):
 #     res = type(obj)
 #     if res is ConcolicInt: return int
@@ -25,6 +18,13 @@ from conbyte.concolic.str import ConcolicStr
 def _int(obj):
     if isinstance(obj, Concolic) and hasattr(obj, '__int2__'): return obj.__int2__()
     return int(obj)
+
+#################################################################
+# ⚠ Warning: It is extremely important to note that node.args[i]
+# may contain subroutines! That is to say, if we want to replace
+# the original statement with another one, we must ensure each of
+# node.args[i] appears only once in our new statement.
+#################################################################
 
 class ConcolicWrapper(NodeTransformer):
     def visit_Constant(self, node: Constant):
@@ -99,8 +99,6 @@ class ConcolicFinder(type(_real_pathfinder)):
     @classmethod
     def find_module(cls, fullname, path=None):
         spec = _real_pathfinder.find_spec(fullname, path)
-        # print(fullname, path)
-        # print(fullname, path, spec, sep='\n'); print()
         if not spec: return spec
         loader = spec.loader
         if not fullname.startswith('conbyte'):
