@@ -48,7 +48,7 @@ class ExplorationEngine:
             sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
             log.info("Inputs: " + str(init_vars))
             builtins.len = lambda x: x.__len__()
-            self.path.current_constraint = self.path.root_constraint
+            self.path.__init__()
             import conbyte.wrapper
             execute = getattr(__import__(self.module_name), entry)
             conc_args = self._get_concolic_parameters(execute, init_vars)

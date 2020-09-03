@@ -1,7 +1,7 @@
 import logging, os, subprocess, sys
 from conbyte.concolic.concolic import Concolic
-from conbyte.utils import py2smt
 from conbyte.predicate import Predicate
+from conbyte.utils import py2smt
 
 log = logging.getLogger("ct.solver")
 
@@ -94,8 +94,7 @@ class Solver:
     @staticmethod
     def _build_formulas_from_constraint(engine, constraint):
         declare_vars = "\n".join(f"(declare-const {name} {_type})" for (name, _type) in engine.var_to_types.items())
-        asserts, query = constraint.get_asserts_and_query()
-        queries = "\n".join(assertion.get_formula() for assertion in asserts) + '\n' + query.get_formula() + '\n'
+        queries = "\n".join(assertion.get_formula() for assertion in constraint.get_all_asserts())
         get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
         return f"\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}"
 
