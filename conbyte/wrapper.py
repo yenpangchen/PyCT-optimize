@@ -5,9 +5,9 @@
 
 from ast import Attribute, Call, Constant, Import, ImportFrom, Load, Name, NodeTransformer, alias, fix_missing_locations, parse
 import importlib, inspect, sys, traceback
-from conbyte.concolic_types.concolic import Concolic
-from conbyte.concolic_types.concolic_int import ConcolicInt
-from conbyte.concolic_types.concolic_str import ConcolicStr
+from conbyte.concolic.concolic import Concolic
+from conbyte.concolic.int import ConcolicInt
+from conbyte.concolic.str import ConcolicStr
 
 #################################################################
 # It is extremely important to note that node.args[i] may contain
@@ -28,14 +28,14 @@ def _int(obj):
 
 class ConcolicWrapper(NodeTransformer):
     def visit_Constant(self, node: Constant):
-        if isinstance(node.value, bool):
-            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_bool', ctx=Load()), attr='ConcolicBool', ctx=Load()), args=[node], keywords=[])
+        if isinstance(node.value, bool): # Note this type must be placed before "int."
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic', ctx=Load()), attr='bool', ctx=Load()), attr='ConcolicBool', ctx=Load()), args=[node], keywords=[])
         if isinstance(node.value, float):
-            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_float', ctx=Load()), attr='ConcolicFloat', ctx=Load()), args=[node], keywords=[])
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic', ctx=Load()), attr='float', ctx=Load()), attr='ConcolicFloat', ctx=Load()), args=[node], keywords=[])
         if isinstance(node.value, int):
-            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_int', ctx=Load()), attr='ConcolicInt', ctx=Load()), args=[node], keywords=[])
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic', ctx=Load()), attr='int', ctx=Load()), attr='ConcolicInt', ctx=Load()), args=[node], keywords=[])
         if isinstance(node.value, str):
-            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_str', ctx=Load()), attr='ConcolicStr', ctx=Load()), args=[node], keywords=[])
+            return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic', ctx=Load()), attr='str', ctx=Load()), attr='ConcolicStr', ctx=Load()), args=[node], keywords=[])
         return node
 
 class ConcolicWrapper2(NodeTransformer):
@@ -45,20 +45,14 @@ class ConcolicWrapper2(NodeTransformer):
         if isinstance(node.func, Name):
             if node.func.id == 'int':
                 if len(node.args) == 1: # TODO: We've not considered the case int('...', base=N) yet.
-                    return Call(func=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_wrapper', ctx=Load()), attr='_int', ctx=Load()), args=node.args, keywords=[])
+                    return Call(func=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='wrapper', ctx=Load()), attr='_int', ctx=Load()), args=node.args, keywords=[])
             if node.func.id == 'str':
                 return Call(func=Attribute(value=node.args[0], attr='__str__', ctx=Load()), args=[], keywords=[])
             if node.func.id == 'range':
-                return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_types', ctx=Load()), attr='concolic_range', ctx=Load()), attr='ConcolicRange', ctx=Load()), args=node.args, keywords=[])
+                return Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic', ctx=Load()), attr='range', ctx=Load()), attr='ConcolicRange', ctx=Load()), args=node.args, keywords=[])
             # if node.func.id == 'type' and len(node.args) == 1:
-            #     return Call(func=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='concolic_wrapper', ctx=Load()), attr='_type', ctx=Load()), args=node.args, keywords=[])
+            #     return Call(func=Attribute(value=Attribute(value=Name(id='conbyte', ctx=Load()), attr='wrapper', ctx=Load()), attr='_type', ctx=Load()), args=node.args, keywords=[])
         return node
-    # def visit_List(self, node: List):
-    #     for i in range(len(node.elts)):
-    #         node.elts[i] = ConcolicWrapper2().visit(node.elts[i])
-    #     return Call(func=Name(id='ConcolicList', ctx=Load()),
-    #                 args=[node],
-    #                 keywords=[])
     def visit_Assign(self, node):
         node.value = ConcolicWrapper2().visit(node.value)
         return node
@@ -80,18 +74,19 @@ class ConcolicLoader(importlib.machinery.SourceFileLoader):
     def source_to_code(self, data, path):
         source = importlib.util.decode_source(data)
         tree = _call_with_frames_removed(parse, source)
+        ####################################################################
         # special treatment for statements like "from __future__ import ..."
         tree.body = tree.body[next((i for i, x in enumerate(tree.body) if isinstance(x, ImportFrom) and x.module == '__future__'), 0):]
         i = 0
         while i < len(tree.body) and isinstance(tree.body[i], ImportFrom) and tree.body[i].module == '__future__':
             i += 1
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_bool', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_float', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_int', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_str', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_list', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_types.concolic_range', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic_wrapper', asname=None)]))
+        ####################################################################
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.bool', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.float', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.int', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.str', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.range', asname=None)]))
+        tree.body.insert(i, Import(names=[alias(name='conbyte.wrapper', asname=None)]))
         tree = ConcolicWrapper3().visit(tree)
         tree = ConcolicWrapper().visit(tree)
         tree = ConcolicWrapper2().visit(tree)

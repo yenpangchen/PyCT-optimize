@@ -1,8 +1,8 @@
 # Copyright: see copyright.txt
 
 import logging
-from conbyte.concolic_types.concolic import Concolic, MetaFinal
-from conbyte.global_utils import ConcolicObject, py2smt, unwrap
+from conbyte.concolic.concolic import Concolic, MetaFinal
+from conbyte.utils import ConcolicObject, py2smt, unwrap
 from conbyte.solver import Solver
 
 log = logging.getLogger("ct.con.int")
@@ -14,8 +14,6 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         obj.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
         obj.value = py2smt(value)
         obj.expr = expr if expr is not None and obj.engine is not None else obj.value
-        # if isinstance(obj.expr, list):
-        #     obj.expr = global_utils.add_extended_vars_and_queries('Int', obj.expr)
         log.debug(f"  ConInt, value: {value}, expr: {obj.expr}")
         return obj
 
@@ -357,7 +355,6 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
     def __str2__(self):
         log.debug("  ConInt, __str2__ is called")
         value = super().__str__()
-        # self = add_extend_vars('Int', self)
         expr = ['ite', ['<', self, '0'], ['str.++', py2smt('-'), ["int.to.str", ['-', self]]], ["int.to.str", self]]
         return ConcolicObject(value, expr)
 

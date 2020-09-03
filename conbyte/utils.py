@@ -1,38 +1,28 @@
-
-from conbyte.predicate import Predicate
-
 def ConcolicObject(value, expr=None, engine=None):
-    from conbyte.concolic_types.concolic_bool import ConcolicBool
-    from conbyte.concolic_types.concolic_float import ConcolicFloat
-    from conbyte.concolic_types.concolic_int import ConcolicInt
-    from conbyte.concolic_types.concolic_str import ConcolicStr
+    from conbyte.concolic.bool import ConcolicBool
+    from conbyte.concolic.float import ConcolicFloat
+    from conbyte.concolic.int import ConcolicInt
+    from conbyte.concolic.str import ConcolicStr
     if type(value) is bool: return ConcolicBool(value, expr, engine)
     if type(value) is float: return ConcolicFloat(value, expr, engine)
     if type(value) is int: return ConcolicInt(value, expr, engine)
     if type(value) is str: return ConcolicStr(value, expr, engine)
-    if isinstance(value, list): # TODO: Are there other types of mutable sequences? What about type slice?
+    if isinstance(value, list): # TODO: Are there other types of mutable sequences? What about "slice"?
         return list(map(ConcolicObject, value))
     return value
 
 def unwrap(x): # call primitive's casting function to avoid getting stuck when the concolic's function is modified.
-    from conbyte.concolic_types.concolic_bool import ConcolicBool
-    from conbyte.concolic_types.concolic_float import ConcolicFloat
-    from conbyte.concolic_types.concolic_int import ConcolicInt
-    from conbyte.concolic_types.concolic_str import ConcolicStr
+    from conbyte.concolic.bool import ConcolicBool
+    from conbyte.concolic.float import ConcolicFloat
+    from conbyte.concolic.int import ConcolicInt
+    from conbyte.concolic.str import ConcolicStr
     if type(x) is ConcolicBool: return bool.__bool__(x)
     if type(x) is ConcolicFloat: return float.__float__(x)
     if type(x) is ConcolicInt: return int.__int__(x)
     if type(x) is ConcolicStr: return str.__str__(x)
-    if isinstance(x, list): # TODO: Are there other types of mutable sequences? What about type slice?
+    if isinstance(x, list): # TODO: Are there other types of mutable sequences? What about "slice"?
         return list(map(unwrap, x))
     return x
-
-# def add_extended_vars_and_queries(typename, expr, engine):
-#     name = 'extend_vars_' + str(engine.num_of_extend_vars)
-#     engine.extend_vars[name] = typename
-#     engine.num_of_extend_vars += 1
-#     engine.extend_queries.append('(assert ' + Predicate._get_formula_deep(['=', name, expr]) + ')')
-#     return name
 
 def py2smt(x): # convert the Python object into the smtlib2 string constant
     if type(x) is bool: return 'true' if x else 'false'

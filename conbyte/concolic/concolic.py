@@ -1,15 +1,13 @@
 # Copyright: see copyright.txt
 
-# from abc import ABC
-
-class Concolic: #(ABC):
+class Concolic:
     @staticmethod
-    def _find_engine_in_expr(expr):
+    def find_engine_in_expr(expr):
         if isinstance(expr, Concolic):
             return expr.engine
         if isinstance(expr, list):
             for e in expr:
-                if (engine := Concolic._find_engine_in_expr(e)) is not None:
+                if (engine := Concolic.find_engine_in_expr(e)) is not None:
                     return engine
         return None
 

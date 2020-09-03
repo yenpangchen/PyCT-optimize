@@ -1,11 +1,9 @@
-import builtins, coverage, func_timeout, importlib, inspect, json, logging, multiprocessing, os, sys, traceback
-import conbyte.global_utils, conbyte.path_to_constraint, conbyte.solver
-from conbyte.concolic_types.concolic_int import ConcolicInt
-from conbyte.concolic_types.concolic_str import ConcolicStr
-from conbyte.concolic_types.concolic_list import ConcolicList
+import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, sys, traceback
+import conbyte.path_to_constraint, conbyte.solver
+from conbyte.utils import ConcolicObject, unwrap
 
 log = logging.getLogger("ct.explore")
-sys.setrecursionlimit(1000000)
+sys.setrecursionlimit(1000000) # For some special cases, the original limit is not enough.
 
 class ExplorationEngine:
     def __init__(self):
@@ -17,9 +15,6 @@ class ExplorationEngine:
         self.coverage_data = coverage.CoverageData()
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
-        self.extend_vars = {}
-        self.extend_queries = []
-        self.num_of_extend_vars = 0
 
     def explore(self, solver, filename, entry, ini_vars, max_iterations, timeout=10, deadcode=None, query_store=None):
         self.__init__()
@@ -54,22 +49,22 @@ class ExplorationEngine:
             log.info("Inputs: " + str(init_vars))
             builtins.len = lambda x: x.__len__()
             self.path.current_constraint = self.path.root_constraint
-            import conbyte.concolic_wrapper
+            import conbyte.wrapper
             execute = getattr(__import__(self.module_name), entry)
             conc_args = self._get_concolic_parameters(execute, init_vars)
             success = False; result = None
             try:
-                result = conbyte.global_utils.unwrap(func_timeout.func_timeout(15, execute, args=conc_args))
+                result = conbyte.utils.unwrap(func_timeout.func_timeout(15, execute, args=conc_args))
                 success = True
                 log.info("Return: %s" % result)
-            except func_timeout.FunctionTimedOut:
+            except func_timeout.FunctionTimedOut as e:
                 print('Current Input Vector:', init_vars)
-                traceback.print_exc()
+                # print(e); traceback.print_exc()
                 log.error("Execution Timeout: %s" % init_vars)
                 # sys.exit(1)
             except Exception as e:
                 print('Current Input Vector:', init_vars)
-                print(e); traceback.print_exc()
+                print(e) #; traceback.print_exc()
                 log.error("Execution exception for: %s" % init_vars)
             child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types]); child.close()
             os._exit(os.EX_OK)
@@ -114,27 +109,16 @@ class ExplorationEngine:
             para[a.name] = a.replace(default=b)
         if not self.var_to_types:
             for v in para.values():
-                if isinstance(v.default, int): self.var_to_types[v.name] = 'Int'
+                if isinstance(v.default, bool): self.var_to_types[v.name] = 'Bool'
+                elif isinstance(v.default, float): self.var_to_types[v.name] = 'Real'
+                elif isinstance(v.default, int): self.var_to_types[v.name] = 'Int'
                 elif isinstance(v.default, str): self.var_to_types[v.name] = 'String'
-                elif isinstance(v.default, list):
-                    if len(v.default) > 0 and isinstance(v.default[0], int):
-                        self.var_to_types[v.name] = 'ListOfInt'
-                    elif len(v.default) > 0 and isinstance(v.default[0], str):
-                        self.var_to_types[v.name] = 'ListOfStr'
-                    else:
-                        raise NotImplementedError
                 elif v.default is not None:
                     raise NotImplementedError
         copy_vars = []
         for v in para.values():
-            if isinstance(v.default, int):
-                copy_vars.append(ConcolicInt(v.default, v.name, self))
-            elif isinstance(v.default, str):
-                copy_vars.append(ConcolicStr(v.default, v.name, self))
-            # elif isinstance(v.default, list):
-            #     for i in range(len(v.default)):
-            #         v.default[i] = conbyte.global_utils.ConcolicObject(v.default[i])
-            #     copy_vars.append(ConcolicList(v.default, Expression(v.name, self)))
+            if isinstance(v.default, (bool, float, int, str)):
+                copy_vars.append(ConcolicObject(v.default, v.name, self))
             elif v.default is not None:
                 raise NotImplementedError
         return copy_vars

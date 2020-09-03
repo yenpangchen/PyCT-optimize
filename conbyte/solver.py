@@ -1,6 +1,6 @@
-import logging, os, string, subprocess, sys
-from conbyte.concolic_types.concolic import Concolic
-from conbyte.global_utils import py2smt
+import logging, os, subprocess, sys
+from conbyte.concolic.concolic import Concolic
+from conbyte.utils import py2smt
 from conbyte.predicate import Predicate
 
 log = logging.getLogger("ct.solver")
@@ -13,14 +13,14 @@ class Solver:
     def find_model_from_constraint(engine, solver, constraint, timeout=10, query_store=None):
         ######################################################################################
         # Build the command from the solver type
-        if solver == "z3seq":
-            cmd = "z3 -in".split(' ')
-        elif solver == "z3str":
-            cmd = ["z3"] + self.options.values()
-        elif solver == "trauc":
-            cmd = ["trauc"] + self.options.values()
-        elif solver == "cvc4":
+        if solver == "cvc4":
             cmd = ["cvc4"] + ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
+        # elif solver == "z3seq":
+        #     cmd = "z3 -in".split(' ')
+        # elif solver == "z3str":
+        #     cmd = ["z3"] + self.options.values()
+        # elif solver == "trauc":
+        #     cmd = ["trauc"] + self.options.values()
         else:
             raise NotImplementedError
         ######################################################################################
@@ -54,6 +54,7 @@ class Solver:
                 print(formulas)
                 sys.exit(1)
             status = outputs[0].lower()
+            # print(status)
             if "unsat" in status:
                 status = "UNSAT"
             elif "sat" in status:
@@ -69,98 +70,10 @@ class Solver:
         Solver.cnt += 1
         return model
 
-    ########################################################
-    # Here are examples of expressions of lists of integers.
-    # 1. (list (store (store ((as const (Array Int Int)) 0) 4 15) 2 5) 0)
-    # 2. (list (store ((as const (Array Int Int)) 0) 2 (- 2)) 1)
-    # 3. (list ((as const (Array Int Int)) 0) 0)
-    ########################################################
-    @staticmethod
-    def _get_list_of_int(expr):
-        ans_dict = {}
-        ans_default = None
-        ans_len = None
-        assert expr.startswith('(list ') and expr.endswith(')')
-        expr = expr[6:-1] # take away '(list ' and ')'
-        assert not expr.endswith(')') # to ensure that the length of a list is nonnegative
-        ans_len = expr.split(' ')[-1]
-        expr = expr[:-(len(ans_len)+1)] # take away the last number and the prepended whitespace
-        ans_len = int(ans_len)
-        while True:
-            if expr.startswith('((as const (Array Int Int)) ') and expr.endswith(')'):
-                expr = expr[1:-1] # take away '(' and ')'
-                ans_default = int(expr.split(' ')[-1])
-                break
-            if expr.startswith('(store ') and expr.endswith(')'):
-                expr = expr[7:-1] # take away '(store ' and ')'
-                # Ex1: (...) 1 (- 1)
-                # Ex2: (...) 1 20
-                temp = expr.split(' ')
-                if not expr.endswith(')'):
-                    key = temp[-2]
-                    value = temp[-1]
-                    expr = ' '.join(temp[:-2])
-                else:
-                    key = temp[-3]
-                    value = ''.join(temp[-2:])[1:-1]
-                    expr = ' '.join(temp[:-3])
-                ans_dict[int(key)] = int(value)
-            else:
-                raise NotImplementedError
-        ans_list = [ans_default] * ans_len
-        for key, value in ans_dict.items():
-            if key < len(ans_list):
-                ans_list[key] = value
-        return ans_list
-
-    ########################################################
-    # Here are examples of expressions of lists of strings.
-    # 1. (list (store (store ((as const (Array Int String)) "") 0 "1""\\2) 3") 1 "45 6") 2)
-    ########################################################
-    @staticmethod
-    def _get_list_of_str(expr):
-        ans_dict = {}
-        ans_default = None
-        ans_len = None
-        assert expr.startswith('(list ') and expr.endswith(')')
-        expr = expr[6:-1] # take away '(list ' and ')'
-        assert not expr.endswith(')') # to ensure that the length of a list is nonnegative
-        ans_len = expr.split(' ')[-1]
-        expr = expr[:-(len(ans_len)+1)] # take away the last number and the prepended whitespace
-        ans_len = int(ans_len)
-        while True:
-            if expr.startswith('((as const (Array Int String)) ') and expr.endswith(')'):
-                expr = expr[1:-1] # take away '(' and ')'
-                ans_default = expr.split(' ')[-1]
-                break
-            if expr.startswith('(store ') and expr.endswith(')'):
-                expr = expr[7:-1] # take away '(store ' and ')'
-                # Ex1: (......) 0 "1\\2) 3"
-                # Ex2: (......) 0 "1""\\2) 3"
-                #      <--- i ---> temp[<= i] is computed as the left after the while loop.
-                temp = expr.split('"')
-                i = -1
-                while len(temp[i]) == 0:
-                    i -= 2
-                value = '"'.join(temp[i+1:]).replace('""', '"')
-                key = int(temp[i].split(' ')[-2])
-                expr = ' '.join('"'.join(temp[:i+1]).split(' ')[:-2])
-                ans_dict[key] = value
-                # In fact "temp" in this section can be simply "expr,"
-                # but this leads to poor readability.
-            else:
-                raise NotImplementedError
-        ans_list = [ans_default] * ans_len
-        for key, value in ans_dict.items():
-            if key < len(ans_list):
-                ans_list[key] = value
-        return ans_list
-
     @staticmethod
     def _get_model(engine, models):
         model = {}
         for line in models:
-            # print('LINE', line)
             assert line.startswith('((') and line.endswith('))')
             name, value = line[2:-2].split(" ", 1)
             if engine.var_to_types[name] == "Int":
@@ -172,49 +85,29 @@ class Solver:
                 assert value.startswith('"') and value.endswith('"')
                 value = value[1:-1]
                 value = value.replace('""', '"').replace("\\t", "\t").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\")
-                # Note the order above must be in reverse with its encoding method (line 18 in concolic_str.py)
-            elif engine.var_to_types[name] == "ListOfInt":
-                value = Solver._get_list_of_int(value)
-            elif engine.var_to_types[name] == "ListOfStr":
-                value = Solver._get_list_of_str(value)
+                # Note the order above must be in reverse with its encoding method (line 18 in str.py)
             else:
                 raise NotImplementedError
-
-            if name.startswith("_ARR_"):
-                name = name.replace("_ARR_", "").split("_", 1)[1]
-                if name not in model:
-                    model[name] = list()
-                model[name].append(value)
-            else:
-                model[name] = value
+            model[name] = value
         return model
 
     @staticmethod
     def _build_formulas_from_constraint(engine, constraint):
-        asserts, query, extend_vars, extend_queries = constraint.get_asserts_and_query()
-        declare_vars = "(declare-datatypes ((ListOfInt 0)) (((list (array (Array Int Int)) (__len__ Int)))))\n"
-        declare_vars += "(declare-datatypes ((ListOfStr 0)) (((list (array (Array Int String)) (__len__ Int)))))\n"
-        for (name, var) in engine.var_to_types.items():
-            declare_vars += f"(declare-fun {name} () {var})\n"
-            if var.startswith("List"):
-                declare_vars += f"(assert (>= (__len__ {name}) 0))\n"
-        for (name, var) in extend_vars.items():
-            declare_vars += f"(declare-fun {name} () {var})\n"
-        queries = "\n".join(assertion.get_formula() for assertion in asserts)
-        queries += '\n' + query.get_formula() + '\n'
-        queries += "\n".join(extend_queries)
+        declare_vars = "\n".join(f"(declare-const {name} {_type})" for (name, _type) in engine.var_to_types.items())
+        asserts, query = constraint.get_asserts_and_query()
+        queries = "\n".join(assertion.get_formula() for assertion in asserts) + '\n' + query.get_formula() + '\n'
         get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
         return f"\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}"
 
     @staticmethod
     def _expr_has_engines_and_equals_value(expr, value):
-        if (e:=Concolic._find_engine_in_expr(expr)):
-            # return e
+        if e:=Concolic.find_engine_in_expr(expr):
+            # return e # This line is used to disable value validation if we don't want this feature.
             cmd = ["cvc4", "--produce-models", "--lang", "smt", "--quiet", "--strings-exp", "--tlimit=5000"]
-            if isinstance(value, float):# TODO: Floating point operations may cause subtle errors.
-                formulas = f"(assert (and (<= (- (/ 1 1000000000000000)) (- {Predicate._get_formula_shallow(expr)} {py2smt(value)})) (<= (- {Predicate._get_formula_shallow(expr)} {py2smt(value)}) (/ 1 1000000000000000))))\n(check-sat)"
+            if isinstance(value, float): # TODO: Floating point operations may cause subtle errors.
+                formulas = f"(assert (and (<= (- (/ 1 1000000000000000)) (- {Predicate.get_formula_shallow(expr)} {py2smt(value)})) (<= (- {Predicate.get_formula_shallow(expr)} {py2smt(value)}) (/ 1 1000000000000000))))\n(check-sat)"
             else:
-                formulas = f"(assert (= {Predicate._get_formula_shallow(expr)} {py2smt(value)}))\n(check-sat)"
+                formulas = f"(assert (= {Predicate.get_formula_shallow(expr)} {py2smt(value)}))\n(check-sat)"
             try: completed_process = subprocess.run(cmd, input=formulas.encode(), capture_output=True)
             except subprocess.CalledProcessError as e: print(e.output)
             try:
@@ -222,5 +115,5 @@ class Solver:
                 raise Exception # move to the following block
             except:
                 print(formulas); print(completed_process.stdout.decode().splitlines()); print()
-                import traceback; traceback.print_stack(); quit()
+                import traceback; traceback.print_stack(); sys.exit(0)
         return None

@@ -17,7 +17,7 @@ def startswith(x, prefixes):
     return False
 
 # https://en.wikipedia.org/wiki/Payment_card_number#Issuer_identification_number_(IIN)
-def client(x: int) -> str:
+def creditcard_client(x: int) -> str:
     proxy = rpyc.connect("localhost", 8080).root
     if proxy:
         if pow(10, 15-1) <= x and proxy.check_luhn(x):

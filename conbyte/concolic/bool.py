@@ -1,8 +1,8 @@
 # Copyright: see copyright.txt
 
 import logging
-from conbyte.concolic_types.concolic import Concolic, MetaFinal
-from conbyte.global_utils import ConcolicObject, py2smt, unwrap
+from conbyte.concolic.concolic import Concolic, MetaFinal
+from conbyte.utils import ConcolicObject, py2smt, unwrap
 from conbyte.solver import Solver
 
 log = logging.getLogger("ct.con.bool")
@@ -16,15 +16,13 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
         obj.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
         obj.value = py2smt(value)
         obj.expr = expr if expr is not None and obj.engine is not None else obj.value
-        # if isinstance(self.expr, list):
-        #     self.expr = conbyte.global_utils.add_extended_vars_and_queries('Bool', self.expr)
         log.debug(f"  ConBool, value: {value}, expr: {obj.expr}")
         return obj
 
     def __bool__(self): # <slot wrapper '__bool__' of 'int' objects>
         log.debug("  ConBool, __bool__ is called")
         if self.engine: # Please note that this is the only place where branches are generated.
-            self.engine.path.which_branch(self)
+            self.engine.path.add_branch(self)
         return super().__bool__()
 
     def __xor__(self, other): # <slot wrapper '__xor__' of 'bool' objects>

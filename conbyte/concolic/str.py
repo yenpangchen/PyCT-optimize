@@ -1,8 +1,8 @@
 # Copyright: see copyright.txt
 
-import copy, logging
-from conbyte.concolic_types.concolic import Concolic, MetaFinal
-from conbyte.global_utils import ConcolicObject, py2smt, unwrap
+import copy, logging, re
+from conbyte.concolic.concolic import Concolic, MetaFinal
+from conbyte.utils import ConcolicObject, py2smt, unwrap
 from conbyte.solver import Solver
 
 log = logging.getLogger("ct.con.str")
@@ -14,8 +14,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         obj.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
         obj.value = py2smt(value)
         obj.expr = expr if expr is not None and obj.engine is not None else obj.value
-        # if isinstance(obj.expr, list):
-        #     obj.expr = global_utils.add_extended_vars_and_queries('String', obj.expr)
         log.debug(f"  ConStr, value: {value}, expr: {obj.expr}")
         return obj
 
@@ -52,19 +50,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     # def __getattribute__(self, name, /): # <slot wrapper '__getattribute__' of 'str' objects>
     #     """Return getattr(self, name)."""
-
-    # TODO: 罪魁禍首
-    # def __getitem__(self, key):
-    #     if isinstance(key, int):
-    #         if not isinstance(key, Concolic): key = ConcolicObject(key)
-    #         if key < 0:
-    #             key += len(self)
-    #         value = str.__str__(self)[int.__int__(key)]
-    #         expr = ["str.at", self, key]
-    #         return ConcolicObject(value, expr)
-    #     if not isinstance(key, slice): raise NotImplementedError
-    #     if key.step is not None: raise NotImplementedError
-    #     return self._substr(key.start, key.stop)
 
     def __getitem__(self, key, /): # <slot wrapper '__getitem__' of 'str' objects>
         """Return self[key]."""
@@ -262,7 +247,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             except: args[2] = self.__len__() # Default values are also ok to have expressions.
             args[2] = ConcolicObject(args[2]) # ConcolicInt
         main = self._substr(args[1], args[2])
-        # args[0] = add_extend_vars('String', args[0])
         expr = ["ite", ["<=", ["str.len", args[0]], "0"], ["+", "1", ["str.len", main]], ["div", ["-", ["str.len", ["str.replaceall", main, args[0], ["str.++", args[0], args[0]]]], ["str.len", main]], ["str.len", args[0]]]]
         return ConcolicObject(value, expr)
 
@@ -438,7 +422,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             try: chars = str(chars)
             except: chars = ' ' # TODO: Only this kind of whitespace?
             chars = self.__class__(chars)
-        # self = add_extend_vars('String', self)
         expr = self
         s = unwrap(self)
         while any(map(lambda ch: s.startswith(unwrap(ch)), chars)):
@@ -526,7 +509,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             try: chars = str(chars)
             except: chars = ' ' # TODO: Only this kind of whitespace?
             chars = self.__class__(chars)
-        # self = add_extend_vars('String', self)
         expr = self
         s = unwrap(self)
         while any(map(lambda ch: s.endswith(unwrap(ch)), chars)):
@@ -666,8 +648,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 except: other = ''
                 other = self.__class__(other)
             # expr = ['str.<', other, self]
-            # self = add_extend_vars('String', self)
-            # other = add_extend_vars('String', other)
             expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
@@ -687,8 +667,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 except: other = ''
                 other = self.__class__(other)
             # expr = ['str.<', self, other]
-            # self = add_extend_vars('String', self)
-            # other = add_extend_vars('String', other)
             expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
@@ -709,8 +687,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def _is_int(self):
         log.debug("  ConStr, _is_int is called")
-        import re; INT_RE = re.compile(r"^[-]?\d+$"); value = INT_RE.match(unwrap(self)) is not None
-        # self = add_extend_vars('String', self)
+        INT_RE = re.compile(r"^[-]?\d+$"); value = INT_RE.match(unwrap(self)) is not None
         expr = ["str.in.re", ["ite", ["str.prefixof", py2smt('-'), self],
                                      ["str.substr", self, "1", ["str.len", self]],
                                      self], # For better results, avoid using ["str.replace", self, "-", ""] in the above line.
@@ -741,7 +718,6 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("  ConStr, __int2__ is called")
         self._is_int().__bool__() # our handmade branch in order to produce more successful testcases
         value = int(self)
-        # self = add_extend_vars('String', self)
         expr = ["ite", ["str.prefixof", py2smt('-'), self],
                        ["-", ["str.to.int", ["str.substr", self, "1", ["str.len", self]]]],
                        ["str.to.int", self]] # For better results, avoid using ["str.replace", self, "-", ""] in the above line.
