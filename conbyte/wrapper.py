@@ -10,7 +10,7 @@
 # "Module(body=[Assign(targets=[Name(id='x', ctx=Store())], value=Constant(value=3, kind=None), type_comment=None)], type_ignores=[])"
 ##########################################################################################
 
-from ast import Attribute, Call, Constant, Import, ImportFrom, Load, Name, NamedExpr, NodeTransformer, Store, alias, fix_missing_locations, parse
+from ast import Call, Constant, Import, ImportFrom, Name, NamedExpr, NodeTransformer, Store, alias, fix_missing_locations, parse
 import importlib, inspect, sys, traceback
 
 #########################################################################################

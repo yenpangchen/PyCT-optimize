@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, unittest
+import os, subprocess, unittest
 import conbyte.explore
 
 class TestCodeSnippets(unittest.TestCase):
@@ -54,7 +54,6 @@ class TestCodeSnippets(unittest.TestCase):
     def test_49(self): self._execute("test/realworld/server_document_checking.py", ["", "", ""]) # OK
 
     def _executesrv(self, filename, inputs):
-        import os, subprocess
         pid = subprocess.Popen(["python3", "test/realworld/creditcard_server.py"]).pid
         self._execute(filename, inputs)
         os.system(f'kill -KILL {pid}')
@@ -69,17 +68,17 @@ class TestCodeSnippets(unittest.TestCase):
             print(filename, list(zip(engine.inputs, engine.results)))
             iteration += 1
 
-    def _missing_lines(self, filename):
+    @staticmethod
+    def _missing_lines(filename):
         if filename == "test/call_obj.py":
             return {11, 26}
-        elif filename == "test/targets/multiplication_or_sum.py":
+        if filename == "test/targets/multiplication_or_sum.py":
             return {6}
-        elif filename == "test/target_int/lib_int/distutils_get_build_version.py":
+        if filename == "test/target_int/lib_int/distutils_get_build_version.py":
             return {26, 30}
-        elif filename == "test/target_int/lib_int/smtpd_parseargs.py":
+        if filename == "test/target_int/lib_int/smtpd_parseargs.py":
             return {28, 35, 40}
-        else:
-            return {} # empty dictionary
+        return {} # empty dictionary
 
     def _check_coverage(self, iteration, filename, missing_lines: dict):
         if missing_lines: # we only care about the main file

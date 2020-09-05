@@ -1,7 +1,7 @@
 # Copyright: see copyright.txt
 
 import copy, logging, re
-from conbyte.concolic.concolic import Concolic, MetaFinal
+from conbyte.concolic import Concolic, MetaFinal
 from conbyte.utils import ConcolicObject, py2smt, unwrap
 from conbyte.solver import Solver
 
@@ -616,7 +616,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 other = self.__class__(other)
             expr = ['str.++', self, other]
             return ConcolicObject(value, expr)
-        elif op == '__contains__':
+        if op == '__contains__':
             value = super().__contains__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = str(other)
@@ -624,7 +624,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 other = self.__class__(other)
             expr = ['str.contains', self, other]
             return ConcolicObject(value, expr)
-        elif op == '__eq__':
+        if op == '__eq__':
             value = super().__eq__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = str(other)
@@ -632,7 +632,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 other = self.__class__(other)
             expr = ['=', self, other]
             return ConcolicObject(value, expr)
-        elif op == '__ge__':
+        if op == '__ge__':
             value = super().__ge__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = str(other)
@@ -641,7 +641,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             # expr = ['str.<=', other, self]
             expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
             return ConcolicObject(value, expr)
-        elif op == '__gt__':
+        if op == '__gt__':
             value = super().__gt__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = str(other)
@@ -651,7 +651,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
-        elif op == '__le__':
+        if op == '__le__':
             value = super().__le__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = str(other)
@@ -660,7 +660,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             # expr = ['str.<=', self, other]
             expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
             return ConcolicObject(value, expr)
-        elif op == '__lt__':
+        if op == '__lt__':
             value = super().__lt__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = str(other)
@@ -670,9 +670,9 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
-        elif op == '__mul__': # TODO: Expressions not implemented
+        if op == '__mul__': # TODO: Expressions not implemented
             return ConcolicObject(super().__mul__(unwrap(other)))
-        elif op == '__ne__':
+        if op == '__ne__':
             value = super().__ne__(unwrap(other))
             if not isinstance(other, Concolic):
                 try: other = str(other)
@@ -680,14 +680,13 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 other = self.__class__(other)
             expr = ['not', ['=', self, other]]
             return ConcolicObject(value, expr)
-        elif op == '__rmul__': # TODO: Expressions not implemented
+        if op == '__rmul__': # TODO: Expressions not implemented
             return ConcolicObject(super().__rmul__(unwrap(other)))
-        else:
-            raise NotImplementedError
+        raise NotImplementedError
 
     def _is_int(self):
         log.debug("  ConStr, _is_int is called")
-        INT_RE = re.compile(r"^[-]?\d+$"); value = INT_RE.match(unwrap(self)) is not None
+        re_int = re.compile(r"^[-]?\d+$"); value = re_int.match(unwrap(self)) is not None
         expr = ["str.in.re", ["ite", ["str.prefixof", py2smt('-'), self],
                                      ["str.substr", self, "1", ["str.len", self]],
                                      self], # For better results, avoid using ["str.replace", self, "-", ""] in the above line.

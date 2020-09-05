@@ -5,7 +5,7 @@ from conbyte.constraint import Constraint
 from conbyte.predicate import Predicate
 from conbyte.utils import unwrap
 
-log = logging.getLogger("ct.pathconstraint")
+log = logging.getLogger("ct.path")
 
 class PathToConstraint:
     root_constraint = None

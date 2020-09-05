@@ -1,6 +1,6 @@
 # Copyright: see copyright.txt
 
-from conbyte.concolic.concolic import Concolic
+from conbyte.concolic import Concolic
 
 class Predicate:
     def __init__(self, expr, value):
@@ -15,7 +15,7 @@ class Predicate:
     def _eq_worker(self, expr1, expr2):
         if isinstance(expr1, Concolic) and isinstance(expr2, Concolic):
             return self._eq_worker(expr1.expr, expr2.expr)
-        elif isinstance(expr1, list) and isinstance(expr2, list) and len(expr1) == len(expr2):
+        if isinstance(expr1, list) and isinstance(expr2, list) and len(expr1) == len(expr2):
             return next((False for (e1, e2) in zip(expr1, expr2) if not self._eq_worker(e1, e2)), True)
         return expr1 == expr2
 

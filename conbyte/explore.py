@@ -1,5 +1,5 @@
 import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, sys, traceback
-import conbyte.path_to_constraint, conbyte.solver
+import conbyte.path, conbyte.solver
 from conbyte.utils import ConcolicObject, unwrap
 
 log = logging.getLogger("ct.explore")
@@ -24,7 +24,7 @@ def prepare():
 class ExplorationEngine:
     def __init__(self):
         self.constraints_to_solve = [] # 指的是還沒、但即將被 solver 解出 model 的 constraint
-        self.path = conbyte.path_to_constraint.PathToConstraint()
+        self.path = conbyte.path.PathToConstraint()
         self.inputs = []
         self.errors = []
         self.results = []
@@ -62,24 +62,19 @@ class ExplorationEngine:
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
             sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
-            prepare()
-            log.info("Inputs: " + str(init_vars)); self.path.__init__(); import conbyte.wrapper
-            execute = getattr(__import__(self.module_name), entry)
-            conc_args = self._get_concolic_parameters(execute, init_vars)
-            success = False; result = None
+            prepare(); self.path.__init__(); log.info("Inputs: " + str(init_vars))
+            import conbyte.wrapper; execute = getattr(__import__(self.module_name), entry)
+            success = False; result = None; conc_args = self._get_concolic_parameters(execute, init_vars)
             try:
                 result = conbyte.utils.unwrap(func_timeout.func_timeout(15, execute, args=conc_args))
                 success = True
                 log.info("Return: %s" % result)
             except func_timeout.FunctionTimedOut as e:
-                print('Current Input Vector:', init_vars)
-                # print(e); traceback.print_exc()
                 log.error("Execution Timeout: %s" % init_vars)
-                # sys.exit(1)
+                print('Current Input Vector:', init_vars); print(e) #; traceback.print_exc(); sys.exit(1)
             except Exception as e:
-                print('Current Input Vector:', init_vars)
-                print(e) #; traceback.print_exc()
                 log.error("Execution exception for: %s" % init_vars)
+                print('Current Input Vector:', init_vars); print(e) #; traceback.print_exc()
             child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types]); child.close()
             os._exit(os.EX_OK)
         success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()

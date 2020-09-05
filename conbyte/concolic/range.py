@@ -1,7 +1,7 @@
 # Copyright: see copyright.txt
 
 import logging
-from conbyte.concolic.concolic import Concolic, MetaFinal
+from conbyte.concolic import Concolic, MetaFinal
 from conbyte.utils import ConcolicObject, unwrap
 
 log = logging.getLogger("ct.con.range")
@@ -55,14 +55,13 @@ class ConcolicRange(metaclass=MetaFinal): # "range" class cannot be inherited.
             try: key = int(key)
             except: key = 0
             key = ConcolicObject(key)
-        if unwrap(self.start < self.stop):
+        if self.start < self.stop:
             return ConcolicObject(value, self.start <= key < self.stop and \
                                          (key - self.start) % self.step == 0)
-        elif unwrap(self.start > self.stop):
+        if self.start > self.stop:
             return ConcolicObject(value, self.start >= key > self.stop and \
                                          (key - self.start) % self.step == 0)
-        else:
-            return ConcolicObject(value)
+        return ConcolicObject(value)
 
     def __eq__(self, value, /): # <slot wrapper '__eq__' of 'range' objects>
         """Return self==value."""
@@ -127,7 +126,9 @@ class ConcolicRange(metaclass=MetaFinal): # "range" class cannot be inherited.
     def __len__(self, /): # <slot wrapper '__len__' of 'range' objects>
         """Return len(self)."""
         log.debug("  ConRange, __len__ is called")
-        return ConcolicObject(self.super.__len__())
+        value = self.super.__len__()
+        expr = (self.stop - self.start) // self.step
+        return ConcolicObject(value, expr) if expr > 0 else ConcolicObject(value)
 
     def __lt__(self, value, /): # <slot wrapper '__lt__' of 'range' objects>
         """Return self<value."""
@@ -160,23 +161,22 @@ class ConcolicRange(metaclass=MetaFinal): # "range" class cannot be inherited.
             try: key = int(key)
             except: key = 0
             key = ConcolicObject(key)
-        if unwrap(self.start < self.stop):
+        if self.start < self.stop:
             return ConcolicObject(value, (self.start <= key < self.stop and \
                                          (key - self.start) % self.step == 0).__int2__())
-        elif unwrap(self.start > self.stop):
+        if self.start > self.stop:
             return ConcolicObject(value, (self.start >= key > self.stop and \
                                          (key - self.start) % self.step == 0).__int2__())
-        else:
-            return ConcolicObject(value)
+        return ConcolicObject(value)
 
     def index(self, key): # <method 'index' of 'range' objects>
         """rangeobject.index(value) -> integer -- return index of value.\nRaise ValueError if the value is not present."""
         log.debug("  ConRange, index is called") #; args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
-        value = self.super.index(unwrap(key))
+        value = self.super.index(unwrap(key)) # raise Exception when "key" is not in the range object
         if isinstance(key, Concolic) and hasattr(key, '__int2__'):
             key = key.__int2__()
         else:
             try: key = int(key)
             except: key = 0
             key = ConcolicObject(key)
-        return ConcolicObject(value, (key - self.start) // self.step + 1)
+        return ConcolicObject(value, (key - self.start) // self.step)

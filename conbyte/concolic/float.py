@@ -1,7 +1,7 @@
 # Copyright: see copyright.txt
 
 import logging
-from conbyte.concolic.concolic import Concolic, MetaFinal
+from conbyte.concolic import Concolic, MetaFinal
 from conbyte.utils import ConcolicObject, py2smt, unwrap
 from conbyte.solver import Solver
 

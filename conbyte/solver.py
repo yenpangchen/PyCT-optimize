@@ -1,5 +1,5 @@
 import logging, os, subprocess, sys
-from conbyte.concolic.concolic import Concolic
+from conbyte.concolic import Concolic
 from conbyte.predicate import Predicate
 from conbyte.utils import py2smt
 
@@ -101,7 +101,7 @@ class Solver:
     @staticmethod
     def _expr_has_engines_and_equals_value(expr, value):
         if e:=Concolic.find_engine_in_expr(expr):
-            # return e # This line is used to disable value validation if we don't want this feature.
+            return e # This line is used to disable the value validation feature temporarily.
             cmd = ["cvc4", "--produce-models", "--lang", "smt", "--quiet", "--strings-exp", "--tlimit=5000"]
             if isinstance(value, float): # TODO: Floating point operations may cause subtle errors.
                 formulas = f"(assert (and (<= (- (/ 1 1000000000000000)) (- {Predicate.get_formula_shallow(expr)} {py2smt(value)})) (<= (- {Predicate.get_formula_shallow(expr)} {py2smt(value)}) (/ 1 1000000000000000))))\n(check-sat)"
