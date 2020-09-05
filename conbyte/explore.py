@@ -5,6 +5,22 @@ from conbyte.utils import ConcolicObject, unwrap
 log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # For some special cases, the original limit is not enough.
 
+def prepare():
+    #################################################################
+    # Since the source code in https://github.com/python/cpython/blob/e822e37946f27c09953bb5733acf3b07c2db690f/Modules/socketmodule.c#L6485
+    # only accepts "unwrapped" input arguments, we simply do it here.
+    #################################################################
+    import socket
+    _socket_getaddrinfo = socket.getaddrinfo
+    def socket_getaddrinfo(*args, **kwargs):
+        return _socket_getaddrinfo(*map(unwrap, args), **{k: unwrap(v) for (k, v) in kwargs.items()})
+    socket.getaddrinfo = socket_getaddrinfo
+    #####################################################################
+    # The builtin len(...) function will automatically unwrap our result,
+    # so we want to avoid this by doing the following line.
+    #####################################################################
+    builtins.len = lambda x: x.__len__()
+
 class ExplorationEngine:
     def __init__(self):
         self.constraints_to_solve = [] # 指的是還沒、但即將被 solver 解出 model 的 constraint
@@ -46,10 +62,8 @@ class ExplorationEngine:
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
             sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
-            log.info("Inputs: " + str(init_vars))
-            builtins.len = lambda x: x.__len__()
-            self.path.__init__()
-            import conbyte.wrapper
+            prepare()
+            log.info("Inputs: " + str(init_vars)); self.path.__init__(); import conbyte.wrapper
             execute = getattr(__import__(self.module_name), entry)
             conc_args = self._get_concolic_parameters(execute, init_vars)
             success = False; result = None

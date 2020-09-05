@@ -1,3 +1,13 @@
+def _int(obj):
+    from conbyte.concolic.concolic import Concolic
+    if isinstance(obj, Concolic) and hasattr(obj, '__int2__'): return obj.__int2__()
+    return int(obj)
+
+def _str(obj):
+    from conbyte.concolic.concolic import Concolic
+    if isinstance(obj, Concolic) and hasattr(obj, '__str2__'): return obj.__str2__()
+    return str(obj)
+
 def ConcolicObject(value, expr=None, engine=None):
     from conbyte.concolic.bool import ConcolicBool
     from conbyte.concolic.float import ConcolicFloat

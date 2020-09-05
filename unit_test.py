@@ -49,7 +49,15 @@ class TestCodeSnippets(unittest.TestCase):
     def test_44(self): self._execute("test/target_int/lib_int/nntplib__parse_datetime.py", ["000000000000"]) # OK, at least 11 digits for avoiding errors, and 12 digits for full coverage
     def test_45(self): self._execute("test/target_int/lib_int/smtpd_parseargs.py", ["", ""]) # OK with deadcode [28, 35, 40]
     def test_46(self): self._execute("test/target_int/lib_int/wsgiref_check_status.py", [""]) # OK
-    def test_47(self): self._execute("test/realworld/server_document_checking.py", ["", "", ""]) # OK
+    def test_47(self): self._execute("test/feature/read_str_from_file.py", ["", ""]) # OK
+    def test_48(self): self._executesrv("test/realworld/creditcard_client.py", [0]) # OK
+    def test_49(self): self._execute("test/realworld/server_document_checking.py", ["", "", ""]) # OK
+
+    def _executesrv(self, filename, inputs):
+        import os, subprocess
+        pid = subprocess.Popen(["python3", "test/realworld/creditcard_server.py"]).pid
+        self._execute(filename, inputs)
+        os.system(f'kill -KILL {pid}')
 
     def _execute(self, filename, inputs):
         self.iteration_max = 1

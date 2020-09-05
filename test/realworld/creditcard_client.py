@@ -1,12 +1,13 @@
-#######################################################################################
-# To make this example work, we have to upcast hosts and ports to their primitive types
-# in the function getaddrinfo in line 901 of the file /usr/lib/python3.8/socket.py with
-# the following two statements:
-# if isinstance(host, str): host = str.__str__(host)
-# if isinstance(port, int): port = int.__int__(port), and
-# replace "return IMM_INTS_LOADER[tag]" in line 357 of the file /home/alan23273850/.local/share/virtualenvs/1_CODE_py-conbyte-AGrb4DSq/lib/python3.8/site-packages/rpyc/core/brine.py
-# with "return int.__int__(IMM_INTS_LOADER[tag])" beforehand!
-#######################################################################################
+###################################################################################
+# If we do not unwrap arguments of the function getaddrinfo in line 901 of the file
+# /usr/lib/python3.8/socket.py in our program, it can be done only by adding unwrap
+# statements "host = unwrap(host); port = unwrap(port)" into the first line of that
+# function manually.
+#
+# If we do not avoid wrapping the file "/home/alan23273850/.local/share/virtualenvs/1_CODE_py-conbyte-AGrb4DSq/lib/python3.8/site-packages/rpyc/core/brine.py",
+# then the statement "return IMM_INTS_LOADER[tag]" in line 357 of that file should
+# also be replaced with the unwrapping "return int.__int__(IMM_INTS_LOADER[tag])"!
+###################################################################################
 
 import rpyc
 
