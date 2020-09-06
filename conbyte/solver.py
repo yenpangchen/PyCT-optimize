@@ -58,15 +58,13 @@ class Solver:
         if output is None or len(output) == 0:
             status = "UNKNOWN"
         else:
-            outputs = output.splitlines()
-            if "error" in outputs[0]:
-                print('solver error:', outputs[0])
+            outputs = output.splitlines(); status = outputs[0].lower()
+            if "error" in status:
+                print('solver error:', status)
+                print(f"at SMT-id: {Solver.cnt}")
                 print(formulas)
                 sys.exit(1)
-            status = outputs[0].lower()
-            if "sat" in status:
-                model = Solver._get_model(engine, outputs[1:])
-            elif "unknown" in status and "error" not in output:
+            if "sat" == status:
                 model = Solver._get_model(engine, outputs[1:])
             else:
                 status = "UNKNOWN"
