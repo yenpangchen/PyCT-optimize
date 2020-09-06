@@ -57,32 +57,49 @@ This is used to create a virtual environment.
 
 ## Usage
 
-Keep in mind always do `$ pipenv shell` first when entering this project directory.
+Keep in mind that always do `$ pipenv shell` first when entering this project directory.
 ```
-usage: py-conbyte.py [-h] [-e ENTRY] [-m ITERATION] [--safety SAFETY] [-t TIMEOUT] [--timeout2 TIMEOUT2] [-f FORMULA] [-l LOGFILE] [-v VERBOSE] [-s SOLVER] path_to_file.py input_args
+usage: py-conbyte.py [-h] [-e ENTRY] [-m ITERATION] [--safety SAFETY] [-t TIMEOUT] [--timeout2 TIMEOUT2] [-f FORMULA] [-l LOGFILE] [-v VERBOSE] [-s SOLVER]
+                     filename.py input_args
 
 positional arguments:
-  path_to_file.py       the target file
-  input_args            the input arguments
+  filename.py           target file
+  input_args            input arguments of the target function
 
 optional arguments:
   -h, --help            show this help message and exit
   -e ENTRY, --entry ENTRY
-                        entry point, if different from path_to_file.py
+                        name of the target function
+                        If the function name is the same as that of the target file, this option can be omitted.
   -m ITERATION, --iter ITERATION
-                        maximum number of iterations
-  --safety SAFETY       expression value safety level
+                        maximum number of iterations [default = 200]
+  --safety SAFETY       indicates the behavior when the values in Python and in SMTLIB2 of a concolic object are not equal. [default = 0]
+                        (0) The expression in a concolic object is still preserved even if the values are different.
+                        (1) The expression in a concolic object will be erased if the values are different, but the process still continues.
+                        (2) The expression in a concolic object will be erased if the values are different, and the process terminates soon afterwards.
   -t TIMEOUT, --timeout TIMEOUT
-                        solver timeout (default = 10 sec)
-  --timeout2 TIMEOUT2   execution timeout (default = 15 sec)
+                        timeout (sec.) for the solver to solve a constraint [default = 10]
+  --timeout2 TIMEOUT2   timeout (sec.) for the explorer to go through one iteration [default = 15]
   -f FORMULA, --formula FORMULA
-                        folder or file to store smtlib2 formulas
+                        name of directory or file to store smtlib2 formulas
+                        (*) When this argument is a pure positive integer N, it means that we only want to store the N_th constraint
+                        where N is the number "SMT-id" shown in the log. The file should be named {N}.smt2 in the current directory.
+                        (*) Otherwise, this argument names the directory, and all constraints will be stored in this directory whose
+                        names follow the rule mentioned above.
+                        In either case, these *.smt2 files should be able to be called by solvers directly.
   -l LOGFILE, --logfile LOGFILE
-                        store log
+                        name of the log file
+                        (*) When this argument is an empty string, all logging messages will not be dumped either to screens or to files.
+                        (*) When this option is not set, the logging messages will be dumped to screens.
   -v VERBOSE, --verbose VERBOSE
-                        set the verbosity level
+                        logging level [default = 1]
+                        (0) Show messages whose levels not lower than WARNING.
+                        (1) Show messages from (0), plus basic iteration information.
+                        (2) Show messages from (1), plus solver information
+                        (3) Show messages from (2), plus all concolic object's information.
   -s SOLVER, --solver SOLVER
-                        solver=[z3seq, z3str, trauc, cvc4]. Currently only support cvc4.
+                        solver type [default = cvc4]
+                        We currently only support CVC4.
 ```
 
 Example:
