@@ -102,9 +102,30 @@ optional arguments:
                         We currently only support CVC4.
 ```
 
-Example:
+For example, to test the target function `build_in(a, b)` in the target file `test/build_in.py` (Note that they have the same name.), and to let the two initial arguments be `a = 0` and `b = 0`, we can simply use the following command.
 ```
- $ ./py-conbyte.py test/do_numbers.py [0,0] -s cvc4
+ $ ./py-conbyte.py test/build_in.py [0,0]
+```
+The output would be:
+```
+  ct.explore    INFO     Inputs: [0, 0]
+  ct.explore    INFO     Return: 1
+  ct.explore    INFO     Not Covered: /mnt/d/ALAN_FOLDER/2020_研究工作/1_CODE_py-conbyte/test/build_in.py {11}
+  ct.explore    INFO     === Iterations: 1 ===
+  ct.explore    INFO     Inputs: [100, 0]
+  ct.explore    INFO     Return: 0
+
+Total iterations: 1
+
+Generated inputs
+[0, 0]
+[100, 0]
+
+Line coverage 9/9 (100.00%)
+Branch coverage 0
+
+# of input vectors: 2
+[([0, 0], 1), ([100, 0], 0)]
 ```
 
 To leave this virtual environment, simply type `$ exit` in the shell.
@@ -112,6 +133,11 @@ To leave this virtual environment, simply type `$ exit` in the shell.
 ---
 
 ## TODO
+
+
+---
+
+## Known Problems
 
 ---
 
