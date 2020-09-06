@@ -152,7 +152,7 @@ class ConcolicFinder(type(_real_pathfinder)):
                                                                    'source code not available']) \
                     and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
                     traceback.print_exc()
-                    sys.exit(0)
+                    sys.exit(1)
         return loader
 
 sys.meta_path[-1] = ConcolicFinder

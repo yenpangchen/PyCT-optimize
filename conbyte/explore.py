@@ -1,5 +1,6 @@
-import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, sys, traceback
-import conbyte.path, conbyte.solver
+import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, re, sys, traceback
+from conbyte.path import PathToConstraint
+from conbyte.solver import Solver
 from conbyte.utils import ConcolicObject, unwrap
 
 log = logging.getLogger("ct.explore")
@@ -22,9 +23,23 @@ def prepare():
     builtins.len = lambda x: x.__len__()
 
 class ExplorationEngine:
-    def __init__(self):
+    def __init__(self, solver, timeout, safety=0, query_store=None):
+        self.__init2__()
+        Solver.set_solver_timeout_safety_querystore(solver, timeout, safety, query_store)
+        ############################################################
+        # We add our new logging level called "SMTLIB2" to print out
+        # messages related to the solving process.
+        ############################################################
+        logging.SMTLIB2 = (logging.DEBUG + logging.INFO) // 2
+        logging.addLevelName(logging.SMTLIB2, "SMTLIB2")
+        def smtlib2(self, message, *args, **kwargs): # https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
+            if self.isEnabledFor(logging.SMTLIB2): # Yes, logger takes its '*args' as 'args'.
+                self._log(logging.SMTLIB2, message, args, **kwargs)
+        logging.Logger.smtlib2 = smtlib2
+
+    def __init2__(self):
         self.constraints_to_solve = [] # 指的是還沒、但即將被 solver 解出 model 的 constraint
-        self.path = conbyte.path.PathToConstraint()
+        self.path = PathToConstraint()
         self.inputs = []
         self.errors = []
         self.results = []
@@ -32,32 +47,28 @@ class ExplorationEngine:
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
 
-    def explore(self, solver, filename, entry, ini_vars, max_iterations, timeout=10, deadcode=None, query_store=None):
-        self.__init__()
+    def explore(self, filename, entry, ini_vars, max_iterations, timeout, deadcode=None):
+        self.__init2__()
         self.module_name = os.path.basename(filename).replace(".py", "") # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
         self.coverage = coverage.Coverage(data_file=None, branch=True, source=[self.module_name])
         self.var_to_types = {}
-        if query_store is not None:
-            if not os.path.isdir(query_store):
-                raise IOError("Query folder {} not found".format(query_store))
         iterations = 1
-        cont = self._one_execution(iterations, filename, entry, ini_vars, deadcode) # the 1st execution
+        cont = self._one_execution(iterations, filename, entry, ini_vars, timeout, deadcode) # the 1st execution
         while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
             # and try to solve for it. After that we'll obtain a model as
             # a list of arguments and continue the next iteration with it.
             constraint = self.constraints_to_solve.pop(0)
-            model = conbyte.solver.Solver.find_model_from_constraint(self, solver, constraint, timeout, query_store)
-            log.debug("Solving: %s" % constraint)
+            model = Solver.find_model_from_constraint(self, constraint)
             ##############################################################
             if model is not None:
-                log.info("=== Iterations: %s ===" % iterations); iterations += 1
+                log.info(f"=== Iterations: {iterations} ==="); iterations += 1
                 args = list(model.values()) # from model to argument
-                cont = self._one_execution(iterations, filename, entry, args, deadcode) # other consecutive executions following the 1st execution
+                cont = self._one_execution(iterations, filename, entry, args, timeout, deadcode) # other consecutive executions following the 1st execution
         return iterations - 1
 
-    def _one_execution(self, iterations, filename, entry, init_vars, deadcode):
+    def _one_execution(self, iterations, filename, entry, init_vars, timeout, deadcode):
         entry = self.module_name if entry is None else entry
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
@@ -66,15 +77,15 @@ class ExplorationEngine:
             import conbyte.wrapper; execute = getattr(__import__(self.module_name), entry)
             success = False; result = None; conc_args = self._get_concolic_parameters(execute, init_vars)
             try:
-                result = conbyte.utils.unwrap(func_timeout.func_timeout(15, execute, args=conc_args))
+                result = conbyte.utils.unwrap(func_timeout.func_timeout(timeout, execute, args=conc_args))
                 success = True
-                log.info("Return: %s" % result)
+                log.info(f"Return: {result}")
             except func_timeout.FunctionTimedOut as e:
-                log.error("Execution Timeout: %s" % init_vars)
-                print('Current Input Vector:', init_vars); print(e) #; traceback.print_exc(); sys.exit(1)
+                log.error(f"Execution Timeout: {init_vars}")
+                print('Timeout Input Vector:', init_vars); print(e) #; traceback.print_exc(); sys.exit(1)
             except Exception as e:
-                log.error("Execution exception for: %s" % init_vars)
-                print('Current Input Vector:', init_vars); print(e) #; traceback.print_exc()
+                log.error(f"Execution Exception for: {init_vars}")
+                print('Exception Input Vector:', init_vars); print(e) #; traceback.print_exc()
             child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types]); child.close()
             os._exit(os.EX_OK)
         success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()
@@ -109,7 +120,7 @@ class ExplorationEngine:
             missing_lines = self.coverage_accumulated_missing_lines[file]
             if missing_lines:
                 if not (file == os.path.abspath(filename) and deadcode == missing_lines):
-                    print(file, missing_lines); return True
+                    log.info(f"Not Covered: {file} {missing_lines}"); return True
         return False
 
     def _get_concolic_parameters(self, func, init_vars):
@@ -157,16 +168,9 @@ class ExplorationEngine:
     def print_coverage(self):
         total_lines, executed_lines, missing_lines, executed_branches = self.coverage_statistics()
         print("\nLine coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0))
-        print("Branch coverage {}".format(executed_branches))
+        print(f"Branch coverage {executed_branches}")
         if len(missing_lines) > 0:
             print("Missing lines:")
             for file, lines in missing_lines.items():
-                print("  {}: {}".format(file, lines))
+                print(f"  {file}: {lines}")
         print("")
-
-    def result_to_json(self):
-        res = {}
-        res["inputs"] = self.inputs
-        res["error_inputs"] = self.errors
-        res["total_lines"], res["executed_lines"], _, res["executed_branches"] = self.coverage_statistics()
-        return json.dumps(res)

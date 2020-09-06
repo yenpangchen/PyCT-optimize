@@ -14,19 +14,19 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         obj.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
         obj.value = py2smt(value)
         obj.expr = expr if expr is not None and obj.engine is not None else obj.value
-        log.debug(f"  ConStr, value: {value}, expr: {obj.expr}")
+        log.debug(f"ConStr, value: {value}, expr: {obj.expr}")
         return obj
 
     def __add__(self, value, /): # <slot wrapper '__add__' of 'str' objects>
         """Return self+value."""
-        log.debug("  ConStr, __add__ is called")
+        log.debug("ConStr, __add__ is called")
         return self._bin_op('__add__', value)
 
     # __class__, <class 'type'>
 
     def __contains__(self, key, /): # <slot wrapper '__contains__' of 'str' objects>
         """Return key in self."""
-        log.debug("  ConStr, __contains__ is called")
+        log.debug("ConStr, __contains__ is called")
         return self._bin_op('__contains__', key)
 
     # __delattr__, <slot wrapper '__delattr__' of 'object' objects>
@@ -35,17 +35,17 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __eq__(self, value, /): # <slot wrapper '__eq__' of 'str' objects>
         """Return self==value."""
-        log.debug("  ConStr, __eq__ is called")
+        log.debug("ConStr, __eq__ is called")
         return self._bin_op('__eq__', value)
 
     def __format__(self, format_spec, /): # <method '__format__' of 'str' objects> TODO
         """Return a formatted version of the string as described by format_spec."""
-        log.debug("  ConStr, __format__ is called")
+        log.debug("ConStr, __format__ is called")
         return ConcolicObject(super().__format__(unwrap(format_spec)))
 
     def __ge__(self, value, /): # <slot wrapper '__ge__' of 'str' objects>
         """Return self>=value."""
-        log.debug("  ConStr, __ge__ is called")
+        log.debug("ConStr, __ge__ is called")
         return self._bin_op('__ge__', value)
 
     # def __getattribute__(self, name, /): # <slot wrapper '__getattribute__' of 'str' objects>
@@ -53,7 +53,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __getitem__(self, key, /): # <slot wrapper '__getitem__' of 'str' objects>
         """Return self[key]."""
-        log.debug("  ConStr, __getitem__ is called")
+        log.debug("ConStr, __getitem__ is called")
         value = super().__getitem__(unwrap(key))
         if isinstance(key, int):
             if not isinstance(key, Concolic): key = ConcolicObject(int(key)) # ConcolicInt
@@ -83,12 +83,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __gt__(self, value, /): # <slot wrapper '__gt__' of 'str' objects>
         """Return self>value."""
-        log.debug("  ConStr, __gt__ is called")
+        log.debug("ConStr, __gt__ is called")
         return self._bin_op('__gt__', value)
 
     def __hash__(self, /): # <slot wrapper '__hash__' of 'str' objects>
         """Return hash(self).""" # TODO: Is the inverse operation well-known?
-        log.debug("  ConStr, __hash__ is called")
+        log.debug("ConStr, __hash__ is called")
         return ConcolicObject(super().__hash__())
 
     # __init__, <slot wrapper '__init__' of 'object' objects>
@@ -97,7 +97,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __iter__(self, /): # <slot wrapper '__iter__' of 'str' objects>
         """Implement iter(self)."""
-        log.debug("  ConStr, __iter__ is called")
+        log.debug("ConStr, __iter__ is called")
         index = ConcolicObject(0)
         while index < self.__len__(): # Note this branch must be added in order to make this iterator work!
             result = self.__getitem__(index)
@@ -106,25 +106,25 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __le__(self, value, /): # <slot wrapper '__le__' of 'str' objects>
         """Return self<=value."""
-        log.debug("  ConStr, __le__ is called")
+        log.debug("ConStr, __le__ is called")
         return self._bin_op('__le__', value)
 
     def __len__(self, /): # <slot wrapper '__len__' of 'str' objects>
         """Return len(self)."""
-        log.debug("  ConStr, __len__ is called")
+        log.debug("ConStr, __len__ is called")
         value = super().__len__()
         expr = ["str.len", self]
         return ConcolicObject(value, expr)
 
     def __lt__(self, value, /): # <slot wrapper '__lt__' of 'str' objects>
         """Return self<value."""
-        log.debug("  ConStr, __lt__ is called")
+        log.debug("ConStr, __lt__ is called")
         return self._bin_op('__lt__', value)
 
     def __mod__(self, other, /): # <slot wrapper '__mod__' of 'str' objects> TODO: move from approximation to exact computation
         # Meaning of modifiers is explained here: https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
         """Return self%value.""" # I renamed the argument to "other" for convenience.
-        log.debug("  ConStr, __mod__ is called")
+        log.debug("ConStr, __mod__ is called")
         value = super().__mod__(unwrap(other))
         if not isinstance(other, tuple): return ConcolicObject(value) # TODO: 鴕鳥心態
         # One split example: ['abcd%def%dga%ib%dc%idefg']
@@ -177,12 +177,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __mul__(self, value, /): # <slot wrapper '__mul__' of 'str' objects>
         """Return self*value."""
-        log.debug("  ConStr, __mul__ is called")
+        log.debug("ConStr, __mul__ is called")
         return self._bin_op('__mul__', value)
 
     def __ne__(self, value, /): # <slot wrapper '__ne__' of 'str' objects>
         """Return self!=value."""
-        log.debug("  ConStr, __ne__ is called")
+        log.debug("ConStr, __ne__ is called")
         return self._bin_op('__ne__', value)
 
     # __reduce__, <method '__reduce__' of 'object' objects>
@@ -194,12 +194,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def __rmod__(self, value, /): # <slot wrapper '__rmod__' of 'str' objects> TODO
         """Return value%self."""
-        log.debug("  ConStr, __rmod__ is called")
+        log.debug("ConStr, __rmod__ is called")
         return super().__rmod__(unwrap(value))
 
     def __rmul__(self, value, /): # <slot wrapper '__rmul__' of 'str' objects>
         """Return value*self."""
-        log.debug("  ConStr, __rmul__ is called")
+        log.debug("ConStr, __rmul__ is called")
         return self._bin_op('__rmul__', value)
 
     # __setattr__, <slot wrapper '__setattr__' of 'object' objects>
@@ -214,22 +214,22 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def capitalize(self, /): # <method 'capitalize' of 'str' objects> TODO
         """Return a capitalized version of the string.\n\nMore specifically, make the first character have upper case and the rest lower case."""
-        log.debug("  ConStr, capitalize is called")
+        log.debug("ConStr, capitalize is called")
         return ConcolicObject(super().capitalize())
 
     def casefold(self, /): # <method 'casefold' of 'str' objects> TODO
         """Return a version of the string suitable for caseless comparisons."""
-        log.debug("  ConStr, casefold is called")
+        log.debug("ConStr, casefold is called")
         return ConcolicObject(super().casefold())
 
     def center(self, width, fillchar=' ', /): # <method 'center' of 'str' objects> TODO
         """Return a centered string of length width.\n\nPadding is done using the specified fill character (default is a space)."""
-        log.debug("  ConStr, center is called")
+        log.debug("ConStr, center is called")
         return ConcolicObject(super().center(unwrap(width), unwrap(fillchar)))
 
     def count(self, *args): # <method 'count' of 'str' objects>
         """S.count(sub[, start[, end]]) -> int\n\nReturn the number of non-overlapping occurrences of substring sub in\nstring S[start:end].  Optional arguments start and end are\ninterpreted as in slice notation."""
-        log.debug("  ConStr, count is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, count is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
         if isinstance(args, tuple): args = list(args)
         value = super().count(*map(unwrap, args))
         if not isinstance(args[0], Concolic):
@@ -252,12 +252,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def encode(self, /, encoding='utf-8', errors='strict'): # <method 'encode' of 'str' objects> TODO
         """Encode the string using the codec registered for encoding."""
-        log.debug("  ConStr, encode is called")
+        log.debug("ConStr, encode is called")
         return ConcolicObject(super().encode(unwrap(encoding), unwrap(errors)))
 
     def endswith(self, *args): # <method 'endswith' of 'str' objects>
         """S.endswith(suffix[, start[, end]]) -> bool\n\nReturn True if S ends with the specified suffix, False otherwise.\nWith optional start, test S beginning at that position.\nWith optional end, stop comparing S at that position.\nsuffix can also be a tuple of strings to try."""
-        log.debug("  ConStr, endswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, endswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
         if isinstance(args, tuple): args = list(args)
         value = super().endswith(*map(unwrap, args)) # TODO: still not deal with the case when suffix is a tuple!!!
         if not isinstance(args[0], Concolic):
@@ -279,12 +279,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def expandtabs(self, /, tabsize=8): # <method 'expandtabs' of 'str' objects> TODO
         """Return a copy where all tab characters are expanded using spaces.\n\nIf tabsize is not given, a tab size of 8 characters is assumed."""
-        log.debug("  ConStr, expandtabs is called")
+        log.debug("ConStr, expandtabs is called")
         return ConcolicObject(super().expandtabs(unwrap(tabsize)))
 
     def find(self, *args): # <method 'find' of 'str' objects>
         """S.find(sub[, start[, end]]) -> int\n\nReturn the lowest index in S where substring sub is found,\nsuch that sub is contained within S[start:end].  Optional\narguments start and end are interpreted as in slice notation.\n\nReturn -1 on failure."""
-        log.debug("  ConStr, find is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, find is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
         if isinstance(args, tuple): args = list(args)
         value = super().find(*map(unwrap, args))
         if not isinstance(args[0], Concolic):
@@ -306,17 +306,17 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def format(self, *args, **kwargs): # <method 'format' of 'str' objects> TODO
         """S.format(*args, **kwargs) -> str\n\nReturn a formatted version of S, using substitutions from args and kwargs.\nThe substitutions are identified by braces ('{' and '}')."""
-        log.debug("  ConStr, format is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
+        log.debug("ConStr, format is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
         return ConcolicObject(super().format(*args, **kwargs))
 
     def format_map(self, *args, **kwargs): # <method 'format_map' of 'str' objects> TODO
         """S.format_map(mapping) -> str\n\nReturn a formatted version of S, using substitutions from mapping.\nThe substitutions are identified by braces ('{' and '}')."""
-        log.debug("  ConStr, format_map is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
+        log.debug("ConStr, format_map is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
         return ConcolicObject(super().format_map(*args, **kwargs))
 
     def index(self, *args): # <method 'index' of 'str' objects>
         """S.index(sub[, start[, end]]) -> int\n\nReturn the lowest index in S where substring sub is found,\nsuch that sub is contained within S[start:end].  Optional\narguments start and end are interpreted as in slice notation.\n\nRaises ValueError when the substring is not found."""
-        log.debug("  ConStr, index is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, index is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
         if isinstance(args, tuple): args = list(args)
         value = super().index(*map(unwrap, args))
         if not isinstance(args[0], Concolic):
@@ -338,27 +338,27 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def isalnum(self, /): # <method 'isalnum' of 'str' objects> TODO
         """Return True if the string is an alpha-numeric string, False otherwise.\n\nA string is alpha-numeric if all characters in the string are alpha-numeric and\nthere is at least one character in the string."""
-        log.debug("  ConStr, isalnum is called")
+        log.debug("ConStr, isalnum is called")
         return ConcolicObject(super().isalnum())
 
     def isalpha(self, /): # <method 'isalpha' of 'str' objects> TODO
         """Return True if the string is an alphabetic string, False otherwise.\n\nA string is alphabetic if all characters in the string are alphabetic and there\nis at least one character in the string."""
-        log.debug("  ConStr, isalpha is called")
+        log.debug("ConStr, isalpha is called")
         return ConcolicObject(super().isalpha())
 
     def isascii(self, /): # <method 'isascii' of 'str' objects> TODO
         """Return True if all characters in the string are ASCII, False otherwise.\n\nASCII characters have code points in the range U+0000-U+007F.\nEmpty string is ASCII too."""
-        log.debug("  ConStr, isascii is called")
+        log.debug("ConStr, isascii is called")
         return ConcolicObject(super().isascii())
 
     def isdecimal(self, /): # <method 'isdecimal' of 'str' objects> TODO
         """Return True if the string is a decimal string, False otherwise.\n\nA string is a decimal string if all characters in the string are decimal and\nthere is at least one character in the string."""
-        log.debug("  ConStr, isdecimal is called")
+        log.debug("ConStr, isdecimal is called")
         return ConcolicObject(super().isdecimal())
 
     def isdigit(self, /): # <method 'isdigit' of 'str' objects>
         """Return True if the string is a digit string, False otherwise.\n\nA string is a digit string if all characters in the string are digits and there\nis at least one character in the string."""
-        log.debug("  ConStr, isdigit is called")
+        log.debug("ConStr, isdigit is called")
         value = super().isdigit()
         expr = ["str.in.re", self, ["re.+", ["re.range", py2smt('0'), py2smt('9')]]]
         # Question: Is this expression equivalent to ["not", ["=", "-1", ["str.to.int", self]]]?
@@ -366,57 +366,57 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def isidentifier(self, /): # <method 'isidentifier' of 'str' objects> TODO
         """Return True if the string is a valid Python identifier, False otherwise.\n\nCall keyword.iskeyword(s) to test whether string s is a reserved identifier,\nsuch as "def" or "class"."""
-        log.debug("  ConStr, isidentifier is called")
+        log.debug("ConStr, isidentifier is called")
         return ConcolicObject(super().isidentifier())
 
     def islower(self, /): # <method 'islower' of 'str' objects> TODO
         """Return True if the string is a lowercase string, False otherwise.\n\nA string is lowercase if all cased characters in the string are lowercase and\n there is at least one cased character in the string."""
-        log.debug("  ConStr, islower is called")
+        log.debug("ConStr, islower is called")
         return ConcolicObject(super().islower())
 
     def isnumeric(self, /): # <method 'isnumeric' of 'str' objects> TODO
         """Return True if the string is a numeric string, False otherwise.\n\nA string is numeric if all characters in the string are numeric and there is at\nleast one character in the string."""
-        log.debug("  ConStr, isnumeric is called")
+        log.debug("ConStr, isnumeric is called")
         return ConcolicObject(super().isnumeric())
 
     def isprintable(self, /): # <method 'isprintable' of 'str' objects> TODO
         """Return True if the string is printable, False otherwise.\n\nA string is printable if all of its characters are considered printable in\nrepr() or if it is empty."""
-        log.debug("  ConStr, isprintable is called")
+        log.debug("ConStr, isprintable is called")
         return ConcolicObject(super().isprintable())
 
     def isspace(self, /): # <method 'isspace' of 'str' objects> TODO
         """Return True if the string is a whitespace string, False otherwise.\n\nA string is whitespace if all characters in the string are whitespace and there\nis at least one character in the string."""
-        log.debug("  ConStr, isspace is called")
+        log.debug("ConStr, isspace is called")
         return ConcolicObject(super().isspace())
 
     def istitle(self, /): # <method 'istitle' of 'str' objects> TODO
         """Return True if the string is a title-cased string, False otherwise.\n\nIn a title-cased string, upper- and title-case characters may only\nfollow uncased characters and lowercase characters only cased ones."""
-        log.debug("  ConStr, istitle is called")
+        log.debug("ConStr, istitle is called")
         return ConcolicObject(super().istitle())
 
     def isupper(self, /): # <method 'isupper' of 'str' objects> TODO
         """Return True if the string is an uppercase string, False otherwise.\n\nA string is uppercase if all cased characters in the string are uppercase and\nthere is at least one cased character in the string."""
-        log.debug("  ConStr, isupper is called")
+        log.debug("ConStr, isupper is called")
         return ConcolicObject(super().isupper())
 
     def join(self, iterable, /): # <method 'join' of 'str' objects> TODO
         """Concatenate any number of strings.\n\nThe string whose method is called is inserted in between each given string.\nThe result is returned as a new string.\n\nExample: '.'.join(['ab', 'pq', 'rs']) -> 'ab.pq.rs'"""
-        log.debug("  ConStr, join is called")
+        log.debug("ConStr, join is called")
         return ConcolicObject(super().join(unwrap(iterable)))
 
     def ljust(self, width, fillchar=' ', /): # <method 'ljust' of 'str' objects> TODO
         """Return a left-justified string of length width.\n\nPadding is done using the specified fill character (default is a space)."""
-        log.debug("  ConStr, ljust is called")
+        log.debug("ConStr, ljust is called")
         return ConcolicObject(super().ljust(unwrap(width), unwrap(fillchar)))
 
     def lower(self, /): # <method 'lower' of 'str' objects> TODO
         """Return a copy of the string converted to lowercase."""
-        log.debug("  ConStr, lower is called")
+        log.debug("ConStr, lower is called")
         return ConcolicObject(super().lower())
 
     def lstrip(self, chars=None, /): # <method 'lstrip' of 'str' objects> TODO: move from approximation to exact semantics
         """Return a copy of the string with leading whitespace removed.\n\nIf chars is given and not None, remove characters in chars instead."""
-        log.debug("  ConStr, lstrip is called")
+        log.debug("ConStr, lstrip is called")
         value = super().lstrip(unwrap(chars))
         if not isinstance(chars, Concolic):
             try: chars = str(chars)
@@ -433,12 +433,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def partition(self, sep, /): # <method 'partition' of 'str' objects> TODO
         """Partition the string into three parts using the given separator."""
-        log.debug("  ConStr, partition is called")
+        log.debug("ConStr, partition is called")
         return ConcolicObject(super().partition(unwrap(sep)))
 
     def replace(self, old, new, count=-1, /): # <method 'replace' of 'str' objects> TODO: move from approximation to exact semantics
         """Return a copy with all occurrences of substring old replaced by new.\n\n  count\n    Maximum number of occurrences to replace.\n    -1 (the default value) means replace all occurrences.\n\nIf the optional argument count is given, only the first count occurrences are\nreplaced."""
-        log.debug("  ConStr, replace is called")
+        log.debug("ConStr, replace is called")
         value = super().replace(unwrap(old), unwrap(new), unwrap(count))
         if not isinstance(old, Concolic):
             try: old = str(old)
@@ -477,33 +477,33 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def rfind(self, *args, **kwargs): # <method 'rfind' of 'str' objects> TODO
         """S.rfind(sub[, start[, end]]) -> int"""
-        log.debug("  ConStr, rfind is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
+        log.debug("ConStr, rfind is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
         return ConcolicObject(super().rfind(*args, **kwargs))
 
     def rindex(self, *args, **kwargs): # <method 'rindex' of 'str' objects> TODO
         """S.rindex(sub[, start[, end]]) -> int"""
-        log.debug("  ConStr, rindex is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
+        log.debug("ConStr, rindex is called"); args = [unwrap(arg) for arg in args]; kwargs = {k: unwrap(v) for (k, v) in kwargs.items()}
         return ConcolicObject(super().rindex(*args, **kwargs))
 
     def rjust(self, width, fillchar=' ', /): # <method 'rjust' of 'str' objects> TODO
         """Return a right-justified string of length width.\n\nPadding is done using the specified fill character (default is a space)."""
-        log.debug("  ConStr, rjust is called")
+        log.debug("ConStr, rjust is called")
         return ConcolicObject(super().rjust(unwrap(width), unwrap(fillchar)))
 
     def rpartition(self, sep, /): # <method 'rpartition' of 'str' objects> TODO
         """Partition the string into three parts using the given separator."""
-        log.debug("  ConStr, rpartition is called")
+        log.debug("ConStr, rpartition is called")
         return ConcolicObject(super().rpartition(unwrap(sep)))
 
     def rsplit(self, /, sep=None, maxsplit=-1): # <method 'rsplit' of 'str' objects> TODO
         """Return a list of the words in the string, using sep as the delimiter string."""
-        log.debug("  ConStr, rsplit is called")
+        log.debug("ConStr, rsplit is called")
         return ConcolicObject(super().rsplit(unwrap(sep), unwrap(maxsplit)))
 
     # TODO: Temp
     def rstrip(self, chars=None, /): # <method 'rstrip' of 'str' objects> TODO: move from approximation to exact semantics
         """Return a copy of the string with trailing whitespace removed.\n\nIf chars is given and not None, remove characters in chars instead."""
-        log.debug("  ConStr, rstrip is called")
+        log.debug("ConStr, rstrip is called")
         value = super().rstrip(unwrap(chars))
         if not isinstance(chars, Concolic):
             try: chars = str(chars)
@@ -518,7 +518,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def split(self, /, sep=None, maxsplit=-1): # <method 'split' of 'str' objects> TODO: move from approximation to exact semantics
         """Return a list of the words in the string, using sep as the delimiter string.\n\n  sep\n    The delimiter according which to split the string.\n    None (the default value) means split according to any whitespace,\n    and discard empty strings from the result.\n  maxsplit\n    Maximum number of splits to do.\n    -1 (the default value) means no limit."""
-        log.debug("  ConStr, split is called")
+        log.debug("ConStr, split is called")
         value = super().split(unwrap(sep), unwrap(maxsplit))
         if not isinstance(sep, ConcolicStr):
             if sep is None: sep = ' ' # TODO: Only this kind of whitespace?
@@ -544,14 +544,14 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def splitlines(self, /, keepends=False): # <method 'splitlines' of 'str' objects> TODO: move from approximation to exact computation
         """Return a list of the lines in the string, breaking at line boundaries.\n\nLine breaks are not included in the resulting list unless keepends is given and\ntrue."""
-        log.debug("  ConStr, splitlines is called")
+        log.debug("ConStr, splitlines is called")
         value = super().splitlines(unwrap(keepends))
         result = self.split("\r\n") if super().__contains__("\r\n") else self.split("\n")
         return result if list(map(unwrap, result)) == value else ConcolicObject(value)
 
     def startswith(self, *args): # <method 'startswith' of 'str' objects>
         """S.startswith(prefix[, start[, end]]) -> bool\n\nReturn True if S starts with the specified prefix, False otherwise.\nWith optional start, test S beginning at that position.\nWith optional end, stop comparing S at that position.\nprefix can also be a tuple of strings to try."""
-        log.debug("  ConStr, startswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, startswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
         if isinstance(args, tuple): args = list(args)
         value = super().startswith(*map(unwrap, args)) # TODO: still not deal with the case when prefix is a tuple!!!
         if not isinstance(args[0], Concolic):
@@ -573,34 +573,34 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def strip(self, chars=None, /): # <method 'strip' of 'str' objects> TODO: not sure whether ".lstrip(chars).rstrip(chars)" is the exact definition or not.
         """Return a copy of the string with leading and trailing whitespace removed.\n\nIf chars is given and not None, remove characters in chars instead."""
-        log.debug("  ConStr, strip is called")
+        log.debug("ConStr, strip is called")
         value = super().strip(unwrap(chars))
         result = self.lstrip(chars).rstrip(chars)
         return result if unwrap(result) == value else ConcolicObject(value)
 
     def swapcase(self, /): # <method 'swapcase' of 'str' objects> TODO
         """Convert uppercase characters to lowercase and lowercase characters to uppercase."""
-        log.debug("  ConStr, swapcase is called")
+        log.debug("ConStr, swapcase is called")
         return ConcolicObject(super().swapcase())
 
     def title(self, /): # <method 'title' of 'str' objects> TODO
         """Return a version of the string where each word is titlecased.\n\nMore specifically, words start with uppercased characters and all remaining\ncased characters have lower case."""
-        log.debug("  ConStr, title is called")
+        log.debug("ConStr, title is called")
         return ConcolicObject(super().title())
 
     def translate(self, table, /): # <method 'translate' of 'str' objects> TODO
         """Replace each character in the string using the given translation table."""
-        log.debug("  ConStr, translate is called")
+        log.debug("ConStr, translate is called")
         return ConcolicObject(super().translate(unwrap(table)))
 
     def upper(self, /): # <method 'upper' of 'str' objects> TODO
         """Return a copy of the string converted to uppercase."""
-        log.debug("  ConStr, upper is called")
+        log.debug("ConStr, upper is called")
         return ConcolicObject(super().upper())
 
     def zfill(self, width, /): # <method 'zfill' of 'str' objects> TODO
         """Pad a numeric string with zeros on the left, to fill a field of the given width.\n\nThe string is never truncated."""
-        log.debug("  ConStr, zfill is called")
+        log.debug("ConStr, zfill is called")
         return ConcolicObject(super().zfill(unwrap(width)))
 
     ################################################################
@@ -685,8 +685,8 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         raise NotImplementedError
 
     def _is_int(self):
-        log.debug("  ConStr, _is_int is called")
-        re_int = re.compile(r"^[-]?\d+$"); value = re_int.match(unwrap(self)) is not None
+        log.debug("ConStr, _is_int is called")
+        value = re.compile(r"^[-]?\d+$").match(unwrap(self)) is not None
         expr = ["str.in.re", ["ite", ["str.prefixof", py2smt('-'), self],
                                      ["str.substr", self, "1", ["str.len", self]],
                                      self], # For better results, avoid using ["str.replace", self, "-", ""] in the above line.
@@ -694,7 +694,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         return ConcolicObject(value, expr)
 
     def _substr(self, start=None, end=None): # end is exclusive...
-        log.debug("  ConStr, _substr is called")
+        log.debug("ConStr, _substr is called")
         if start is None: start = ConcolicObject(0) # ConcolicInt
         if end is None: end = self.__len__() # ConcolicInt
         value = super().__getitem__(slice(unwrap(start), unwrap(end)))
@@ -714,7 +714,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         return ConcolicObject(value, expr)
 
     def __int2__(self):
-        log.debug("  ConStr, __int2__ is called")
+        log.debug("ConStr, __int2__ is called")
         self._is_int().__bool__() # our handmade branch in order to produce more successful testcases
         value = int(self)
         expr = ["ite", ["str.prefixof", py2smt('-'), self],
@@ -723,5 +723,5 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         return ConcolicObject(value, expr)
 
     def __str2__(self):
-        log.debug("  ConStr, __str2__ is called")
+        log.debug("ConStr, __str2__ is called")
         return self

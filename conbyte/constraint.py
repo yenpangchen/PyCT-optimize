@@ -32,4 +32,4 @@ class Constraint:
         while tmp.last_predicate is not None: # collect all the assertions in this constraint path
             asserts.append(tmp.last_predicate)
             tmp = tmp.parent
-        return asserts
+        return asserts[::-1]

@@ -60,10 +60,10 @@ class TestCodeSnippets(unittest.TestCase):
 
     def _execute(self, filename, inputs):
         self.iteration_max = 1
-        engine = conbyte.explore.ExplorationEngine()
+        engine = conbyte.explore.ExplorationEngine('cvc4', 10)
         iteration = 0
         while iteration == 0 or self._check_coverage(iteration, filename, missing_lines):
-            engine.explore('cvc4', filename, None, inputs, 200, 10, self._missing_lines(filename))
+            engine.explore(filename, None, inputs, 200, 15, self._missing_lines(filename))
             _, _, missing_lines, _ = engine.coverage_statistics() # missing_lines: dict
             print(filename, list(zip(engine.inputs, engine.results)))
             iteration += 1

@@ -43,4 +43,4 @@ class Predicate:
         raise NotImplementedError
 
     def __str__(self):
-        return f"Result: {self.value}\tExpr: {self.expr}"
+        return f"{Predicate.get_formula_deep(self.expr)} = {self.value}"

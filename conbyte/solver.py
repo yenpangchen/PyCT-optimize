@@ -1,4 +1,4 @@
-import logging, os, subprocess, sys
+import logging, os, re, subprocess, sys
 from conbyte.concolic import Concolic
 from conbyte.predicate import Predicate
 from conbyte.utils import py2smt
@@ -6,42 +6,52 @@ from conbyte.utils import py2smt
 log = logging.getLogger("ct.solver")
 
 class Solver:
-    options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
-    cnt = 0 # for query_store
+    # options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
+    cnt = 1 # for query_store
 
-    @staticmethod
-    def find_model_from_constraint(engine, solver, constraint, timeout=10, query_store=None):
-        ######################################################################################
+    @classmethod # similar to our constructor
+    def set_solver_timeout_safety_querystore(cls, solver, timeout, safety, query_store):
+        cls.safety = safety
+        if query_store is not None:
+            if not os.path.isdir(query_store):
+                if not re.compile(r"^\d+$").match(query_store):
+                    raise IOError(f"Query folder {query_store} not found")
+        cls.query_store = query_store
+        ##########################################################################################
         # Build the command from the solver type
         if solver == "cvc4":
-            cmd = ["cvc4"] + ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
+            cls.cmd = ["cvc4"] + ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
         # elif solver == "z3seq":
-        #     cmd = "z3 -in".split(' ')
+        #     cls.cmd = "z3 -in".split(' ')
         # elif solver == "z3str":
-        #     cmd = ["z3"] + self.options.values()
+        #     cls.cmd = ["z3"] + self.options.values()
         # elif solver == "trauc":
-        #     cmd = ["trauc"] + self.options.values()
+        #     cls.cmd = ["trauc"] + self.options.values()
         else:
             raise NotImplementedError
-        ######################################################################################
+        ##########################################################################################
         # Build the command from the timeout parameter
-        if isinstance(timeout, str): timeout = int(timeout)
         assert isinstance(timeout, int)
         if "z3" in solver or  "trauc" in solver:
-            cmd += ["-T:" + str(timeout)]
+            cls.cmd += ["-T:" + str(timeout)]
         else:
-            timeout *= 1000
-            cmd += ["--tlimit=" + str(timeout)]
-        ######################################################################################
-        formulas = Solver._build_formulas_from_constraint(engine, constraint)
-        # print(formulas)
-        ######################################################################################
-        if query_store is not None:
-            filename = os.path.join(query_store, f"{Solver.cnt}.smt2")
-            with open(filename, 'w') as f:
-                f.write(formulas)
-        ######################################################################################
-        try: completed_process = subprocess.run(cmd, input=formulas.encode(), capture_output=True)
+            cls.cmd += ["--tlimit=" + str(1000 * timeout)]
+
+    @classmethod
+    def find_model_from_constraint(cls, engine, constraint):
+        formulas = Solver._build_formulas_from_constraint(engine, constraint); log.smtlib2(f"Solving To: {constraint}")
+        ##########################################################################################
+        if cls.query_store is not None:
+            if re.compile(r"^\d+$").match(cls.query_store):
+                if int(cls.query_store) == Solver.cnt:
+                    with open(cls.query_store + '.smt2', 'w') as f:
+                        f.write(formulas)
+            else:
+                filename = os.path.join(cls.query_store, f"{Solver.cnt}.smt2")
+                with open(filename, 'w') as f:
+                    f.write(formulas)
+        ##########################################################################################
+        try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
         except subprocess.CalledProcessError as e: print(e.output)
         output = completed_process.stdout.decode()
         model = None
@@ -54,19 +64,13 @@ class Solver:
                 print(formulas)
                 sys.exit(1)
             status = outputs[0].lower()
-            # print(status)
-            if "unsat" in status:
-                status = "UNSAT"
-            elif "sat" in status:
-                status = "SAT"
+            if "sat" in status:
                 model = Solver._get_model(engine, outputs[1:])
-            elif "timeout" in status:
-                status = "TIMEOUT"
             elif "unknown" in status and "error" not in output:
                 model = Solver._get_model(engine, outputs[1:])
             else:
                 status = "UNKNOWN"
-        log.debug("%s smt, Result: %s" % (Solver.cnt, status))
+        log.smtlib2(f"SMT-id: {Solver.cnt}／Status: {status}／Model: {model}")
         Solver.cnt += 1
         return model
 
@@ -96,23 +100,23 @@ class Solver:
         declare_vars = "\n".join(f"(declare-const {name} {_type})" for (name, _type) in engine.var_to_types.items())
         queries = "\n".join(assertion.get_formula() for assertion in constraint.get_all_asserts())
         get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
-        return f"\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}"
+        return f"(set-logic ALL)\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}"
 
-    @staticmethod
-    def _expr_has_engines_and_equals_value(expr, value):
+    @classmethod
+    def _expr_has_engines_and_equals_value(cls, expr, value):
         if e:=Concolic.find_engine_in_expr(expr):
-            return e # This line is used to disable the value validation feature temporarily.
-            cmd = ["cvc4", "--produce-models", "--lang", "smt", "--quiet", "--strings-exp", "--tlimit=5000"]
+            if cls.safety <= 0: return e # This line is used to disable the value validation feature temporarily.
             if isinstance(value, float): # TODO: Floating point operations may cause subtle errors.
                 formulas = f"(assert (and (<= (- (/ 1 1000000000000000)) (- {Predicate.get_formula_shallow(expr)} {py2smt(value)})) (<= (- {Predicate.get_formula_shallow(expr)} {py2smt(value)}) (/ 1 1000000000000000))))\n(check-sat)"
             else:
                 formulas = f"(assert (= {Predicate.get_formula_shallow(expr)} {py2smt(value)}))\n(check-sat)"
-            try: completed_process = subprocess.run(cmd, input=formulas.encode(), capture_output=True)
+            try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
             except subprocess.CalledProcessError as e: print(e.output)
             try:
                 if completed_process.stdout.decode().splitlines()[0] == 'sat': return e
                 raise Exception # move to the following block
             except:
                 print(formulas); print(completed_process.stdout.decode().splitlines()); print()
-                import traceback; traceback.print_stack(); sys.exit(0)
+                import traceback; traceback.print_stack()
+                if cls.safety >= 2: sys.exit(1)
         return None
