@@ -137,7 +137,13 @@ To leave this virtual environment, simply type `$ exit` in the shell.
 
 ---
 
-## Known Problems
+## Known Issues
+
+Although this project aims to provide an error-free concolic testing environment, this goal in fact can be proven almost impossible! The most significant obstacle is "exact type checking." When a program performs this kind of checking, it probably wants to do something that only accepts primitive types. However, whether to unwrap the concolic objects automatically when facing this check solely depends on the purpose of the code. For example, the C source code of socket implementations expects the input arguments to be primitive. In this case we can replace the Python-level socket function with our custom one which unwraps the arguments first. As another example, some network libraries may need to know whether the object to be sent is primitive or not, so that it can decide whether to run the operations designed specifically for non-primitive objects. In this case we should not unwrap the concolic objects automatically. Currently we can only manually adjust the code case by case.
+
+1. To replace an existing function with your custom one, you can refer to the `prepare()` function in `conbyte/explore.py`.
+
+2. To disable wrapping a module when importing it, you can refer to line 144 in `conbyte/wrapper.py`.
 
 ---
 
