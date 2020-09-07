@@ -172,5 +172,5 @@ class ExplorationEngine:
         if len(missing_lines) > 0:
             print("Missing lines:")
             for file, lines in missing_lines.items():
-                print(f"  {file}: {lines}")
+                print(f"  {file}: {sorted(lines)}")
         print("")

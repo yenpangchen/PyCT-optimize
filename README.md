@@ -151,4 +151,6 @@ Although this project aims to provide an error-free concolic testing environment
 
 blablabla...
 
-Finally you may want to run the (parallel) unit test (in `unit_test.py`) to ensure the contribution is correct. The command is `pytest --workers [# of processes]`, and it takes almost 11 minutes to run.
+Finally you may want to run the (parallel) unit test (in `unit_test.py`) to ensure the contribution is correct. The command is `pytest --workers [# of processes] -x`, and it takes almost 11 minutes to run.
+
+If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file is separated by "|" since "," is already contained in the data.

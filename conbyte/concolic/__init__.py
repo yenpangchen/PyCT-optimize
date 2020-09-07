@@ -1,6 +1,13 @@
 # Copyright: see copyright.txt
 
 class Concolic:
+    def __init__(self, value, expr=None, engine=None):
+        from conbyte.solver import Solver
+        from conbyte.utils import py2smt
+        self.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
+        self.value = py2smt(value)
+        self.expr = expr if expr is not None and self.engine is not None else self.value
+
     @staticmethod
     def find_engine_in_expr(expr):
         if isinstance(expr, Concolic):

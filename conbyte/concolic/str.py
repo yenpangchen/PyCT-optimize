@@ -3,19 +3,17 @@
 import copy, logging, re
 from conbyte.concolic import Concolic, MetaFinal
 from conbyte.utils import ConcolicObject, py2smt, unwrap
-from conbyte.solver import Solver
 
 log = logging.getLogger("ct.con.str")
 
 class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     def __new__(cls, value, expr=None, engine=None):
         assert type(value) is str
-        obj = super().__new__(cls, value)
-        obj.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
-        obj.value = py2smt(value)
-        obj.expr = expr if expr is not None and obj.engine is not None else obj.value
-        log.debug(f"ConStr, value: {value}, expr: {obj.expr}")
-        return obj
+        return super().__new__(cls, value)
+
+    def __init__(self, value, expr=None, engine=None):
+        Concolic.__init__(self, value, expr, engine)
+        log.debug(f"ConStr, value: {value}, expr: {self.expr}")
 
     def __add__(self, value, /): # <slot wrapper '__add__' of 'str' objects>
         """Return self+value."""

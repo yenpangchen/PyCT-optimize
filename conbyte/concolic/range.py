@@ -127,8 +127,8 @@ class ConcolicRange(metaclass=MetaFinal): # "range" class cannot be inherited.
         """Return len(self)."""
         log.debug("ConRange, __len__ is called")
         value = self.super.__len__()
-        expr = (self.stop - self.start) // self.step
-        return ConcolicObject(value, expr) if expr > 0 else ConcolicObject(value)
+        expr = ((self.stop - self.start) // self.step) + ((self.stop - self.start) % self.step != 0).__int2__()
+        return ConcolicObject(value, expr)
 
     def __lt__(self, value, /): # <slot wrapper '__lt__' of 'range' objects>
         """Return self<value."""

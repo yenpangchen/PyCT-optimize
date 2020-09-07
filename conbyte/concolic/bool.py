@@ -2,8 +2,7 @@
 
 import logging
 from conbyte.concolic import Concolic, MetaFinal
-from conbyte.utils import ConcolicObject, py2smt, unwrap
-from conbyte.solver import Solver
+from conbyte.utils import ConcolicObject, unwrap
 
 log = logging.getLogger("ct.con.bool")
 
@@ -12,12 +11,11 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
         if value == 0: value = False # special handling for pickling
         if value == 1: value = True # special handling for pickling
         assert type(value) is bool
-        obj = super().__new__(cls, value)
-        obj.engine = engine if engine is not None else Solver._expr_has_engines_and_equals_value(expr, value)
-        obj.value = py2smt(value)
-        obj.expr = expr if expr is not None and obj.engine is not None else obj.value
-        log.debug(f"ConBool, value: {value}, expr: {obj.expr}")
-        return obj
+        return super().__new__(cls, value)
+
+    def __init__(self, value, expr=None, engine=None):
+        Concolic.__init__(self, value, expr, engine)
+        log.debug(f"ConBool, value: {value}, expr: {self.expr}")
 
     def __bool__(self): # <slot wrapper '__bool__' of 'int' objects>
         log.debug("ConBool, __bool__ is called")

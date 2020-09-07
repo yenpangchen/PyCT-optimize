@@ -31,4 +31,4 @@ def creditcard_client(x: int) -> str:
             elif startswith(x, (34, 37)):
                 return 'American Express'
         return 'Unknown'
-    # return 'Server Error'
+    return 'Server Error' # pragma: no cover
