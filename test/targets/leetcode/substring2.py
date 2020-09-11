@@ -1,4 +1,4 @@
-def substring2(s: str) -> int:
+def substring2(s): #(s: str) -> int:
     if len(s) == 0:
         return 0
     max_len = 1

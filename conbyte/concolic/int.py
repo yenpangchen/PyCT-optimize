@@ -358,7 +358,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
 
     def _bin_op(self, op, other):
         if op == '__add__':
-            value = super().__add__(unwrap(other))
+            if (value := super().__add__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__radd__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that int + float -> float instead of int,
@@ -371,7 +372,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['+', self, other]
             return ConcolicObject(value, expr)
         if op == '__eq__':
-            value = super().__eq__(unwrap(other))
+            if (value := super().__eq__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__eq__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that (int = float) will convert int to float,
@@ -384,7 +386,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['=', self, other]
             return ConcolicObject(value, expr)
         if op == '__floordiv__':
-            value = super().__floordiv__(unwrap(other))
+            if (value := super().__floordiv__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__rfloordiv__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that int.__floordiv__(float) will be changed to float.__rfloordiv__(int) in Python!
@@ -397,7 +400,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['div', self, other]
             return ConcolicObject(value, expr)
         if op == '__ge__':
-            value = super().__ge__(unwrap(other))
+            if (value := super().__ge__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__le__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that (int >= float) will convert int to float,
@@ -410,7 +414,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['>=', self, other]
             return ConcolicObject(value, expr)
         if op == '__gt__':
-            value = super().__gt__(unwrap(other))
+            if (value := super().__gt__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__lt__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that (int > float) will convert int to float,
@@ -423,7 +428,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['>', self, other]
             return ConcolicObject(value, expr)
         if op == '__le__':
-            value = super().__le__(unwrap(other))
+            if (value := super().__le__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__ge__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that (int <= float) will convert int to float,
@@ -436,7 +442,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['<=', self, other]
             return ConcolicObject(value, expr)
         if op == '__lt__':
-            value = super().__lt__(unwrap(other))
+            if (value := super().__lt__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__gt__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that (int < float) will convert int to float,
@@ -449,7 +456,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['<', self, other]
             return ConcolicObject(value, expr)
         if op == '__mod__':
-            value = super().__mod__(unwrap(other))
+            if (value := super().__mod__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__rmod__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that int.__mod__(float) will be changed to float.__rmod__(int) in Python!
@@ -462,7 +470,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['mod', self, other]
             return ConcolicObject(value, expr)
         if op == '__mul__':
-            value = super().__mul__(unwrap(other))
+            if (value := super().__mul__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__rmul__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = int(other)
                 except: other = 1
@@ -470,7 +479,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['*', self, other]
             return ConcolicObject(value, expr)
         if op == '__ne__':
-            value = super().__ne__(unwrap(other))
+            if (value := super().__ne__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__ne__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that (int != float) will convert int to float,
@@ -561,7 +571,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['/', other, self]
             return ConcolicObject(value, expr)
         if op == '__sub__':
-            value = super().__sub__(unwrap(other))
+            if (value := super().__sub__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__rsub__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that int - float -> float instead of int,
@@ -574,7 +585,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['-', self, other]
             return ConcolicObject(value, expr)
         if op == '__truediv__':
-            value = super().__truediv__(unwrap(other))
+            if (value := super().__truediv__(unwrap(other))) is NotImplemented:
+                value = unwrap(other).__rtruediv__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that int / float -> float instead of int,

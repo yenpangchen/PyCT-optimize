@@ -66,7 +66,7 @@ class TestCodeSnippets(unittest.TestCase):
             engine = conbyte.explore.ExplorationEngine('cvc4', 10)
             iteration = 0
             while iteration == 0 or self._check_coverage(iteration, filename, missing_lines):
-                engine.explore(filename, None, inputs, 200, 15, self._missing_lines(filename))
+                engine.explore(filename, None, inputs, 200, 15, deadcode=self._missing_lines(filename))
                 total_lines, executed_lines, missing_lines, _ = engine.coverage_statistics() # missing_lines: dict
                 iteration += 1
             col_3 = str(list(zip(engine.inputs, engine.results)))[1:-1]
@@ -99,7 +99,7 @@ class TestCodeSnippets(unittest.TestCase):
         return {} # empty dictionary
 
     def _check_coverage(self, iteration, filename, missing_lines: dict):
-        if missing_lines: # we only care about the main file
+        if missing_lines: # we only care about the primary file
             missing_lines = missing_lines[os.path.abspath(filename)]
         status = self.assert_equal(iteration, missing_lines, self._missing_lines(filename))
         return not (iteration == self.iteration_max or status) # := not (termination condition)

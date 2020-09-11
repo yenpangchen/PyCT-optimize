@@ -47,10 +47,15 @@ class ExplorationEngine:
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
 
-    def explore(self, filename, entry, ini_vars, max_iterations, timeout, deadcode=None):
+    def explore(self, filename, entry, ini_vars, max_iterations, timeout, *, deadcode=None, include=None):
         self.__init2__()
         self.module_name = os.path.basename(filename).replace(".py", "") # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
-        self.coverage = coverage.Coverage(data_file=None, branch=True, source=[self.module_name])
+        if include is None:
+            self.coverage = coverage.Coverage(data_file=None, branch=True, source=[self.module_name])
+        else:
+            if not include.endswith('/'): include += '/'
+            include += '**'
+            self.coverage = coverage.Coverage(data_file=None, branch=True, include=[include])
         self.var_to_types = {}
         iterations = 1
         cont = self._one_execution(iterations, filename, entry, ini_vars, timeout, deadcode) # the 1st execution
@@ -98,13 +103,11 @@ class ExplorationEngine:
                 sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
                 self.coverage.start(); ans = getattr(__import__(self.module_name), entry)(*init_vars); self.coverage.stop()
                 self.coverage_data.update(self.coverage.get_data())
-                if iterations == 1:
-                    for file in self.coverage_data.measured_files():
-                        _, _, missing_lines, _ = self.coverage.analysis(file)
+                for file in self.coverage_data.measured_files():
+                    _, _, missing_lines, _ = self.coverage.analysis(file)
+                    if file not in self.coverage_accumulated_missing_lines:
                         self.coverage_accumulated_missing_lines[file] = set(missing_lines)
-                else: # iterations > 1
-                    for file in self.coverage_data.measured_files():
-                        _, _, missing_lines, _ = self.coverage.analysis(file)
+                    else:
                         self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
                 child.send(ans)
                 child.send(self.coverage_data)
@@ -168,7 +171,7 @@ class ExplorationEngine:
     def print_coverage(self):
         total_lines, executed_lines, missing_lines, executed_branches = self.coverage_statistics()
         print("\nLine coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0))
-        print(f"Branch coverage {executed_branches}")
+        # print(f"Branch coverage {executed_branches}")
         if len(missing_lines) > 0:
             print("Missing lines:")
             for file, lines in missing_lines.items():

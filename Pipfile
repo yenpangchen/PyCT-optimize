@@ -10,6 +10,7 @@ pytest-parallel = "*"
 rpyc = "*"
 pyyaml = "*"
 rospkg = "*"
+numpy = "*"
 
 [dev-packages]
 

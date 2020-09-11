@@ -38,6 +38,8 @@ The main objective of Py-Conbyte is to achieve as much coverage of the source fi
 
 - [pipenv](https://pypi.org/project/pipenv/)
 
+- Other packages required for your target function to run
+
 <!---
 ([Z3](https://github.com/Z3Prover/z3)
 -->
@@ -59,7 +61,8 @@ This is used to create a virtual environment.
 
 Keep in mind that always do `$ pipenv shell` first when entering this project directory.
 ```
-usage: py-conbyte.py [-h] [-e ENTRY] [-m ITERATION] [--safety SAFETY] [-t TIMEOUT] [--timeout2 TIMEOUT2] [-f FORMULA] [-l LOGFILE] [-v VERBOSE] [-s SOLVER]
+usage: py-conbyte.py [-h] [-e ENTRY] [-m ITERATION] [--safety SAFETY] [--scope SCOPE] [-t TIMEOUT] [--timeout2 TIMEOUT2] [-f FORMULA] [-l LOGFILE] [-v VERBOSE]
+                     [-s SOLVER]
                      filename.py input_args
 
 positional arguments:
@@ -77,6 +80,7 @@ optional arguments:
                         (0) The expression in a concolic object is still preserved even if the values are different.
                         (1) The expression in a concolic object will be erased if the values are different, but the process still continues.
                         (2) The expression in a concolic object will be erased if the values are different, and the process terminates soon afterwards.
+  --scope SCOPE         a string indicating the scope of coverage measurement
   -t TIMEOUT, --timeout TIMEOUT
                         timeout (sec.) for the solver to solve a constraint [default = 10]
   --timeout2 TIMEOUT2   timeout (sec.) for the explorer to go through one iteration [default = 15]
@@ -128,7 +132,7 @@ Branch coverage 0
 [([0, 0], 1), ([100, 0], 0)]
 ```
 
-To leave this virtual environment, simply type `$ exit` in the shell.
+To leave this virtual environment, simply type `$ exit` in the terminal.
 
 ---
 
@@ -153,4 +157,4 @@ blablabla...
 
 Finally you may want to run the (parallel) unit test (in `unit_test.py`) to ensure the contribution is correct. The command is `pytest --workers [# of processes] -x`, and it takes almost 11 minutes to run.
 
-If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file is separated by "|" since "," is already contained in the data.
+If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file content is separated by "|" since "," is already contained in the data.

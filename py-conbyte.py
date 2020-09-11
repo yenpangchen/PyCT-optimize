@@ -12,6 +12,7 @@ parser.add_argument("inputs", metavar="input_args", help="input arguments of the
 parser.add_argument("-e", "--entry", dest="entry", help="name of the target function\nIf the function name is the same as that of the target file, this option can be omitted.", default=None)
 parser.add_argument("-m", "--iter", dest="iteration", help="maximum number of iterations [default = 200]", type=int, default=200)
 parser.add_argument("--safety", dest="safety", help="indicates the behavior when the values in Python and in SMTLIB2 of a concolic object are not equal. [default = 0]\n(0) The expression in a concolic object is still preserved even if the values are different.\n(1) The expression in a concolic object will be erased if the values are different, but the process still continues.\n(2) The expression in a concolic object will be erased if the values are different, and the process terminates soon afterwards.", type=int, default=0)
+parser.add_argument("--scope", dest="scope", help="a string indicating the scope of coverage measurement")
 parser.add_argument("-t", "--timeout", dest="timeout", help="timeout (sec.) for the solver to solve a constraint [default = 10]", type=int, default=10)
 parser.add_argument("--timeout2", dest="timeout2", help="timeout (sec.) for the explorer to go through one iteration [default = 15]", type=int, default=15)
 
@@ -49,7 +50,7 @@ else:
 #####################################################################################################################
 # This section creates an explorer instance and starts our analysis procedure!
 engine = conbyte.explore.ExplorationEngine(args.solver, args.timeout, args.safety, args.formula)
-print("\nTotal iterations:", engine.explore(args.file, args.entry, eval(args.inputs), args.iteration, args.timeout2))
+print("\nTotal iterations:", engine.explore(args.file, args.entry, eval(args.inputs), args.iteration, args.timeout2, include=args.scope))
 #####################################################################################################################
 
 ###############################################################################

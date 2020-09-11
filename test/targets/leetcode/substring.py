@@ -1,7 +1,7 @@
 
 # 003_Longest_Substring_Without_Repeating_Characters
 
-def substring(s: str) -> int:
+def substring(s): #(s: str) -> int:
     if len(s) == 0:
         return 0
     max_len = 1
