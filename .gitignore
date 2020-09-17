@@ -34,4 +34,5 @@ runtime/
 # Test environment
 script.sh
 ignore/
-output.csv
+*.csv
+*.out

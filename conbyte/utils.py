@@ -1,3 +1,5 @@
+import importlib
+
 def _int(obj):
     from conbyte.concolic import Concolic
     if isinstance(obj, Concolic) and hasattr(obj, '__int2__'): return obj.__int2__()
@@ -48,3 +50,10 @@ def py2smt(x): # convert the Python object into the smtlib2 string constant
         x = '"' + x_new + '"' # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
         return x
     raise NotImplementedError
+
+def get_funcobj_from_modpath_and_funcname(modpath, funcname):
+    execute = importlib.import_module(modpath)
+    while '.' in funcname:
+        execute = getattr(execute, funcname.split('.')[0])
+        funcname = funcname.split('.')[1]
+    return getattr(execute, funcname)

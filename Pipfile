@@ -7,10 +7,6 @@ name = "pypi"
 coverage = "==4.5.4"
 func-timeout = "==4.3.5"
 pytest-parallel = "*"
-rpyc = "*"
-pyyaml = "*"
-rospkg = "*"
-numpy = "*"
 
 [dev-packages]
 

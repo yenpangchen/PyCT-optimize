@@ -1,10 +1,10 @@
 import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, re, sys, traceback
 from conbyte.path import PathToConstraint
 from conbyte.solver import Solver
-from conbyte.utils import ConcolicObject, unwrap
+from conbyte.utils import ConcolicObject, unwrap, get_funcobj_from_modpath_and_funcname
 
 log = logging.getLogger("ct.explore")
-sys.setrecursionlimit(1000000) # For some special cases, the original limit is not enough.
+sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
 
 def prepare():
     #################################################################
@@ -23,9 +23,23 @@ def prepare():
     builtins.len = lambda x: x.__len__()
 
 class ExplorationEngine:
-    def __init__(self, solver, timeout, safety=0, query_store=None):
+    class Exception: pass # used to indicate occurrence of Exception during execution
+
+    def __init__(self, *, solver='cvc4', timeout=10, safety=0, store=None, verbose=1, logfile=None):
         self.__init2__()
-        Solver.set_solver_timeout_safety_querystore(solver, timeout, safety, query_store)
+        Solver.set_solver_timeout_safety_store(solver, timeout, safety, store)
+        ############################################################
+        # This section mainly deals with the logging settings.
+        log_level = 25 - 5 * verbose
+        if logfile:
+            logging.basicConfig(filename=logfile, level=log_level,
+                                format='%(asctime)s  %(name)s\t%(levelname)s\t %(message)s',
+                                datefmt='%m/%d/%Y %I:%M:%S %p')
+        elif logfile == '':
+            logging.basicConfig(level=logging.CRITICAL+1)
+        else:
+            logging.basicConfig(level=log_level,# stream=sys.stdout,
+                                format='  %(name)s\t%(levelname)s\t %(message)s')
         ############################################################
         # We add our new logging level called "SMTLIB2" to print out
         # messages related to the solving process.
@@ -47,18 +61,16 @@ class ExplorationEngine:
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
 
-    def explore(self, filename, entry, ini_vars, max_iterations, timeout, *, deadcode=None, include=None):
-        self.__init2__()
-        self.module_name = os.path.basename(filename).replace(".py", "") # 先只單純記下字串，等到要真正 import 的時候再去做 # __import__(module)
-        if include is None:
-            self.coverage = coverage.Coverage(data_file=None, branch=True, source=[self.module_name])
+    def explore(self, modpath, init_vars=[], *, root='.', funcname=None, max_iterations=200, timeout=15, check_return=True, include_exception=False, deadcode=None, lib=None):
+        self.modpath, self.funcname, self.timeout, self.check_return, self.include_exception, self.deadcode, self.lib = modpath, funcname, timeout, check_return, include_exception, deadcode, lib
+        if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
+        self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
+        if self.root.startswith(os.path.abspath(os.path.dirname(os.path.dirname(__file__)))):
+            self.coverage = coverage.Coverage(data_file=None, branch=True, include=[self.target_file])
         else:
-            if not include.endswith('/'): include += '/'
-            include += '**'
-            self.coverage = coverage.Coverage(data_file=None, branch=True, include=[include])
-        self.var_to_types = {}
+            self.coverage = coverage.Coverage(data_file=None, branch=True, include=[self.root + '/**'])
         iterations = 1
-        cont = self._one_execution(iterations, filename, entry, ini_vars, timeout, deadcode) # the 1st execution
+        cont = self._one_execution(iterations, init_vars) # the 1st execution
         while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
@@ -70,66 +82,80 @@ class ExplorationEngine:
             if model is not None:
                 log.info(f"=== Iterations: {iterations} ==="); iterations += 1
                 args = list(model.values()) # from model to argument
-                cont = self._one_execution(iterations, filename, entry, args, timeout, deadcode) # other consecutive executions following the 1st execution
+                cont = self._one_execution(iterations, args) # other consecutive executions following the 1st execution
         return iterations - 1
 
-    def _one_execution(self, iterations, filename, entry, init_vars, timeout, deadcode):
-        entry = self.module_name if entry is None else entry
+    def _one_execution(self, iterations, init_vars):
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
-            sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
+            if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
+            sys.path.insert(0, self.root)
             prepare(); self.path.__init__(); log.info("Inputs: " + str(init_vars))
-            import conbyte.wrapper; execute = getattr(__import__(self.module_name), entry)
-            success = False; result = None; conc_args = self._get_concolic_parameters(execute, init_vars)
+            import conbyte.wrapper; execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
+            result = self.Exception()
             try:
-                result = conbyte.utils.unwrap(func_timeout.func_timeout(timeout, execute, args=conc_args))
-                success = True
+                conc_args = self._get_concolic_parameters(execute, init_vars) # may cause errors if function parameters contain something like **kwargs.
+                init_vars = list(map(unwrap, conc_args)) # "init_vars" may be set at the above line if it is not given initially.
+                result = conbyte.utils.unwrap(func_timeout.func_timeout(self.timeout, execute, args=conc_args))
                 log.info(f"Return: {result}")
             except func_timeout.FunctionTimedOut as e:
                 log.error(f"Execution Timeout: {init_vars}")
                 print('Timeout Input Vector:', init_vars); print(e) #; traceback.print_exc(); sys.exit(1)
             except Exception as e:
                 log.error(f"Execution Exception for: {init_vars}")
-                print('Exception Input Vector:', init_vars); print(e) #; traceback.print_exc()
-            child.send([success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types]); child.close()
+                print('Exception Input Vector:', init_vars); print(e); traceback.print_exc()
+        ###################################### Communication Section ######################################
+            if self.check_return: child.send(result)
+            child.send((init_vars, self.constraints_to_solve, self.path, self.var_to_types)); child.close()
             os._exit(os.EX_OK)
-        success, init_vars, result, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()
-        if not success:
-            self.errors.append(init_vars)
-        else:
-            self.inputs.append(init_vars); self.results.append(result)
-            parent, child = multiprocessing.Pipe()
-            if os.fork() == 0: # child process
-                sys.path.append(os.path.abspath(filename).replace(os.path.basename(filename), ""))
-                self.coverage.start(); ans = getattr(__import__(self.module_name), entry)(*init_vars); self.coverage.stop()
-                self.coverage_data.update(self.coverage.get_data())
-                for file in self.coverage_data.measured_files():
-                    _, _, missing_lines, _ = self.coverage.analysis(file)
-                    if file not in self.coverage_accumulated_missing_lines:
-                        self.coverage_accumulated_missing_lines[file] = set(missing_lines)
-                    else:
-                        self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
-                child.send(ans)
-                child.send(self.coverage_data)
-                child.send(self.coverage_accumulated_missing_lines)
-                child.close(); os._exit(os.EX_OK)
-            ans = parent.recv()
-            self.coverage_data = parent.recv()
-            self.coverage_accumulated_missing_lines = parent.recv()
-            parent.close()
-            if result != ans: print('Input:', init_vars, '／My answer:', result, '／Correct answer:', ans)
-            assert result == ans
-        for file in self.coverage_data.measured_files():
+        if self.check_return: result = parent.recv()
+        init_vars, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()
+        ###################################################################################################
+        parent, child = multiprocessing.Pipe()
+        if os.fork() == 0: # child process
+            if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
+            sys.path.insert(0, self.root)
+            self.coverage.start(); answer = self.Exception()
+            try:
+                answer = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)(*init_vars)
+                self.inputs.append(init_vars); self.results.append(answer)
+            except:
+                self.errors.append(init_vars)
+            self.coverage.stop()
+            self.coverage_data.update(self.coverage.get_data())
+            for file in self.coverage_data.measured_files():
+                _, _, missing_lines, _ = self.coverage.analysis(file)
+                if file not in self.coverage_accumulated_missing_lines:
+                    self.coverage_accumulated_missing_lines[file] = set(missing_lines)
+                else:
+                    self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
+        ###################################### Communication Section ######################################
+            if self.check_return: child.send(answer); child.send(self.results)
+            child.send((self.inputs, self.errors, self.coverage_data, self.coverage_accumulated_missing_lines)); child.close()
+            os._exit(os.EX_OK)
+        if self.check_return: answer = parent.recv(); self.results = parent.recv()
+        self.inputs, self.errors, a, b = parent.recv(); parent.close()
+        ###################################################################################################
+        if self.include_exception or not isinstance(answer, self.Exception):
+            self.coverage_data, self.coverage_accumulated_missing_lines = a, b
+        if self.check_return and not isinstance(result, self.Exception) and not isinstance(answer, self.Exception):
+            if result != answer: print('Input:', init_vars, '／My answer:', result, '／Correct answer:', answer)
+            assert result == answer
+        for file in self.coverage_data.measured_files(): # "file" is absolute here.
             missing_lines = self.coverage_accumulated_missing_lines[file]
             if missing_lines:
-                if not (file == os.path.abspath(filename) and deadcode == missing_lines):
-                    log.info(f"Not Covered: {file} {missing_lines}"); return True
+                if not (file == self.target_file and self.deadcode == missing_lines):
+                    log.info(f"Not Covered Yet: {file} {missing_lines}"); return True
         return False
 
     def _get_concolic_parameters(self, func, init_vars):
         para = inspect.signature(func).parameters.copy() # 要加 copy，否則 para 不給修改
-        for a, b in zip(para.values(), init_vars):
-            para[a.name] = a.replace(default=b)
+        if len(init_vars) > 0:
+            for a, b in zip(para.values(), init_vars):
+                para[a.name] = a.replace(default=b)
+        else:
+            for a in para.values():
+                para[a.name] = a.replace(default='')
         if not self.var_to_types:
             for v in para.values():
                 if isinstance(v.default, bool): self.var_to_types[v.name] = 'Bool'
@@ -149,31 +175,20 @@ class ExplorationEngine:
     def coverage_statistics(self):
         total_lines = 0
         executed_lines = 0
-        executed_branches = 0
         missing_lines = {}
         for file in self.coverage_data.measured_files():
             _, executable_lines, _, _ = self.coverage.analysis(file)
             m_lines = self.coverage_accumulated_missing_lines[file]
-
             total_lines += len(set(executable_lines))
-            executed_lines += len(set(executable_lines)) - len(m_lines) # len(set(self.coverage_data.lines(file)))
-            executed_branches += 0 #len(set(self.coverage_data.arcs(file)))
-
-            # executable_lines starting from 1 do discard the 'def xx():' line
-            # m_lines = []
-            # for line in set(executable_lines[1:]):
-            #     if line not in self.coverage_data.lines(file):
-            #         m_lines.append(line)
-            if m_lines:
-                missing_lines[file] = m_lines
-        return total_lines, executed_lines, missing_lines, executed_branches
+            executed_lines += len(set(executable_lines)) - len(m_lines) # Do not use "len(set(self.coverage_data.lines(file)))" here!!!
+            if m_lines: missing_lines[file] = m_lines
+        return total_lines, executed_lines, missing_lines
 
     def print_coverage(self):
-        total_lines, executed_lines, missing_lines, executed_branches = self.coverage_statistics()
+        total_lines, executed_lines, missing_lines = self.coverage_statistics()
         print("\nLine coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0))
-        # print(f"Branch coverage {executed_branches}")
-        if len(missing_lines) > 0:
-            print("Missing lines:")
+        if missing_lines and self.root.startswith(os.path.abspath(os.path.dirname(os.path.dirname(__file__)))):
+            print("Missing lines:") # only print this info when the scope of coverage is a single file.
             for file, lines in missing_lines.items():
                 print(f"  {file}: {sorted(lines)}")
         print("")

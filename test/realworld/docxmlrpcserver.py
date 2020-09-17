@@ -7,7 +7,7 @@ from xmlrpc.server import DocXMLRPCServer
 # in order to make this example work!
 #######################################################################################
 
-def server_document_checking(title, name, documentation):
+def docxmlrpcserver(title, name, documentation):
     serv = DocXMLRPCServer(("localhost", 8081), logRequests=False)
     serv.set_server_title(title) #"DocXMLRPCServer Test Documentation")
     serv.set_server_name(name) #"DocXMLRPCServer Test Docs")

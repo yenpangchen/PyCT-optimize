@@ -7,16 +7,16 @@ log = logging.getLogger("ct.solver")
 
 class Solver:
     # options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
-    cnt = 1 # for query_store
+    cnt = 1 # for store
 
     @classmethod # similar to our constructor
-    def set_solver_timeout_safety_querystore(cls, solver, timeout, safety, query_store):
+    def set_solver_timeout_safety_store(cls, solver, timeout, safety, store):
         cls.safety = safety
-        if query_store is not None:
-            if not os.path.isdir(query_store):
-                if not re.compile(r"^\d+$").match(query_store):
-                    raise IOError(f"Query folder {query_store} not found")
-        cls.query_store = query_store
+        if store is not None:
+            if not os.path.isdir(store):
+                if not re.compile(r"^\d+$").match(store):
+                    raise IOError(f"Query folder {store} not found")
+        cls.store = store
         ##########################################################################################
         # Build the command from the solver type
         if solver == "cvc4":
@@ -41,13 +41,13 @@ class Solver:
     def find_model_from_constraint(cls, engine, constraint):
         formulas = Solver._build_formulas_from_constraint(engine, constraint); log.smtlib2(f"Solving To: {constraint}")
         ##########################################################################################
-        if cls.query_store is not None:
-            if re.compile(r"^\d+$").match(cls.query_store):
-                if int(cls.query_store) == Solver.cnt:
-                    with open(cls.query_store + '.smt2', 'w') as f:
+        if cls.store is not None:
+            if re.compile(r"^\d+$").match(cls.store):
+                if int(cls.store) == Solver.cnt:
+                    with open(cls.store + '.smt2', 'w') as f:
                         f.write(formulas)
             else:
-                filename = os.path.join(cls.query_store, f"{Solver.cnt}.smt2")
+                filename = os.path.join(cls.store, f"{Solver.cnt}.smt2")
                 with open(filename, 'w') as f:
                     f.write(formulas)
         ##########################################################################################
@@ -78,7 +78,16 @@ class Solver:
         for line in models:
             assert line.startswith('((') and line.endswith('))')
             name, value = line[2:-2].split(" ", 1)
-            if engine.var_to_types[name] == "Int":
+            if engine.var_to_types[name] == "Bool":
+                if value == 'true': value = True
+                elif value == 'false': value = False
+                else: raise NotImplementedError
+            elif engine.var_to_types[name] == "Real":
+                if "(" in value:
+                    value = -float(value.replace("(", "").replace(")", "").split(" ")[1])
+                else:
+                    value = float(value)
+            elif engine.var_to_types[name] == "Int":
                 if "(" in value:
                     value = -int(value.replace("(", "").replace(")", "").split(" ")[1])
                 else:
@@ -87,7 +96,7 @@ class Solver:
                 assert value.startswith('"') and value.endswith('"')
                 value = value[1:-1]
                 value = value.replace('""', '"').replace("\\t", "\t").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\")
-                # Note the order above must be in reverse with its encoding method (line 18 in str.py)
+                # Note the order above must be in reverse with its encoding method (line 41 in conbyte/utils.py)
             else:
                 raise NotImplementedError
             model[name] = value

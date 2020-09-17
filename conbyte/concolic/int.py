@@ -93,10 +93,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         log.debug("ConInt, __gt__ is called")
         return self._bin_op('__gt__', value)
 
-    def __hash__(self, /): # <slot wrapper '__hash__' of 'int' objects> TODO
+    def __hash__(self, /): # <slot wrapper '__hash__' of 'int' objects>
         """Return hash(self)."""
         log.debug("ConInt, __hash__ is called")
-        return ConcolicObject(super().__hash__())
+        return super().__hash__() # may cause errors if we return a concolic object.
 
     def __index__(self, /): # <slot wrapper '__index__' of 'int' objects>
         """Return self converted to an integer, if self is suitable for use as an index into a list."""

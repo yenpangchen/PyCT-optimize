@@ -61,60 +61,89 @@ This is used to create a virtual environment.
 
 Keep in mind that always do `$ pipenv shell` first when entering this project directory.
 ```
-usage: py-conbyte.py [-h] [-e ENTRY] [-m ITERATION] [--safety SAFETY] [--scope SCOPE] [-t TIMEOUT] [--timeout2 TIMEOUT2] [-f FORMULA] [-l LOGFILE] [-v VERBOSE]
-                     [-s SOLVER]
-                     filename.py input_args
+usage: py-conbyte.py [-h] [-r ROOT] [-s FUNC] [-m ITER] [--lib LIB] [--safety SAFETY] [-t TIMEOUT] [--timeout2 TIMEOUT2]
+                     [--ignore_return] [--include_exception] [-v VERBOSE] [-l LOGFILE] [-d FORMULA] [--solver SOLVER]
+                     path.to.module initial_vector
 
 positional arguments:
-  filename.py           target file
-  input_args            input arguments of the target function
+  path.to.module        absolute import path to the target module (file) relative to the project root
+                        Ex1: ./a/b/c.py -> a.b.c
+                        Ex2: ./def.py -> def
+
+  initial_vector        list of initial arguments to be passed into the target function
+                        Please note that the double quotes outside the list cannot be omitted!
+                        Ex1: func(a=1,b=2) -> "[1,2]"
+                        Ex2: func(a='',b='') -> "['','']"
+
 
 optional arguments:
   -h, --help            show this help message and exit
-  -e ENTRY, --entry ENTRY
-                        name of the target function
-                        If the function name is the same as that of the target file, this option can be omitted.
-  -m ITERATION, --iter ITERATION
-                        maximum number of iterations [default = 200]
+
+  -r ROOT, --root ROOT  path to the project root which the target function belongs to [default = path/to/this/project]
+                        This option should always be provided if the target function belongs to another project.
+                        If the target project is put inside this project (i.e., the latter's root path is a prefix of the former's),
+                        the scope of coverage is only the target "file." Otherwise, the scope covers the whole "project."
+
+  -s FUNC, --func FUNC  name of the target function
+                        (*) If the function "func" belongs to a class "CLASS", this name should be "CLASS.func".
+                        (*) If the function name is the same as that of the target file, this option can be omitted.
+
+  -m ITER, --iter ITER  maximum number of iterations [default = 200]
+
+  --lib LIB             another library path to be inserted at the beginning of sys.path
+                        For example, if the target function belongs to another project requiring a virtual environment,
+                        you may want to do "--lib ~/.local/share/virtualenvs/projectname-projectid/lib/python3.8/site-packages".
+
   --safety SAFETY       indicates the behavior when the values in Python and in SMTLIB2 of a concolic object are not equal. [default = 0]
                         (0) The expression in a concolic object is still preserved even if the values are different.
-                        (1) The expression in a concolic object will be erased if the values are different, but the process still continues.
-                        (2) The expression in a concolic object will be erased if the values are different, and the process terminates soon afterwards.
-  --scope SCOPE         a string indicating the scope of coverage measurement
+                        (1) The expression in a concolic object will be erased if the values are different, but the program still continues.
+                        (2) The expression in a concolic object will be erased if the values are different, and the program exits soon.
+                        Only in level 0 don't we verify return values of the target function since some objects in fact are not picklable,
+                        and therefore information about return values will not printed in the end.
+
   -t TIMEOUT, --timeout TIMEOUT
                         timeout (sec.) for the solver to solve a constraint [default = 10]
+
   --timeout2 TIMEOUT2   timeout (sec.) for the explorer to go through one iteration [default = 15]
-  -f FORMULA, --formula FORMULA
+
+  --ignore_return       disable examination of return values if they are not picklable.
+
+  --include_exception   also update coverage statistics when the target function throws an exception.
+
+  -v VERBOSE, --verbose VERBOSE
+                        logging level [default = 1]
+                        (0) Show messages whose levels not lower than WARNING.
+                        (1) Show messages from (0), plus basic iteration information.
+                        (2) Show messages from (1), plus solver information.
+                        (3) Show messages from (2), plus all concolic objects' information.
+
+  -l LOGFILE, --logfile LOGFILE
+                        name of the log file
+                        (*) When this argument is an empty string, all logging messages will not be dumped either to screens or to files.
+                        (*) When this option is not set, the logging messages will be dumped to screens.
+
+  -d FORMULA, --formula FORMULA
                         name of directory or file to store smtlib2 formulas
                         (*) When this argument is a pure positive integer N, it means that we only want to store the N_th constraint
                         where N is the number "SMT-id" shown in the log. The file should be named {N}.smt2 in the current directory.
                         (*) Otherwise, this argument names the directory, and all constraints will be stored in this directory whose
                         names follow the rule mentioned above.
-                        In either case, these *.smt2 files should be able to be called by solvers directly.
-  -l LOGFILE, --logfile LOGFILE
-                        name of the log file
-                        (*) When this argument is an empty string, all logging messages will not be dumped either to screens or to files.
-                        (*) When this option is not set, the logging messages will be dumped to screens.
-  -v VERBOSE, --verbose VERBOSE
-                        logging level [default = 1]
-                        (0) Show messages whose levels not lower than WARNING.
-                        (1) Show messages from (0), plus basic iteration information.
-                        (2) Show messages from (1), plus solver information
-                        (3) Show messages from (2), plus all concolic object's information.
-  -s SOLVER, --solver SOLVER
-                        solver type [default = cvc4]
+                        In either case, these *.smt2 files should be able to be called by a solver directly.
+
+  --solver SOLVER       solver type [default = cvc4]
                         We currently only support CVC4.
+
 ```
 
 For example, to test the target function `build_in(a, b)` in the target file `test/build_in.py` (Note that they have the same name.), and to let the two initial arguments be `a = 0` and `b = 0`, we can simply use the following command.
 ```
- $ ./py-conbyte.py test/build_in.py [0,0]
+ $ ./py-conbyte.py -r test build_in "[0,0]"
 ```
 The output would be:
 ```
   ct.explore    INFO     Inputs: [0, 0]
   ct.explore    INFO     Return: 1
-  ct.explore    INFO     Not Covered: /mnt/d/ALAN_FOLDER/2020_研究工作/1_CODE_py-conbyte/test/build_in.py {11}
+  ct.explore    INFO     Not Covered Yet: /mnt/d/ALAN_FOLDER/2020_研究工作/1_CODE_py-conbyte/test/build_in.py {11}
   ct.explore    INFO     === Iterations: 1 ===
   ct.explore    INFO     Inputs: [100, 0]
   ct.explore    INFO     Return: 0
@@ -122,14 +151,14 @@ The output would be:
 Total iterations: 1
 
 Generated inputs
-[0, 0]
-[100, 0]
+[[0, 0], [100, 0]]
 
 Line coverage 9/9 (100.00%)
-Branch coverage 0
 
 # of input vectors: 2
 [([0, 0], 1), ([100, 0], 0)]
+
+LIST_OF_ALL_INPUTS:[[0, 0], [100, 0]]
 ```
 
 To leave this virtual environment, simply type `$ exit` in the terminal.
@@ -137,7 +166,6 @@ To leave this virtual environment, simply type `$ exit` in the terminal.
 ---
 
 ## TODO
-
 
 ---
 
@@ -155,6 +183,6 @@ Although this project aims to provide an error-free concolic testing environment
 
 blablabla...
 
-Finally you may want to run the (parallel) unit test (in `unit_test.py`) to ensure the contribution is correct. The command is `pytest --workers [# of processes] -x`, and it takes almost 11 minutes to run.
+Finally you may want to run the (parallel) integration test (in `integration_test.py`) to ensure the contribution is correct. The command is `pytest --workers [# of processes] -x`, and it takes almost 11 minutes to run.
 
 If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file content is separated by "|" since "," is already contained in the data.

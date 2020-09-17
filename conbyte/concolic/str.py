@@ -85,9 +85,9 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         return self._bin_op('__gt__', value)
 
     def __hash__(self, /): # <slot wrapper '__hash__' of 'str' objects>
-        """Return hash(self).""" # TODO: Is the inverse operation well-known?
+        """Return hash(self)."""
         log.debug("ConStr, __hash__ is called")
-        return ConcolicObject(super().__hash__())
+        return super().__hash__() # may cause errors if we return a concolic object.
 
     # __init__, <slot wrapper '__init__' of 'object' objects>
 
