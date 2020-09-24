@@ -35,7 +35,10 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
     def __bool__(self, /): # <slot wrapper '__bool__' of 'int' objects>
         """self != 0"""
         log.debug("ConInt, __bool__ is called")
-        return super().__bool__() # We cannot return concolic objects here due to something like "while 1:".
+        value = super().__bool__()
+        expr = ["not", ["=", self, "0"]]
+        ConcolicObject(value, expr).__bool__() # insert handmade branch, since
+        return value # "__bool__" can only return primitive objects...
 
     def __ceil__(self, *args, **kwargs): # <method '__ceil__' of 'int' objects>
         """Ceiling of an Integral returns itself."""

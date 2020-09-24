@@ -151,7 +151,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 if not other: # element list already empty
                     break
                 e = other.pop(0)
-                if s in ['%d', '%i']:
+                if s in ('%d', '%i'):
                     if isinstance(e, Concolic) and hasattr(e, '__int2__'):
                         e = e.__int2__().__str2__()
                     else:
@@ -681,6 +681,19 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if op == '__rmul__': # TODO: Expressions not implemented
             return ConcolicObject(super().__rmul__(unwrap(other)))
         raise NotImplementedError
+
+    def __bool__(self):
+        log.debug("ConStr, __bool__ is called")
+        value = bool(unwrap(self))
+        expr = ["not", ["=", self, py2smt('')]]
+        ConcolicObject(value, expr).__bool__() # insert handmade branch, since
+        return value # "__bool__" can only return primitive objects...
+
+    def __bool2__(self):
+        log.debug("ConStr, __bool2__ is called")
+        value = bool(unwrap(self))
+        expr = ["not", ["=", self, py2smt('')]]
+        return ConcolicObject(value, expr)
 
     def _is_int(self):
         log.debug("ConStr, _is_int is called")

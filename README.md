@@ -61,19 +61,19 @@ This is used to create a virtual environment.
 
 Keep in mind that always do `$ pipenv shell` first when entering this project directory.
 ```
-usage: py-conbyte.py [-h] [-r ROOT] [-s FUNC] [-m ITER] [--lib LIB] [--safety SAFETY] [-t TIMEOUT] [--timeout2 TIMEOUT2]
-                     [--ignore_return] [--include_exception] [-v VERBOSE] [-l LOGFILE] [-d FORMULA] [--solver SOLVER]
-                     path.to.module initial_vector
+usage: py-conbyte.py [-h] [-r ROOT] [-s FUNC] [-m ITER] [--lib LIB] [--safety SAFETY] [-t TIMEOUT] [--timeout2 TIMEOUT2] [--ignore_return] [-v VERBOSE] [-l LOGFILE]
+                     [-d FORMULA] [--dump_projstats] [--solver SOLVER]
+                     path.to.module input_dict
 
 positional arguments:
   path.to.module        absolute import path to the target module (file) relative to the project root
                         Ex1: ./a/b/c.py -> a.b.c
                         Ex2: ./def.py -> def
 
-  initial_vector        list of initial arguments to be passed into the target function
-                        Please note that the double quotes outside the list cannot be omitted!
-                        Ex1: func(a=1,b=2) -> "[1,2]"
-                        Ex2: func(a='',b='') -> "['','']"
+  input_dict            dictionary of initial arguments to be passed into the target function
+                        Please note that the double quotes outside the dictionary cannot be omitted!
+                        Ex1: func(a=1,b=2) -> "{'a':1,'b':2}"
+                        Ex2: func(a='',b='') -> "{'a':'','b':''}"
 
 
 optional arguments:
@@ -106,9 +106,7 @@ optional arguments:
 
   --timeout2 TIMEOUT2   timeout (sec.) for the explorer to go through one iteration [default = 15]
 
-  --ignore_return       disable examination of return values if they are not picklable.
-
-  --include_exception   also update coverage statistics when the target function throws an exception.
+  --ignore_return       disable examination of return values in case they are not picklable.
 
   -v VERBOSE, --verbose VERBOSE
                         logging level [default = 1]
@@ -130,6 +128,8 @@ optional arguments:
                         names follow the rule mentioned above.
                         In either case, these *.smt2 files should be able to be called by a solver directly.
 
+  --dump_projstats      dump project statistics under the directory "./project_statistics/{project_name}/{path.to.module}/{func_name}/**".
+
   --solver SOLVER       solver type [default = cvc4]
                         We currently only support CVC4.
 
@@ -137,28 +137,27 @@ optional arguments:
 
 For example, to test the target function `build_in(a, b)` in the target file `test/build_in.py` (Note that they have the same name.), and to let the two initial arguments be `a = 0` and `b = 0`, we can simply use the following command.
 ```
- $ ./py-conbyte.py -r test build_in "[0,0]"
+ $ ./py-conbyte.py -r test build_in "{'a':0,'b':0}"
 ```
 The output would be:
 ```
-  ct.explore    INFO     Inputs: [0, 0]
+  ct.explore    INFO     Inputs: {'a': 0, 'b': 0}
   ct.explore    INFO     Return: 1
-  ct.explore    INFO     Not Covered Yet: /mnt/d/ALAN_FOLDER/2020_研究工作/1_CODE_py-conbyte/test/build_in.py {11}
+  ct.explore    INFO     Not Covered Yet: /mnt/d/ALAN_FOLDER/2020_RESEARCH/1_CODE_py-conbyte/test/build_in.py {11}
   ct.explore    INFO     === Iterations: 1 ===
-  ct.explore    INFO     Inputs: [100, 0]
+  ct.explore    INFO     Inputs: {'a': 100, 'b': 0}
   ct.explore    INFO     Return: 0
 
 Total iterations: 1
 
 Generated inputs
-[[0, 0], [100, 0]]
+[{'a': 0, 'b': 0}, {'a': 100, 'b': 0}]
 
 Line coverage 9/9 (100.00%)
 
 # of input vectors: 2
-[([0, 0], 1), ([100, 0], 0)]
+[({'a': 0, 'b': 0}, 1), ({'a': 100, 'b': 0}, 0)]
 
-LIST_OF_ALL_INPUTS:[[0, 0], [100, 0]]
 ```
 
 To leave this virtual environment, simply type `$ exit` in the terminal.
@@ -183,6 +182,6 @@ Although this project aims to provide an error-free concolic testing environment
 
 blablabla...
 
-Finally you may want to run the (parallel) integration test (in `integration_test.py`) to ensure the contribution is correct. The command is `pytest --workers [# of processes] -x`, and it takes almost 11 minutes to run.
+Finally you may want to run the (parallel) integration test (in `integration_test.py`) to ensure the contribution is correct. The command is `pytest integration_test.py --workers [# of processes] -x`, and it takes almost 11 minutes to run.
 
-If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file content is separated by "|" since "," is already contained in the data.
+If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest integration_test.py --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file content is separated by "|" since "," is already contained in the data.

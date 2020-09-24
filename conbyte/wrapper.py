@@ -148,8 +148,8 @@ class ConcolicFinder(type(_real_pathfinder)):
                 loader.__class__ = ConcolicLoader # if the source is available, replace it with our own
             except Exception as exception:
                 msg = str(exception)
-                if not (isinstance(exception, OSError) and msg in ['could not get source code',
-                                                                   'source code not available']) \
+                if not (isinstance(exception, OSError) and msg in ('could not get source code',
+                                                                   'source code not available')) \
                     and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
                     traceback.print_exc()
                     sys.exit(1)

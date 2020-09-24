@@ -1,4 +1,4 @@
-import logging, os, re, subprocess, sys
+import logging, os, re, subprocess, sys, time
 from conbyte.concolic import Concolic
 from conbyte.predicate import Predicate
 from conbyte.utils import py2smt
@@ -10,8 +10,10 @@ class Solver:
     cnt = 1 # for store
 
     @classmethod # similar to our constructor
-    def set_solver_timeout_safety_store(cls, solver, timeout, safety, store):
-        cls.safety = safety
+    def set_solver_timeout_safety_store(cls, solver, timeout, safety, store, statsdir):
+        cls.safety = safety; cls.statsdir = statsdir
+        cls.stats = {'sat_number': 0, 'sat_time': 0, 'unsat_number': 0, 'unsat_time': 0, 'otherwise_number': 0, 'otherwise_time': 0}
+        if cls.statsdir: os.system(f'mkdir -p {cls.statsdir}/formula')
         if store is not None:
             if not os.path.isdir(store):
                 if not re.compile(r"^\d+$").match(store):
@@ -47,12 +49,16 @@ class Solver:
                     with open(cls.store + '.smt2', 'w') as f:
                         f.write(formulas)
             else:
-                filename = os.path.join(cls.store, f"{Solver.cnt}.smt2")
-                with open(filename, 'w') as f:
+                with open(os.path.join(cls.store, f"{Solver.cnt}.smt2"), 'w') as f:
                     f.write(formulas)
+        if cls.statsdir:
+            with open(cls.statsdir + f"/formula/{Solver.cnt}.smt2", 'w') as f:
+                f.write(formulas)
         ##########################################################################################
+        start = time.time()
         try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
         except subprocess.CalledProcessError as e: print(e.output)
+        elapsed = time.time() - start
         output = completed_process.stdout.decode()
         model = None
         if output is None or len(output) == 0:
@@ -65,8 +71,11 @@ class Solver:
                 print(formulas)
                 sys.exit(1)
             if "sat" == status:
+                cls.stats['sat_number'] += 1; cls.stats['sat_time'] += elapsed
                 model = Solver._get_model(engine, outputs[1:])
             else:
+                if "unsat" == status: cls.stats['unsat_number'] += 1; cls.stats['unsat_time'] += elapsed
+                else: cls.stats['otherwise_number'] += 1; cls.stats['otherwise_time'] += elapsed
                 status = "UNKNOWN"
         log.smtlib2(f"SMT-id: {Solver.cnt}／Status: {status}／Model: {model}")
         Solver.cnt += 1
@@ -107,7 +116,7 @@ class Solver:
         declare_vars = "\n".join(f"(declare-const {name} {_type})" for (name, _type) in engine.var_to_types.items())
         queries = "\n".join(assertion.get_formula() for assertion in constraint.get_all_asserts())
         get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
-        return f"(set-logic ALL)\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}"
+        return f"(set-logic ALL)\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}\n"
 
     @classmethod
     def _expr_has_engines_and_equals_value(cls, expr, value):
