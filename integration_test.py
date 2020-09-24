@@ -24,9 +24,9 @@ class TestCodeSnippets(unittest.TestCase):
     def test_18(self): self._execute('18', "test/targets", "multiplication_or_sum", {'num1':0, 'num2':0}) # OK with restriction by solver ability [6]
     def test_19(self): self._execute('19', "test/targets", "regex", {'string':''}) # TODO
     def test_20(self): self._execute('20', "test/targets/lib", "email__header_value_parser", {'value':''}) # OK
-    # def test_21(self): self._execute('21', "test/targets/lib", "httplib2___negotiatehttp", [["1", "2", "3"]]) # TODO: We currently do not support concolic lists.
+    def test_21(self): self._execute('21', "test/targets/lib", "httplib2___negotiatehttp", [["1", "2", "3"]]) # TODO: We currently do not support concolic lists.
     def test_22(self): self._execute('22', "test/targets/leetcode", "add_digits", {'num':0}) # OK
-    # def test_23(self): self._execute('23', "test/targets/leetcode", "findUnsortedSubarray", [[0]]) # TODO: We currently do not support concolic lists.
+    def test_23(self): self._execute('23', "test/targets/leetcode", "findUnsortedSubarray", [[0]]) # TODO: We currently do not support concolic lists.
     def test_24(self): self._execute('24', "test/targets/leetcode", "fraction_to_decimal", {'numerator':2, 'denominator':3}) # OK (but [0,0] cannot lead to full coverage...)
     def test_25(self): self._execute('25', "test/targets/leetcode", "isLongPressedName", {'name':'', 'typed':''}) # OK
     def test_26(self): self._execute('26', "test/targets/leetcode", "numDecodings", {'s':''}) # OK
@@ -70,7 +70,7 @@ class TestCodeSnippets(unittest.TestCase):
                 engine.explore(modpath, inputs, root=root, deadcode=self._missing_lines(modpath), lib=lib)
                 total_lines, executed_lines, missing_lines = engine.coverage_statistics() # missing_lines: dict
                 iteration += 1
-            col_3 = str(list(zip(engine.inputs, engine.results)))[1:-1]
+            col_3 = str(list(zip(map(lambda x: list(x.values()), engine.inputs), engine.results)))[1:-1]
             print(modpath + ':', col_3)
         if self.dump: # Logging output section
             if self._omit(_id):
