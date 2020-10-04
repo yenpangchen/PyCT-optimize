@@ -9,11 +9,10 @@ log = logging.getLogger("ct.con.str")
 class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     def __new__(cls, value, expr=None, engine=None):
         assert type(value) is str
-        return super().__new__(cls, value)
-
-    def __init__(self, value, expr=None, engine=None):
-        Concolic.__init__(self, value, expr, engine)
-        log.debug(f"ConStr, value: {value}, expr: {self.expr}")
+        obj = super().__new__(cls, value)
+        Concolic.__init2__(obj, value, expr, engine)
+        log.debug(f"ConStr, value: {value}, expr: {obj.expr}")
+        return obj
 
     def __add__(self, value, /): # <slot wrapper '__add__' of 'str' objects>
         """Return self+value."""
@@ -233,7 +232,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(args[0], Concolic):
             try: args[0] = str(args[0])
             except: args[0] = ''
-            args[0] = self.__class__(args[0])
+            args[0] = ConcolicObject(args[0])
         if len(args) < 2: args.append(0)
         if not isinstance(args[1], Concolic):
             try: args[1] = int(args[1])
@@ -261,7 +260,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(args[0], Concolic):
             try: args[0] = str(args[0])
             except: args[0] = ''
-            args[0] = self.__class__(args[0])
+            args[0] = ConcolicObject(args[0])
         if len(args) < 2: args.append(0)
         if not isinstance(args[1], Concolic):
             try: args[1] = int(args[1])
@@ -288,7 +287,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(args[0], Concolic):
             try: args[0] = str(args[0])
             except: args[0] = ''
-            args[0] = self.__class__(args[0])
+            args[0] = ConcolicObject(args[0])
         if len(args) < 2: args.append(0)
         if not isinstance(args[1], Concolic):
             try: args[1] = int(args[1])
@@ -320,7 +319,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(args[0], Concolic):
             try: args[0] = str(args[0])
             except: args[0] = ''
-            args[0] = self.__class__(args[0])
+            args[0] = ConcolicObject(args[0])
         if len(args) < 2: args.append(0)
         if not isinstance(args[1], Concolic):
             try: args[1] = int(args[1])
@@ -419,7 +418,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(chars, Concolic):
             try: chars = str(chars)
             except: chars = ' ' # TODO: Only this kind of whitespace?
-            chars = self.__class__(chars)
+            chars = ConcolicObject(chars)
         expr = self
         s = unwrap(self)
         while any(map(lambda ch: s.startswith(unwrap(ch)), chars)):
@@ -441,11 +440,11 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(old, Concolic):
             try: old = str(old)
             except: old = ''
-            old = self.__class__(old)
+            old = ConcolicObject(old)
         if not isinstance(new, Concolic):
             try: new = str(new)
             except: new = ''
-            new = self.__class__(new)
+            new = ConcolicObject(new)
         if not isinstance(count, Concolic):
             try: count = int(count)
             except: count = -1
@@ -506,7 +505,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(chars, Concolic):
             try: chars = str(chars)
             except: chars = ' ' # TODO: Only this kind of whitespace?
-            chars = self.__class__(chars)
+            chars = ConcolicObject(chars)
         expr = self
         s = unwrap(self)
         while any(map(lambda ch: s.endswith(unwrap(ch)), chars)):
@@ -523,7 +522,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             else:
                 try: sep = str(sep)
                 except: sep = ' '
-            sep = self.__class__(sep)
+            sep = ConcolicObject(sep)
         result = []
         sep_len = len(sep) # a cached concolic constant for speeding up
         current = self # current substring after several rounds of "split"
@@ -555,7 +554,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         if not isinstance(args[0], Concolic):
             try: args[0] = str(args[0])
             except: args[0] = ''
-            args[0] = self.__class__(args[0])
+            args[0] = ConcolicObject(args[0])
         if len(args) < 2: args.append(0)
         if not isinstance(args[1], Concolic):
             try: args[1] = int(args[1])
@@ -607,11 +606,13 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def _bin_op(self, op, other):
         if op == '__add__':
-            value = super().__add__(unwrap(other))
+            try:
+                if (value := super().__add__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__radd__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             expr = ['str.++', self, other]
             return ConcolicObject(value, expr)
         if op == '__contains__':
@@ -619,63 +620,78 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             expr = ['str.contains', self, other]
             return ConcolicObject(value, expr)
         if op == '__eq__':
-            value = super().__eq__(unwrap(other))
+            try:
+                if (value := super().__eq__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__eq__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             expr = ['=', self, other]
             return ConcolicObject(value, expr)
         if op == '__ge__':
-            value = super().__ge__(unwrap(other))
+            try:
+                if (value := super().__ge__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__le__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             # expr = ['str.<=', other, self]
             expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
             return ConcolicObject(value, expr)
         if op == '__gt__':
-            value = super().__gt__(unwrap(other))
+            try:
+                if (value := super().__gt__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__lt__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             # expr = ['str.<', other, self]
             expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
         if op == '__le__':
-            value = super().__le__(unwrap(other))
+            try:
+                if (value := super().__le__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__ge__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             # expr = ['str.<=', self, other]
             expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
             return ConcolicObject(value, expr)
         if op == '__lt__':
-            value = super().__lt__(unwrap(other))
+            try:
+                if (value := super().__lt__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__gt__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             # expr = ['str.<', self, other]
             expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
         if op == '__mul__': # TODO: Expressions not implemented
-            return ConcolicObject(super().__mul__(unwrap(other)))
+            try:
+                if (value := super().__mul__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__rmul__(unwrap(self))
+            return ConcolicObject(value)
         if op == '__ne__':
-            value = super().__ne__(unwrap(other))
+            try:
+                if (value := super().__ne__(unwrap(other))) is NotImplemented: raise NotImplementedError
+            except: value = unwrap(other).__ne__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
-                other = self.__class__(other)
+                other = ConcolicObject(other)
             expr = ['not', ['=', self, other]]
             return ConcolicObject(value, expr)
         if op == '__rmul__': # TODO: Expressions not implemented

@@ -1,4 +1,4 @@
-import importlib
+import functools, importlib, inspect
 
 def _int(obj):
     from conbyte.concolic import Concolic
@@ -9,6 +9,14 @@ def _str(obj):
     from conbyte.concolic import Concolic
     if isinstance(obj, Concolic) and hasattr(obj, '__str2__'): return obj.__str2__()
     return str(obj)
+
+def _is(obj1, obj2):
+    from conbyte.concolic import Concolic
+    from conbyte.utils import unwrap
+    if obj1 is obj2: return True
+    if isinstance(obj1, Concolic): obj1 = unwrap(obj1)
+    if isinstance(obj2, Concolic): obj2 = unwrap(obj2)
+    return obj1 is obj2
 
 def ConcolicObject(value, expr=None, engine=None):
     from conbyte.concolic.bool import ConcolicBool
@@ -52,8 +60,14 @@ def py2smt(x): # convert the Python object into the smtlib2 string constant
     raise NotImplementedError
 
 def get_funcobj_from_modpath_and_funcname(modpath, funcname):
-    execute = importlib.import_module(modpath)
+    class_object = importlib.import_module(modpath)
     while '.' in funcname:
-        execute = getattr(execute, funcname.split('.')[0])
+        class_object = getattr(class_object, funcname.split('.')[0])
         funcname = funcname.split('.')[1]
-    return getattr(execute, funcname)
+    func = getattr(class_object, funcname)
+    if list(inspect.signature(func).parameters)[0] == 'cls':
+        func = functools.partial(func, class_object)
+    elif list(inspect.signature(func).parameters)[0] == 'self':
+        try: func = functools.partial(func, class_object())
+        except: pass # class_object() requires some arguments we don't know
+    return func

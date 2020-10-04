@@ -11,11 +11,10 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
         if value == 0: value = False # special handling for pickling
         if value == 1: value = True # special handling for pickling
         assert type(value) is bool
-        return super().__new__(cls, value)
-
-    def __init__(self, value, expr=None, engine=None):
-        Concolic.__init__(self, value, expr, engine)
-        log.debug(f"ConBool, value: {value}, expr: {self.expr}")
+        obj = super().__new__(cls, value)
+        Concolic.__init2__(obj, value, expr, engine)
+        log.debug(f"ConBool, value: {value}, expr: {obj.expr}")
+        return obj
 
     def __bool__(self): # <slot wrapper '__bool__' of 'int' objects>
         log.debug("ConBool, __bool__ is called")

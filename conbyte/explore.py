@@ -24,11 +24,12 @@ def prepare():
 
 class ExplorationEngine:
     class Exception: pass # indicate occurrence of Exception during execution
-    class LazyLoading(metaclass=type("MC", (type,), {"__repr__": lambda self: 'x'})): pass # lazily loading default values of primitive arguments
+    class Unpicklable: pass # indicate that an object is unpicklable
+    class LazyLoading(metaclass=type("MC", (type,), {"__repr__": lambda self: '<DEFAULT>'})): pass # lazily loading default values of primitive arguments
 
     def __init__(self, *, solver='cvc4', timeout=10, safety=0, store=None, verbose=1, logfile=None, statsdir=None):
         self.__init2__(); self.statsdir = statsdir
-        if self.statsdir: os.system(f'rm -rf {statsdir}'); os.system(f'mkdir -p {statsdir}')
+        if self.statsdir: os.system(f"rm -rf '{statsdir}'"); os.system(f"mkdir -p '{statsdir}'")
         Solver.set_solver_timeout_safety_store(solver, timeout, safety, store, statsdir)
         ############################################################
         # This section mainly deals with the logging settings.
@@ -63,16 +64,15 @@ class ExplorationEngine:
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
 
-    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, timeout=15, deadcode=None, check_return=True, lib=None):
-        self.modpath = modpath; self.funcname = funcname; self.timeout = timeout; self.check_return = check_return; self.deadcode = deadcode; self.lib = lib
+    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, timeout=15, deadcode=None, include_exception=False, lib=None):
+        self.modpath = modpath; self.funcname = funcname; self.timeout = timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
-        if self.root.startswith(os.path.abspath(os.path.dirname(os.path.dirname(__file__)))):
-            self.coverage = coverage.Coverage(data_file=None, include=[self.target_file])
-        else:
-            self.coverage = coverage.Coverage(data_file=None, include=[self.root + '/**'])
-        iterations = 1
-        cont = self._one_execution(iterations, all_args) # the 1st execution
+        self.single_coverage = self.root.startswith(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+        self.coverage = coverage.Coverage(data_file=None, include=[self.target_file if self.single_coverage else self.root + '/**'])
+        if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
+        sys.path.insert(0, self.root)
+        iterations = 1; cont = self._one_execution(all_args) # the 1st execution
         while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
@@ -84,7 +84,9 @@ class ExplorationEngine:
             if model is not None:
                 log.info(f"=== Iterations: {iterations} ==="); iterations += 1
                 all_args.update(model) # from model to argument
-                cont = self._one_execution(iterations, all_args) # other consecutive executions following the 1st execution
+                cont = self._one_execution(all_args) # other consecutive executions following the 1st execution
+        sys.path.remove(self.root)
+        if self.lib: sys.path.remove(os.path.abspath(self.lib))
         if self.statsdir:
             with open(self.statsdir + '/inputs.pkl', 'wb') as f:
                 pickle.dump(self.inputs + self.errors, f)
@@ -95,11 +97,9 @@ class ExplorationEngine:
                 f.write(f'otherwise,{Solver.stats["otherwise_number"]},{Solver.stats["otherwise_time"]}\n')
         return iterations - 1
 
-    def _one_execution(self, iterations, all_args):
+    def _one_execution(self, all_args):
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
-            if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
-            sys.path.insert(0, self.root)
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
             import conbyte.wrapper; execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
             result = self.Exception; ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
@@ -119,19 +119,20 @@ class ExplorationEngine:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print('Exception Input Vector:', all_args, file=f); print(e, file=f)
         ###################################### Communication Section ######################################
-            if self.check_return: child.send(result)
-            child.send((all_args, self.constraints_to_solve, self.path, self.var_to_types)); child.close()
+            try: child.send((self.constraints_to_solve, self.path))
+            except: child.send(self.Exception)
+            try: child.send(result)
+            except: child.send(self.Unpicklable)
+            child.send((all_args, self.var_to_types)); child.close()
             os._exit(os.EX_OK)
-        if self.check_return: result = parent.recv()
-        all_args, self.constraints_to_solve, self.path, self.var_to_types = parent.recv(); parent.close()
+        if (t:=parent.recv()) is not self.Exception: (self.constraints_to_solve, self.path) = t
+        result = parent.recv(); (all_args, self.var_to_types) = parent.recv(); parent.close()
         ###################################################################################################
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
-            if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
-            sys.path.insert(0, self.root)
             self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
-            try: answer = execute(*pri_args, **pri_kwargs); success = True; self.results.append(answer)
+            try: answer = func_timeout.func_timeout(self.timeout, execute, args=pri_args, kwargs=pri_kwargs); success = True
             except: answer = self.Exception; success = False
             self.coverage.stop()
             self.coverage_data.update(self.coverage.get_data())
@@ -142,25 +143,30 @@ class ExplorationEngine:
                 else:
                     self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
         ###################################### Communication Section ######################################
-            if self.check_return: child.send(answer); child.send(self.results)
+            try: child.send(answer)
+            except: answer = self.Unpicklable; child.send(answer)
+            self.results.append(answer)
+            child.send(self.results)
             child.send((success, self.coverage_data, self.coverage_accumulated_missing_lines)); child.close()
             os._exit(os.EX_OK)
-        if self.check_return: answer = parent.recv(); self.results = parent.recv()
+        answer = parent.recv()
+        self.results = parent.recv()
         success, a, b = parent.recv(); parent.close()
         ###################################################################################################
         (self.inputs if success else self.errors).append(all_args)
-        if (not self.check_return) or (answer is not self.Exception):
+        if self.include_exception or (answer is not self.Exception):
             self.coverage_data, self.coverage_accumulated_missing_lines = a, b
-        if self.check_return and (result is not self.Exception) and (answer is not self.Exception):
+        if (not self.statsdir) and not ((result is answer is self.Exception) or (result is answer is self.Unpicklable)):
             if result != answer: print('Input:', all_args, '／My answer:', result, '／Correct answer:', answer)
             assert result == answer
         for file in self.coverage_data.measured_files(): # "file" is absolute here.
             missing_lines = self.coverage_accumulated_missing_lines[file]
             if missing_lines:
+                if not self.single_coverage: return True # continue iteration
                 if not (file == self.target_file and self.deadcode == missing_lines):
                     if not self.statsdir: log.info(f"Not Covered Yet: {file} {missing_lines}")
-                    return True
-        return False
+                    return True # continue iteration
+        return False # stop iteration
 
     @classmethod
     def _complete_primitive_arguments(cls, func, all_args):
@@ -182,9 +188,13 @@ class ExplorationEngine:
             if v.name in prim_args:
                 value = prim_args[v.name]
             else:
-                if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
-                elif (t:=v.annotation) is not inspect._empty: value = t()
-                else: value = ''
+                has_value = False
+                if (t:=v.annotation) is not inspect._empty:
+                    try: value = t(); has_value = True # may raise TypeError: Cannot instantiate ...
+                    except: pass
+                if not has_value:
+                    if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
+                    else: value = ''
                 prim_args[v.name] = value if type(value) in (bool, float, int, str) else self.LazyLoading
             if type(value) in (bool, float, int, str): value = ConcolicObject(value, v.name, self)
             if v.kind is inspect.Parameter.KEYWORD_ONLY:
@@ -219,7 +229,7 @@ class ExplorationEngine:
     def print_coverage(self):
         total_lines, executed_lines, missing_lines = self.coverage_statistics()
         print("\nLine coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0))
-        if missing_lines and self.root.startswith(os.path.abspath(os.path.dirname(os.path.dirname(__file__)))):
+        if missing_lines and self.single_coverage:
             print("Missing lines:") # only print this info when the scope of coverage is a single file.
             for file, lines in missing_lines.items():
                 print(f"  {file}: {sorted(lines)}")

@@ -55,7 +55,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_49(self): self._execute('49', "test/realworld", "docxmlrpcserver", {'title':'', 'name':'', 'documentation':''}) # OK
 
     def _executesrv(self, _id, root, modpath, inputs):
-        libpath = '/home/alan23273850/.local/share/virtualenvs/rpyc-1A5f0wj5/lib/python3.8/site-packages'
+        libpath = root + '/.venv/lib/python3.8/site-packages'
         pid = subprocess.Popen(["python3", "test/realworld/rpyc/server.py"], env={**os.environ, 'PYTHONPATH': libpath + ':' + os.environ['PYTHONPATH']}).pid
         import time; time.sleep(1) # this short wait is very important!!! (for the client to connect)
         self._execute(_id, root, modpath, inputs, lib=libpath)

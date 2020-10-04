@@ -6,6 +6,7 @@
 
 # pyenv
 .python-version
+.venv/
 
 #############
 ## Windows detritus

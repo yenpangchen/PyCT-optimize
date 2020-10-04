@@ -11,6 +11,7 @@
 ##########################################################################################
 
 from ast import Call, Constant, Import, ImportFrom, Name, NamedExpr, NodeTransformer, Store, alias, fix_missing_locations, parse
+from ast import And, BoolOp, Compare, Eq, Is, Load, Or # for ConcolicWrapperCompare
 import importlib, inspect, sys, traceback
 
 #########################################################################################
@@ -97,6 +98,12 @@ class ConcolicWrapperConstant(NodeTransformer):
             call = parse('conbyte.concolic.str.ConcolicStr()').body[0].value; call.args = [node]; return call
         return node
 
+class ConcolicWrapperCompare(NodeTransformer):
+    def visit_Compare(self, node):
+        if node.ops == parse('x is x').body[0].value.ops and len(node.comparators) == 1:
+            call = parse('conbyte.utils._is(a,b)').body[0].value; call.args = [node.left, node.comparators[0]]; return call
+        return node
+
 class ConcolicWrapperAssign(NodeTransformer):
     #####################################################
     # 1. (x = value) -> (x = ConcolicObject(value))
@@ -104,6 +111,17 @@ class ConcolicWrapperAssign(NodeTransformer):
     #####################################################
     def visit_Assign(self, node):
         call = parse('conbyte.utils.ConcolicObject()').body[0].value; call.args = [node.value]; node.value = call
+        return node
+
+class ConcolicWrapperFunctionDef(NodeTransformer):
+    class ConcolicWrapperReturn(NodeTransformer):
+        def visit_Return(self, node):
+            if node.value:
+                x = parse('return conbyte.utils.unwrap()').body[0]; x.value.args = [node.value]; return x
+            return node
+    def visit_FunctionDef(self, node):
+        if node.name in ['__bool__']: # other type castings (e.g., '__str__') can also be put here if required
+            return self.ConcolicWrapperReturn().visit(node)
         return node
 
 def _call_with_frames_removed(func, *args, **kwargs):
@@ -128,7 +146,9 @@ class ConcolicLoader(importlib.machinery.SourceFileLoader):
         tree.body.insert(i, Import(names=[alias(name='conbyte.utils', asname=None)]))
         tree = ConcolicWrapperCall().visit(tree)
         tree = ConcolicWrapperConstant().visit(tree)
+        tree = ConcolicWrapperCompare().visit(tree)
         tree = ConcolicWrapperAssign().visit(tree)
+        tree = ConcolicWrapperFunctionDef().visit(tree)
         fix_missing_locations(tree)
         return _call_with_frames_removed(compile, tree, path, 'exec')
 
@@ -136,16 +156,15 @@ _real_pathfinder = sys.meta_path[-1]
 
 class ConcolicFinder(type(_real_pathfinder)):
     @classmethod
-    def find_module(cls, fullname, path=None):
-        # print(fullname, path)
-        spec = _real_pathfinder.find_spec(fullname, path)
+    def find_spec(cls, fullname, path=None, target=None):
+        # print(fullname, path, target)
+        spec = _real_pathfinder.find_spec(fullname, path, target)
         if not spec: return spec
-        loader = spec.loader
         if not fullname.startswith('conbyte') and fullname not in ['rpyc.core.brine']:
+            module = importlib.util.module_from_spec(spec)
             try:
-                module = importlib.util.module_from_spec(spec)
                 inspect.getsource(module) # this line is used to check if the source is available
-                loader.__class__ = ConcolicLoader # if the source is available, replace it with our own
+                spec.loader.__class__ = ConcolicLoader # if the source is available, replace it with our own
             except Exception as exception:
                 msg = str(exception)
                 if not (isinstance(exception, OSError) and msg in ('could not get source code',
@@ -153,6 +172,6 @@ class ConcolicFinder(type(_real_pathfinder)):
                     and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
                     traceback.print_exc()
                     sys.exit(1)
-        return loader
+        return spec
 
 sys.meta_path[-1] = ConcolicFinder

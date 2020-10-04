@@ -18,7 +18,7 @@ parser.add_argument("--lib", dest="lib", help="another library path to be insert
 parser.add_argument("--safety", dest="safety", help="indicates the behavior when the values in Python and in SMTLIB2 of a concolic object are not equal. [default = 0]\n(0) The expression in a concolic object is still preserved even if the values are different.\n(1) The expression in a concolic object will be erased if the values are different, but the program still continues.\n(2) The expression in a concolic object will be erased if the values are different, and the program exits soon.\nOnly in level 0 don't we verify return values of the target function since some objects in fact are not picklable,\nand therefore information about return values will not printed in the end.", type=int, default=0)
 parser.add_argument("-t", "--timeout", dest="timeout", help="timeout (sec.) for the solver to solve a constraint [default = 10]", type=int, default=10)
 parser.add_argument("--timeout2", dest="timeout2", help="timeout (sec.) for the explorer to go through one iteration [default = 15]", type=int, default=15)
-parser.add_argument("--ignore_return", dest="ignore_return", action='store_true', help="disable examination of return values in case they are not picklable.")
+parser.add_argument("--include_exception", dest="include_exception", action='store_true', help="update coverage statistics also when the return value is not picklable.")
 
 # Logging configuration
 parser.add_argument("-v", "--verbose", dest='verbose', help="logging level [default = 1]\n(0) Show messages whose levels not lower than WARNING.\n(1) Show messages from (0), plus basic iteration information.\n(2) Show messages from (1), plus solver information.\n(3) Show messages from (2), plus all concolic objects' information.", type=int, default=1)
@@ -42,7 +42,7 @@ engine = conbyte.explore.ExplorationEngine(solver=args.solver, timeout=args.time
                                            statsdir=statsdir)
 print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root=args.root, funcname=args.func,
                                             max_iterations=args.iter, timeout=args.timeout2, deadcode=None,
-                                            check_return=not args.ignore_return, lib=args.lib))
+                                            include_exception=args.include_exception, lib=args.lib))
 ##############################################################################
 
 ################################################################

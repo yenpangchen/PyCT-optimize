@@ -13,7 +13,7 @@ class Solver:
     def set_solver_timeout_safety_store(cls, solver, timeout, safety, store, statsdir):
         cls.safety = safety; cls.statsdir = statsdir
         cls.stats = {'sat_number': 0, 'sat_time': 0, 'unsat_number': 0, 'unsat_time': 0, 'otherwise_number': 0, 'otherwise_time': 0}
-        if cls.statsdir: os.system(f'mkdir -p {cls.statsdir}/formula')
+        if cls.statsdir: os.system(f"mkdir -p '{cls.statsdir}/formula'")
         if store is not None:
             if not os.path.isdir(store):
                 if not re.compile(r"^\d+$").match(store):
@@ -69,7 +69,7 @@ class Solver:
                 print('solver error:', status)
                 print(f"at SMT-id: {Solver.cnt}")
                 print(formulas)
-                sys.exit(1)
+                # sys.exit(1)
             if "sat" == status:
                 cls.stats['sat_number'] += 1; cls.stats['sat_time'] += elapsed
                 model = Solver._get_model(engine, outputs[1:])

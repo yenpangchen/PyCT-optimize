@@ -9,11 +9,10 @@ log = logging.getLogger("ct.con.float")
 class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
     def __new__(cls, value, expr=None, engine=None):
         assert type(value) is float
-        return super().__new__(cls, value)
-
-    def __init__(self, value, expr=None, engine=None):
-        Concolic.__init__(self, value, expr, engine)
-        log.debug(f"ConFloat, value: {value}, expr: {self.expr}")
+        obj = super().__new__(cls, value)
+        Concolic.__init2__(obj, value, expr, engine)
+        log.debug(f"ConFloat, value: {value}, expr: {obj.expr}")
+        return obj
 
     def __truediv__(self, other): # <slot wrapper '__truediv__' of 'float' objects>
         log.debug("ConFloat, __truediv__ is called")
