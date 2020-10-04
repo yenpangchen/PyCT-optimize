@@ -55,7 +55,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_49(self): self._execute('49', "test/realworld", "docxmlrpcserver", {'title':'', 'name':'', 'documentation':''}) # OK
 
     def _executesrv(self, _id, root, modpath, inputs):
-        libpath = root + '/.venv/lib/python3.8/site-packages'
+        libpath = root + '/.venv/lib/python3.8/site-packages'; os.system('kill -KILL $(lsof -t -i:8080)')
         pid = subprocess.Popen(["python3", "test/realworld/rpyc/server.py"], env={**os.environ, 'PYTHONPATH': libpath + ':' + os.environ['PYTHONPATH']}).pid
         import time; time.sleep(1) # this short wait is very important!!! (for the client to connect)
         self._execute(_id, root, modpath, inputs, lib=libpath)
@@ -67,7 +67,7 @@ class TestCodeSnippets(unittest.TestCase):
             engine = conbyte.explore.ExplorationEngine()
             iteration = 0
             while iteration == 0 or self._check_coverage(iteration, _id, missing_lines):
-                engine.explore(modpath, inputs, root=root, deadcode=self._missing_lines(modpath), lib=lib)
+                engine.explore(modpath, inputs, root=root, deadcode=self._missing_lines(_id), lib=lib)
                 total_lines, executed_lines, missing_lines = engine.coverage_statistics() # missing_lines: dict
                 iteration += 1
             col_3 = str(list(zip(map(lambda x: list(x.values()), engine.inputs), engine.results)))[1:-1]
@@ -79,7 +79,7 @@ class TestCodeSnippets(unittest.TestCase):
             else:
                 col_1 = "{}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0)
                 col_2 = str(sorted(list(missing_lines.values())[0]) if missing_lines else '')
-                if col_2 == str(sorted(self._missing_lines(modpath))):
+                if col_2 == str(sorted(self._missing_lines(_id))):
                     col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
                 with open(f'{_id}.csv', 'w') as f:
                     f.write(f'{_id}|{col_1}|{col_2}|{col_3}\n')
@@ -97,6 +97,8 @@ class TestCodeSnippets(unittest.TestCase):
             return {26, 30}
         if _id == "45":
             return {28, 35, 40}
+        if _id == "48":
+            return {34}
         return {} # empty dictionary
 
     def _check_coverage(self, iteration, _id, missing_lines: dict):

@@ -31,4 +31,4 @@ def client(x): #(x: int) -> str:
             elif startswith(x, (34, 37)):
                 return 'American Express'
         return 'Unknown'
-    return 'Server Error' # pragma: no cover
+    return 'Server Error'

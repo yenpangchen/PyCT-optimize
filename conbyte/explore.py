@@ -30,7 +30,7 @@ class ExplorationEngine:
     def __init__(self, *, solver='cvc4', timeout=10, safety=0, store=None, verbose=1, logfile=None, statsdir=None):
         self.__init2__(); self.statsdir = statsdir
         if self.statsdir: os.system(f"rm -rf '{statsdir}'"); os.system(f"mkdir -p '{statsdir}'")
-        Solver.set_solver_timeout_safety_store(solver, timeout, safety, store, statsdir)
+        Solver.set_basic_configurations(solver, timeout, safety, store, statsdir)
         ############################################################
         # This section mainly deals with the logging settings.
         log_level = 25 - 5 * verbose
@@ -100,6 +100,7 @@ class ExplorationEngine:
     def _one_execution(self, all_args):
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
+            sys.dont_write_bytecode = True # very important to prevent the later primitive environment from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
             import conbyte.wrapper; execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
             result = self.Exception; ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
@@ -130,6 +131,7 @@ class ExplorationEngine:
         ###################################################################################################
         parent, child = multiprocessing.Pipe()
         if os.fork() == 0: # child process
+            sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
             self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
             try: answer = func_timeout.func_timeout(self.timeout, execute, args=pri_args, kwargs=pri_kwargs); success = True

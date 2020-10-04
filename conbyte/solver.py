@@ -10,7 +10,7 @@ class Solver:
     cnt = 1 # for store
 
     @classmethod # similar to our constructor
-    def set_solver_timeout_safety_store(cls, solver, timeout, safety, store, statsdir):
+    def set_basic_configurations(cls, solver, timeout, safety, store, statsdir):
         cls.safety = safety; cls.statsdir = statsdir
         cls.stats = {'sat_number': 0, 'sat_time': 0, 'unsat_number': 0, 'unsat_time': 0, 'otherwise_number': 0, 'otherwise_time': 0}
         if cls.statsdir: os.system(f"mkdir -p '{cls.statsdir}/formula'")
