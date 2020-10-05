@@ -23,9 +23,10 @@ def prepare():
     builtins.len = lambda x: x.__len__()
 
 class ExplorationEngine:
-    class Exception: pass # indicate occurrence of Exception during execution
-    class Unpicklable: pass # indicate that an object is unpicklable
-    class LazyLoading(metaclass=type("MC", (type,), {"__repr__": lambda self: '<DEFAULT>'})): pass # lazily loading default values of primitive arguments
+    class Exception(metaclass=type('', (type,), {"__repr__": lambda self: '<EXCEPTION>'})): pass # indicate occurrence of Exception during execution
+    class Timeout(metaclass=type('', (type,), {"__repr__": lambda self: '<TIMEOUT>'})): pass # indicate timeout after either a concolic or a primitive execution
+    class Unpicklable(metaclass=type('', (type,), {"__repr__": lambda self: '<UNPICKLABLE>'})): pass # indicate that an object is unpicklable
+    class LazyLoading(metaclass=type('', (type,), {"__repr__": lambda self: '<DEFAULT>'})): pass # lazily loading default values of primitive arguments
 
     def __init__(self, *, solver='cvc4', timeout=10, safety=0, store=None, verbose=1, logfile=None, statsdir=None):
         self.__init2__(); self.statsdir = statsdir
@@ -98,77 +99,83 @@ class ExplorationEngine:
         return iterations - 1
 
     def _one_execution(self, all_args):
-        parent, child = multiprocessing.Pipe()
-        if os.fork() == 0: # child process
+        result = self._one_execution_concolic(all_args) # primitive input arguments "all_args" may be modified here.
+        answer = self._one_execution_primitive(all_args)
+        if (not self.statsdir) and not (self.Timeout in (result, answer)):
+            if result != answer: print('Input:', all_args, '／My result:', result, '／Correct answer:', answer)
+            assert result == answer
+        for file in self.coverage_data.measured_files(): # "file" is absolute here.
+            if missing_lines := self.coverage_accumulated_missing_lines[file]:
+                if not self.single_coverage: return True # continue iteration
+                if not (file == self.target_file and self.deadcode == missing_lines):
+                    if not self.statsdir: log.info(f"Not Covered Yet: {file} {missing_lines}")
+                    return True # continue iteration
+        return False # stop iteration
+
+    def _one_execution_concolic(self, all_args):
+        r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe()
+        def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive environment from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
             import conbyte.wrapper; execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
-            result = self.Exception; ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
+            ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
+            s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
-                result = conbyte.utils.unwrap(func_timeout.func_timeout(self.timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
+                result = conbyte.utils.unwrap(execute(*ccc_args, **ccc_kwargs))
                 log.info(f"Return: {result}")
-            except func_timeout.FunctionTimedOut as e:
-                log.error(f"Execution Timeout: {all_args}")
-                print('Timeout Input Vector:', all_args); print(e) #; traceback.print_exc(); sys.exit(1)
-                if self.statsdir:
-                    with open(self.statsdir + '/exception.txt', 'a') as f:
-                        print('Timeout Input Vector:', all_args, file=f); print(e, file=f)
             except Exception as e:
                 log.error(f"Execution Exception for: {all_args}")
                 print('Exception Input Vector:', all_args); print(e); traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print('Exception Input Vector:', all_args, file=f); print(e, file=f)
-        ###################################### Communication Section ######################################
-            try: child.send((self.constraints_to_solve, self.path))
-            except: child.send(self.Exception)
-            try: child.send(result)
-            except: child.send(self.Unpicklable)
-            child.send((all_args, self.var_to_types)); child.close()
-            os._exit(os.EX_OK)
-        if (t:=parent.recv()) is not self.Exception: (self.constraints_to_solve, self.path) = t
-        result = parent.recv(); (all_args, self.var_to_types) = parent.recv(); parent.close()
-        ###################################################################################################
-        parent, child = multiprocessing.Pipe()
-        if os.fork() == 0: # child process
+            ###################################### Communication Section ######################################
+            try: s2.send(result)
+            except: s2.send(self.Unpicklable)
+            try: s3.send((self.constraints_to_solve, self.path))
+            except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
+        process = multiprocessing.Process(target=child_process); process.start()
+        (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
+        if not r2.poll(self.timeout): result = self.Timeout; log.error(f"Execution Timeout (Concolic): {all_args}")
+        else:
+            result = r2.recv()
+            if (t:=r3.recv()) is not self.Unpicklable: (self.constraints_to_solve, self.path) = t
+        r2.close(); s2.close(); r3.close(); s3.close()
+        if process.is_alive(): process.kill()
+        return result
+
+    def _one_execution_primitive(self, all_args):
+        r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe()
+        def child_process():
             sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
             self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
-            try: answer = func_timeout.func_timeout(self.timeout, execute, args=pri_args, kwargs=pri_kwargs); success = True
-            except: answer = self.Exception; success = False
-            self.coverage.stop()
-            self.coverage_data.update(self.coverage.get_data())
+            answer = self.Exception; success = False
+            try: answer = execute(*pri_args, **pri_kwargs); success = True
+            except: pass
+            self.coverage.stop(); self.coverage_data.update(self.coverage.get_data())
             for file in self.coverage_data.measured_files(): # "file" is absolute here.
                 _, _, missing_lines, _ = self.coverage.analysis(file)
                 if file not in self.coverage_accumulated_missing_lines:
                     self.coverage_accumulated_missing_lines[file] = set(missing_lines)
                 else:
                     self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
-        ###################################### Communication Section ######################################
-            try: child.send(answer)
-            except: answer = self.Unpicklable; child.send(answer)
-            self.results.append(answer)
-            child.send(self.results)
-            child.send((success, self.coverage_data, self.coverage_accumulated_missing_lines)); child.close()
-            os._exit(os.EX_OK)
-        answer = parent.recv()
-        self.results = parent.recv()
-        success, a, b = parent.recv(); parent.close()
-        ###################################################################################################
-        (self.inputs if success else self.errors).append(all_args)
-        if self.include_exception or (answer is not self.Exception):
-            self.coverage_data, self.coverage_accumulated_missing_lines = a, b
-        if (not self.statsdir) and not ((result is answer is self.Exception) or (result is answer is self.Unpicklable)):
-            if result != answer: print('Input:', all_args, '／My answer:', result, '／Correct answer:', answer)
-            assert result == answer
-        for file in self.coverage_data.measured_files(): # "file" is absolute here.
-            missing_lines = self.coverage_accumulated_missing_lines[file]
-            if missing_lines:
-                if not self.single_coverage: return True # continue iteration
-                if not (file == self.target_file and self.deadcode == missing_lines):
-                    if not self.statsdir: log.info(f"Not Covered Yet: {file} {missing_lines}")
-                    return True # continue iteration
-        return False # stop iteration
+            ###################################### Communication Section ######################################
+            try: s1.send((success, answer))
+            except: answer = self.Unpicklable; s1.send(answer)
+            if self.include_exception or (answer is not self.Exception):
+                s2.send((self.coverage_data, self.coverage_accumulated_missing_lines))
+            else:
+                s2.send(self.Exception)
+        process = multiprocessing.Process(target=child_process); process.start()
+        if not r1.poll(self.timeout): (success, answer) = (False, self.Timeout)
+        else:
+            (success, answer) = r1.recv(); self.results.append(answer)
+            if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t
+        r1.close(); s1.close(); r2.close(); s2.close()
+        (self.inputs if success else self.errors).append(all_args.copy()) # .copy() is important! Think why.
+        if process.is_alive(): process.kill()
+        return answer
 
     @classmethod
     def _complete_primitive_arguments(cls, func, all_args):
