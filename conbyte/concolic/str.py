@@ -737,6 +737,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         # start = ["ite", ["<", start, "0"], ["ite", ["<", start_, "0"], "0", start_], start]
         # end_ = ["+", end, ["str.len", self]]
         # end = ["ite", ["<", end, "0"], ["ite", ["<", end_, "0"], "0", end_], end]
+        if unwrap(start) == 0 and unwrap(end) == unwrap(self.__len__()): return self # important acceleration!!!
         expr = ["str.substr", self, start, ["-", end, start]]
         return ConcolicObject(value, expr)
 

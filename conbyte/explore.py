@@ -162,7 +162,7 @@ class ExplorationEngine:
                     self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
             ###################################### Communication Section ######################################
             try: s1.send((success, answer))
-            except: answer = self.Unpicklable; s1.send(answer)
+            except: answer = self.Unpicklable; s1.send((success, answer))
             if self.include_exception or (answer is not self.Exception):
                 s2.send((self.coverage_data, self.coverage_accumulated_missing_lines))
             else:
