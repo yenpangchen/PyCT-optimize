@@ -73,8 +73,8 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
             with open(os.path.abspath(dirpath + '/' + file), 'rb') as f:
                 inputs = pickle.load(f)
             func_inputs[(dirpath.split('/')[-2], dirpath.split('/')[-1])] = inputs
+            f = get_funcobj_from_modpath_and_funcname(dirpath.split('/')[-2], dirpath.split('/')[-1])
             for i in inputs:
-                f = get_funcobj_from_modpath_and_funcname(dirpath.split('/')[-2], dirpath.split('/')[-1])
                 iargs, ikwargs = _complete_primitive_arguments(f, i)
                 try: func_timeout.func_timeout(15, f, args=iargs, kwargs=ikwargs)
                 except: pass

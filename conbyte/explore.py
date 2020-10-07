@@ -1,10 +1,14 @@
-import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, pickle, re, sys, traceback
+import builtins, coverage, inspect, json, logging, multiprocessing, os, pickle, re, signal, sys, traceback
 from conbyte.path import PathToConstraint
 from conbyte.solver import Solver
 from conbyte.utils import ConcolicObject, unwrap, get_funcobj_from_modpath_and_funcname
 
 log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
+
+def timeout_handler(signum, frame):
+    raise TimeoutError()
+signal.signal(signal.SIGALRM, timeout_handler)
 
 def prepare():
     #################################################################
@@ -121,22 +125,34 @@ class ExplorationEngine:
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
+                signal.alarm(self.timeout)
                 result = conbyte.utils.unwrap(execute(*ccc_args, **ccc_kwargs))
                 log.info(f"Return: {result}")
-            except Exception as e:
-                log.error(f"Execution Exception for: {all_args}")
-                print('Exception Input Vector:', all_args); print(e); traceback.print_exc()
+            except TimeoutError:
+                result = self.Timeout
+                log.error(f"Timeout (soft) for: {all_args}")#; traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
-                        print('Exception Input Vector:', all_args, file=f); print(e, file=f)
+                        print(f"Timeout (soft) for: {all_args}", file=f)
+            except Exception as e:
+                log.error(f"Exception for: {all_args}")#; log.error(e); traceback.print_exc()
+                if self.statsdir:
+                    with open(self.statsdir + '/exception.txt', 'a') as f:
+                        print(f"Exception for: {all_args}", file=f); print(e, file=f)
             ###################################### Communication Section ######################################
+            signal.alarm(0)
             try: s2.send(result)
             except: s2.send(self.Unpicklable)
             try: s3.send((self.constraints_to_solve, self.path))
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
-        if not r2.poll(self.timeout): result = self.Timeout; log.error(f"Execution Timeout (Concolic): {all_args}")
+        if not r2.poll(self.timeout * 1.6):
+            result = self.Timeout
+            log.error(f"Timeout (hard) for: {all_args}")
+            if self.statsdir:
+                with open(self.statsdir + '/exception.txt', 'a') as f:
+                    print(f"Timeout (hard) for: {all_args}", file=f)
         else:
             result = r2.recv()
             if (t:=r3.recv()) is not self.Unpicklable: (self.constraints_to_solve, self.path) = t
@@ -151,8 +167,13 @@ class ExplorationEngine:
             self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
             answer = self.Exception; success = False
-            try: answer = execute(*pri_args, **pri_kwargs); success = True
+            try:
+                signal.alarm(self.timeout)
+                answer = execute(*pri_args, **pri_kwargs)
+                success = True
+            except TimeoutError: answer = self.Timeout
             except: pass
+            signal.alarm(0)
             self.coverage.stop(); self.coverage_data.update(self.coverage.get_data())
             for file in self.coverage_data.measured_files(): # "file" is absolute here.
                 _, _, missing_lines, _ = self.coverage.analysis(file)
@@ -168,7 +189,7 @@ class ExplorationEngine:
             else:
                 s2.send(self.Exception)
         process = multiprocessing.Process(target=child_process); process.start()
-        if not r1.poll(self.timeout): (success, answer) = (False, self.Timeout)
+        if not r1.poll(self.timeout * 1.6): (success, answer) = (False, self.Timeout)
         else:
             (success, answer) = r1.recv(); self.results.append(answer)
             if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t
