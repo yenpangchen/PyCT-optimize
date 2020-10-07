@@ -10,7 +10,7 @@
 # "Module(body=[Assign(targets=[Name(id='x', ctx=Store())], value=Constant(value=3, kind=None), type_comment=None)], type_ignores=[])"
 ##########################################################################################
 
-from ast import Call, Constant, Import, ImportFrom, Name, NamedExpr, NodeTransformer, Store, alias, fix_missing_locations, parse
+from ast import Call, Constant, Import, ImportFrom, Name, NamedExpr, NodeTransformer, Store, alias, dump, fix_missing_locations, parse
 from ast import And, BoolOp, Compare, Eq, Is, Load, Or # for ConcolicWrapperCompare
 import importlib, inspect, sys, traceback
 
@@ -124,6 +124,13 @@ class ConcolicWrapperFunctionDef(NodeTransformer):
             return self.ConcolicWrapperReturn().visit(node)
         return node
 
+class ConcolicWrapperClassDef(NodeTransformer):
+    def visit_ClassDef(self, node):
+        if len(node.body) > 0 and hasattr(node.body[0], 'value') and hasattr(node.body[0].value, 'func') \
+            and dump(node.body[0].value.func) == dump(parse('conbyte.concolic.str.ConcolicStr()').body[0].value.func):
+            node.body[0].value = node.body[0].value.args[0]
+        return node
+
 def _call_with_frames_removed(func, *args, **kwargs):
     return func(*args, **kwargs)
 
@@ -149,6 +156,7 @@ class ConcolicLoader(importlib.machinery.SourceFileLoader):
         tree = ConcolicWrapperCompare().visit(tree)
         tree = ConcolicWrapperAssign().visit(tree)
         tree = ConcolicWrapperFunctionDef().visit(tree)
+        tree = ConcolicWrapperClassDef().visit(tree) # unwrap classes' docstrings
         fix_missing_locations(tree)
         return _call_with_frames_removed(compile, tree, path, 'exec')
 

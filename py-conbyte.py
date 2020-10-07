@@ -47,10 +47,10 @@ print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root
 
 ################################################################
 # This section prints the generated inputs and coverage results.
-print("\nGenerated inputs")
-print(engine.inputs)
-if len(engine.errors) > 0: print("\nError inputs"); print(engine.errors)
-engine.print_coverage() # Line coverage + Missing lines
-if result_list := list(zip(engine.inputs, engine.results)):
-    print("# of input vectors:", len(result_list)); print(result_list); print()
+# print("\nGenerated inputs")
+# print(engine.inputs)
+# if len(engine.errors) > 0: print("\nError inputs"); print(engine.errors)
+# engine.print_coverage() # Line coverage + Missing lines
+# if result_list := list(zip(engine.inputs, engine.results)):
+#     print("# of input vectors:", len(result_list)); print(result_list); print()
 ################################################################

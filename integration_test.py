@@ -70,7 +70,7 @@ class TestCodeSnippets(unittest.TestCase):
                 engine.explore(modpath, inputs, root=root, deadcode=self._missing_lines(_id), lib=lib)
                 total_lines, executed_lines, missing_lines = engine.coverage_statistics() # missing_lines: dict
                 iteration += 1
-            col_3 = str(list(zip(map(lambda x: list(x.values()), engine.inputs), engine.results)))[1:-1]
+            col_3 = str(list(map(lambda x: (list(x[0].values()), x[1]), engine.in_out)))[1:-1]
             print(modpath + ':', col_3)
         if self.dump: # Logging output section
             if self._omit(_id):

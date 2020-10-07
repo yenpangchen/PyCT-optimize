@@ -694,6 +694,14 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                 other = ConcolicObject(other)
             expr = ['not', ['=', self, other]]
             return ConcolicObject(value, expr)
+        if op == '__radd__':
+            value = super().__add__(unwrap(other))
+            if not isinstance(other, Concolic):
+                try: other = str(other)
+                except: other = ''
+                other = ConcolicObject(other)
+            expr = ['str.++', other, self]
+            return ConcolicObject(value, expr)
         if op == '__rmul__': # TODO: Expressions not implemented
             return ConcolicObject(super().__rmul__(unwrap(other)))
         raise NotImplementedError
@@ -749,6 +757,11 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
                        ["-", ["str.to.int", ["str.substr", self, "1", ["str.len", self]]]],
                        ["str.to.int", self]] # For better results, avoid using ["str.replace", self, "-", ""] in the above line.
         return ConcolicObject(value, expr)
+
+    def __radd__(self, value, /):
+        """Return value+self."""
+        log.debug("ConStr, __radd__ is called")
+        return self._bin_op('__radd__', value)
 
     def __str2__(self):
         log.debug("ConStr, __str2__ is called")

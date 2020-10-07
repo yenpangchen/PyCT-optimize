@@ -62,9 +62,7 @@ class ExplorationEngine:
     def __init2__(self):
         self.constraints_to_solve = [] # 指的是還沒、但即將被 solver 解出 model 的 constraint
         self.path = PathToConstraint()
-        self.inputs = []
-        self.errors = []
-        self.results = []
+        self.in_out = []
         self.coverage_data = coverage.CoverageData()
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
@@ -94,7 +92,7 @@ class ExplorationEngine:
         if self.lib: sys.path.remove(os.path.abspath(self.lib))
         if self.statsdir:
             with open(self.statsdir + '/inputs.pkl', 'wb') as f:
-                pickle.dump(self.inputs + self.errors, f)
+                pickle.dump([e[0] for e in self.in_out], f) # store only inputs
             with open(self.statsdir + '/smt.csv', 'w') as f:
                 f.write(',number,time\n')
                 f.write(f'sat,{Solver.stats["sat_number"]},{Solver.stats["sat_time"]}\n')
@@ -104,16 +102,18 @@ class ExplorationEngine:
 
     def _one_execution(self, all_args):
         result = self._one_execution_concolic(all_args) # primitive input arguments "all_args" may be modified here.
+        if self.statsdir: # We don't measure coverage in primitive environments here in the project mode.
+            self.in_out.append((all_args.copy(), result)) # .copy() is important! Think why.
+            return True # continue iteration
         answer = self._one_execution_primitive(all_args)
-        if (not self.statsdir) and not (self.Timeout in (result, answer)):
+        if self.Timeout not in (result, answer):
             if result != answer: print('Input:', all_args, '／My result:', result, '／Correct answer:', answer)
             assert result == answer
         for file in self.coverage_data.measured_files(): # "file" is absolute here.
             if missing_lines := self.coverage_accumulated_missing_lines[file]:
                 if not self.single_coverage: return True # continue iteration
                 if not (file == self.target_file and self.deadcode == missing_lines):
-                    if not self.statsdir: log.info(f"Not Covered Yet: {file} {missing_lines}")
-                    return True # continue iteration
+                    log.info(f"Not Covered Yet: {file} {missing_lines}"); return True # continue iteration
         return False # stop iteration
 
     def _one_execution_concolic(self, all_args):
@@ -166,11 +166,10 @@ class ExplorationEngine:
             sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
             self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
-            answer = self.Exception; success = False
+            answer = self.Exception
             try:
                 signal.alarm(self.timeout)
                 answer = execute(*pri_args, **pri_kwargs)
-                success = True
             except TimeoutError: answer = self.Timeout
             except: pass
             signal.alarm(0)
@@ -182,19 +181,18 @@ class ExplorationEngine:
                 else:
                     self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
             ###################################### Communication Section ######################################
-            try: s1.send((success, answer))
-            except: answer = self.Unpicklable; s1.send((success, answer))
+            try: s1.send(answer)
+            except: answer = self.Unpicklable; s1.send(answer)
             if self.include_exception or (answer is not self.Exception):
                 s2.send((self.coverage_data, self.coverage_accumulated_missing_lines))
             else:
                 s2.send(self.Exception)
         process = multiprocessing.Process(target=child_process); process.start()
-        if not r1.poll(self.timeout * 1.6): (success, answer) = (False, self.Timeout)
+        if not r1.poll(self.timeout * 1.6): answer = self.Timeout
         else:
-            (success, answer) = r1.recv(); self.results.append(answer)
+            answer = r1.recv()
             if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t
-        r1.close(); s1.close(); r2.close(); s2.close()
-        (self.inputs if success else self.errors).append(all_args.copy()) # .copy() is important! Think why.
+        self.in_out.append((all_args.copy(), answer)); r1.close(); s1.close(); r2.close(); s2.close()
         if process.is_alive(): process.kill()
         return answer
 
