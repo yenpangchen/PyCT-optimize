@@ -695,7 +695,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             expr = ['not', ['=', self, other]]
             return ConcolicObject(value, expr)
         if op == '__radd__':
-            value = super().__add__(unwrap(other))
+            value = unwrap(other).__add__(unwrap(self))
             if not isinstance(other, Concolic):
                 try: other = str(other)
                 except: other = ''
