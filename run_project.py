@@ -50,30 +50,38 @@ def extract_function_list_from_modpath(modpath):
 
 # cont = False
 start = time.time()
-for dirpath, _, files in os.walk(rootdir):
-    dirpath += '/'
-    for file in files:
-        if file.endswith('.py'):
-            modpath = os.path.abspath(dirpath + file)[len(rootdir):-3].replace('/', '.')
-            if not modpath.startswith('.venv'):
-                # if 'src.flask.sessions' in modpath: cont = True
-                # if not cont: continue
-                if os.fork() == 0: # child process
-                    funcs = extract_function_list_from_modpath(modpath)
-                    for f in funcs:
-                        if '<locals>' not in f: # cannot access nested functions
-                            if len(f.split('.')) == 2:
-                                (a, b) = f.split('.')
-                                if b.startswith('__') and not b.endswith('__'): b = '_' + a + b
-                                f = a + '.' + b
-                            if args.mode == '1': cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --include_exception --dump_projstats"
-                            elif args.mode == '2': cmd = f"./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --dump_projstats"
-                            else: cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
-                            print(modpath, '+', f, '>>>'); print(cmd)
-                            try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
-                            except subprocess.CalledProcessError as e: print(e.output); sys.exit(1)
-                    os._exit(os.EX_OK)
-                os.wait()
+pid = None
+try:
+    signal.alarm(6*60*60)
+    for dirpath, _, files in os.walk(rootdir):
+        dirpath += '/'
+        for file in files:
+            if file.endswith('.py'):
+                modpath = os.path.abspath(dirpath + file)[len(rootdir):-3].replace('/', '.')
+                if not modpath.startswith('.venv'):
+                    # if 'src.flask.sessions' in modpath: cont = True
+                    # if not cont: continue
+                    if (pid := os.fork()) == 0: # child process
+                        funcs = extract_function_list_from_modpath(modpath)
+                        for f in funcs:
+                            if '<locals>' not in f: # cannot access nested functions
+                                if len(f.split('.')) == 2:
+                                    (a, b) = f.split('.')
+                                    if b.startswith('__') and not b.endswith('__'): b = '_' + a + b
+                                    f = a + '.' + b
+                                if args.mode == '1': cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --include_exception --dump_projstats"
+                                elif args.mode == '2': cmd = f"./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --dump_projstats"
+                                else: cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
+                                print(modpath, '+', f, '>>>'); print(cmd)
+                                try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
+                                except subprocess.CalledProcessError as e: print(e.output)
+                        os._exit(os.EX_OK)
+                    os.wait(); pid = None
+except TimeoutError:
+    if pid:
+        os.system(f"kill -KILL {pid}")
+        os.wait()
+signal.alarm(0)
 
 func_inputs = {}
 coverage_data = coverage.CoverageData()
@@ -105,9 +113,13 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                             coverage_accumulated_missing_lines[file] = coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
                     s.send((coverage_data, coverage_accumulated_missing_lines))
                 process = multiprocessing.Process(target=child_process); process.start()
-                if r.poll(TIMEOUT * 1.6):
-                    (coverage_data, coverage_accumulated_missing_lines) = r.recv()
-                r.close(); s.close()
+                try:
+                    signal.alarm(TIMEOUT * 2)
+                    if r.poll(TIMEOUT * 2): # may get stuck here for some unknown reason
+                        (coverage_data, coverage_accumulated_missing_lines) = r.recv()
+                except: pass
+                signal.alarm(0); r.close(); s.close()
+                if process.is_alive(): process.kill()
 total_lines = 0
 executed_lines = 0
 for file in coverage_data.measured_files():

@@ -147,7 +147,7 @@ class ExplorationEngine:
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
-        if not r2.poll(self.timeout * 1.6):
+        if not r2.poll(self.timeout * 2):
             result = self.Timeout
             log.error(f"Timeout (hard) for: {all_args}")
             if self.statsdir:
@@ -188,7 +188,7 @@ class ExplorationEngine:
             else:
                 s2.send(self.Exception)
         process = multiprocessing.Process(target=child_process); process.start()
-        if not r1.poll(self.timeout * 1.6): answer = self.Timeout
+        if not r1.poll(self.timeout * 2): answer = self.Timeout
         else:
             answer = r1.recv()
             if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t
