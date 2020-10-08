@@ -60,14 +60,17 @@ def py2smt(x): # convert the Python object into the smtlib2 string constant
     raise NotImplementedError
 
 def get_funcobj_from_modpath_and_funcname(modpath, funcname):
-    class_object = importlib.import_module(modpath)
-    while '.' in funcname:
-        class_object = getattr(class_object, funcname.split('.')[0])
-        funcname = funcname.split('.')[1]
-    func = getattr(class_object, funcname)
-    if list(inspect.signature(func).parameters)[0] == 'cls':
-        func = functools.partial(func, class_object)
-    elif list(inspect.signature(func).parameters)[0] == 'self':
-        try: func = functools.partial(func, class_object())
-        except: pass # class_object() requires some arguments we don't know
-    return func
+    try:
+        class_object = importlib.import_module(modpath)
+        while '.' in funcname:
+            class_object = getattr(class_object, funcname.split('.')[0])
+            funcname = funcname.split('.')[1]
+        func = getattr(class_object, funcname)
+        if list(inspect.signature(func).parameters)[0] == 'cls':
+            func = functools.partial(func, class_object)
+        elif list(inspect.signature(func).parameters)[0] == 'self':
+            try: func = functools.partial(func, class_object())
+            except: pass # class_object() requires some arguments we don't know
+        return func
+    except:
+        return None

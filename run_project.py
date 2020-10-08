@@ -8,6 +8,13 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 parser = argparse.ArgumentParser(); parser.add_argument("mode"); parser.add_argument("project"); args = parser.parse_args()
 
+if args.mode != '2':
+    from conbyte.utils import get_funcobj_from_modpath_and_funcname
+    import conbyte.explore; _complete_primitive_arguments = conbyte.explore.ExplorationEngine._complete_primitive_arguments
+else:
+    import symbolic.loader; get_funcobj_from_modpath_and_funcname = symbolic.loader.Loader.get_funcobj_from_modpath_and_funcname
+    import symbolic.invocation; _complete_primitive_arguments = symbolic.invocation.FunctionInvocation._complete_primitive_arguments
+
 rootdir = os.path.abspath(args.project) + '/'; lib = rootdir + '.venv/lib/python3.8/site-packages'
 sys.path.insert(0, lib); sys.path.insert(0, rootdir); project_name = rootdir[:-1].split('/')[-1]
 os.system(f"rm -rf './project_statistics/{project_name}'")
@@ -29,10 +36,10 @@ def extract_function_list_from_modpath(modpath):
             if inspect.isclass(obj):
                 for _, o in inspect.getmembers(obj):
                     if inspect.isfunction(o) and inspect.signature(o).parameters:
-                        if inspect.getmodule(o) == mod:
+                        if get_funcobj_from_modpath_and_funcname(modpath, o.__qualname__):
                             ans.append(o.__qualname__)#; print(o.__qualname__)
             elif inspect.isfunction(obj) and inspect.signature(obj).parameters:
-                if inspect.getmodule(obj) == mod:
+                if get_funcobj_from_modpath_and_funcname(modpath, obj.__qualname__):
                     ans.append(obj.__qualname__)#; print(obj.__qualname__)
     except Exception as e:
         pass
@@ -49,7 +56,7 @@ for dirpath, _, files in os.walk(rootdir):
         if file.endswith('.py'):
             modpath = os.path.abspath(dirpath + file)[len(rootdir):-3].replace('/', '.')
             if not modpath.startswith('.venv'):
-                # if 'hacking.shippable.incidental' not in modpath: cont = True
+                # if 'src.flask.sessions' in modpath: cont = True
                 # if not cont: continue
                 if os.fork() == 0: # child process
                     funcs = extract_function_list_from_modpath(modpath)
@@ -68,12 +75,6 @@ for dirpath, _, files in os.walk(rootdir):
                     os._exit(os.EX_OK)
                 os.wait()
 
-if args.mode != '2':
-    from conbyte.utils import get_funcobj_from_modpath_and_funcname
-    import conbyte.explore; _complete_primitive_arguments = conbyte.explore.ExplorationEngine._complete_primitive_arguments
-else:
-    import symbolic.loader; get_funcobj_from_modpath_and_funcname = symbolic.loader.Loader.get_funcobj_from_modpath_and_funcname
-    import symbolic.invocation; _complete_primitive_arguments = symbolic.invocation.FunctionInvocation._complete_primitive_arguments
 func_inputs = {}
 coverage_data = coverage.CoverageData()
 coverage_accumulated_missing_lines = {}
