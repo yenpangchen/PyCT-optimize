@@ -72,7 +72,10 @@ class ExplorationEngine:
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
         self.single_coverage = self.root.startswith(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
-        self.coverage = coverage.Coverage(data_file=None, include=[self.target_file if self.single_coverage else self.root + '/**'])
+        if self.single_coverage:
+            self.coverage = coverage.Coverage(data_file=None, include=[self.target_file])
+        else:
+            self.coverage = coverage.Coverage(data_file=None, source=[self.root], omit=['**/__pycache__/**', '**/.venv/**'])
         if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
         sys.path.insert(0, self.root)
         iterations = 1; cont = self._one_execution(all_args) # the 1st execution

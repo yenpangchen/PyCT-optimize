@@ -48,6 +48,14 @@ def extract_function_list_from_modpath(modpath):
     signal.alarm(0)
     return ans
 
+# Decide whether to use given functions or not.
+read_functions = False; function_domain = []
+try:
+    with open('../' + project_name + '/' + project_name + '_function_domain.pkl', 'rb') as f:
+        function_domain = pickle.load(f)
+        read_functions = True
+except: pass
+
 # cont = False
 start = time.time()
 pid = None
@@ -61,9 +69,12 @@ try:
                 if not modpath.startswith('.venv'):
                     # if 'src.flask.sessions' in modpath: cont = True
                     # if not cont: continue
+                    r, s = multiprocessing.Pipe()
                     if (pid := os.fork()) == 0: # child process
                         funcs = extract_function_list_from_modpath(modpath)
                         for f in funcs:
+                            if read_functions:
+                                if (modpath, f) not in function_domain: continue
                             if '<locals>' not in f: # cannot access nested functions
                                 if len(f.split('.')) == 2:
                                     (a, b) = f.split('.')
@@ -76,22 +87,25 @@ try:
                                 try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
                                 except subprocess.CalledProcessError as e: print(e.output)
                         os._exit(os.EX_OK)
-                    os.wait(); pid = None
+                    os.wait(); r.close(); s.close(); pid = None
 except TimeoutError:
     if pid:
         os.system(f"kill -KILL {pid}")
         os.wait()
 signal.alarm(0)
+end = time.time()
 
 func_inputs = {}
 coverage_data = coverage.CoverageData()
 coverage_accumulated_missing_lines = {}
-cov = coverage.Coverage(data_file=None, include=[rootdir + '**'])
+cov = coverage.Coverage(data_file=None, source=[rootdir], omit=['**/__pycache__/**', '**/.venv/**'])
 for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
     for file in files:
         if file == 'inputs.pkl':
             with open(os.path.abspath(dirpath + '/' + file), 'rb') as f:
                 inputs = pickle.load(f)
+            if not read_functions:
+                function_domain.append((dirpath.split('/')[-2], dirpath.split('/')[-1]))
             func_inputs[(dirpath.split('/')[-2], dirpath.split('/')[-1])] = inputs
             for i in inputs:
                 r, s = multiprocessing.Pipe()
@@ -120,15 +134,22 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                 except: pass
                 signal.alarm(0); r.close(); s.close()
                 if process.is_alive(): process.kill()
+
+# Save inputs to the parent directory if necessary.
+if not read_functions:
+    with open('../' + project_name + '_function_domain_' + args.mode + '.pkl', 'wb') as f:
+        pickle.dump(function_domain, f)
+
 total_lines = 0
 executed_lines = 0
-for file in coverage_data.measured_files():
-    _, executable_lines, _, _ = cov.analysis(file)
-    m_lines = coverage_accumulated_missing_lines[file]
-    total_lines += len(set(executable_lines))
-    executed_lines += len(set(executable_lines)) - len(m_lines)
-    # print(file, executed_lines, total_lines)
-end = time.time()
+with open(os.path.abspath(f"./project_statistics/{project_name}/missing_lines.txt"), 'w') as f:
+    for file in coverage_data.measured_files():
+        _, executable_lines, _, _ = cov.analysis(file)
+        m_lines = coverage_accumulated_missing_lines[file]
+        total_lines += len(set(executable_lines))
+        executed_lines += len(set(executable_lines)) - len(m_lines)
+        if m_lines:
+            print(file, sorted(m_lines), file=f)
 
 with open(os.path.abspath(f"./project_statistics/{project_name}/inputs_and_coverage.txt"), 'w') as f:
     for (func, inputs) in func_inputs.items():
