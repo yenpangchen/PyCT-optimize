@@ -66,11 +66,13 @@ def get_funcobj_from_modpath_and_funcname(modpath, funcname):
             class_object = getattr(class_object, funcname.split('.')[0])
             funcname = funcname.split('.')[1]
         func = getattr(class_object, funcname)
-        if list(inspect.signature(func).parameters)[0] == 'cls':
-            func = functools.partial(func, class_object)
-        elif list(inspect.signature(func).parameters)[0] == 'self':
-            try: func = functools.partial(func, class_object())
-            except: pass # class_object() requires some arguments we don't know
+        if len(list(inspect.signature(func).parameters)) > 0:
+            if list(inspect.signature(func).parameters)[0] == 'cls':
+                func = functools.partial(func, class_object)
+            elif list(inspect.signature(func).parameters)[0] == 'self':
+                try: func = functools.partial(func, class_object())
+                except: pass # class_object() requires some arguments we don't know
         return func
-    except:
+    except Exception as e:
+        print(e); import traceback; traceback.print_exc()#; raise e
         return None

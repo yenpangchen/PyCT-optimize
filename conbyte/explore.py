@@ -78,20 +78,23 @@ class ExplorationEngine:
             self.coverage = coverage.Coverage(data_file=None, source=[self.root], omit=['**/__pycache__/**', '**/.venv/**'])
         if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
         sys.path.insert(0, self.root)
-        iterations = 1; cont = self._one_execution(all_args) # the 1st execution
-        while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
-            ##############################################################
-            # In each iteration, we take one constraint out of the queue
-            # and try to solve for it. After that we'll obtain a model as
-            # a list of arguments and continue the next iteration with it.
-            constraint = self.constraints_to_solve.pop(0)
-            model = Solver.find_model_from_constraint(self, constraint)
-            ##############################################################
-            if model is not None:
-                log.info(f"=== Iterations: {iterations} ==="); iterations += 1
-                all_args.update(model) # from model to argument
-                cont = self._one_execution(all_args) # other consecutive executions following the 1st execution
-        sys.path.remove(self.root)
+        try:
+            signal.alarm(15*60)
+            iterations = 1; cont = self._one_execution(all_args) # the 1st execution
+            while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
+                ##############################################################
+                # In each iteration, we take one constraint out of the queue
+                # and try to solve for it. After that we'll obtain a model as
+                # a list of arguments and continue the next iteration with it.
+                constraint = self.constraints_to_solve.pop(0)
+                model = Solver.find_model_from_constraint(self, constraint)
+                ##############################################################
+                if model is not None:
+                    log.info(f"=== Iterations: {iterations} ==="); iterations += 1
+                    all_args.update(model) # from model to argument
+                    cont = self._one_execution(all_args) # other consecutive executions following the 1st execution
+        except TimeoutError: pass
+        signal.alarm(0); sys.path.remove(self.root)
         if self.lib: sys.path.remove(os.path.abspath(self.lib))
         if self.statsdir:
             with open(self.statsdir + '/inputs.pkl', 'wb') as f:
@@ -150,7 +153,7 @@ class ExplorationEngine:
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
-        if not r2.poll(self.timeout * 2):
+        if not r2.poll(self.timeout * 4):
             result = self.Timeout
             log.error(f"Timeout (hard) for: {all_args}")
             if self.statsdir:
@@ -191,7 +194,7 @@ class ExplorationEngine:
             else:
                 s2.send(self.Exception)
         process = multiprocessing.Process(target=child_process); process.start()
-        if not r1.poll(self.timeout * 2): answer = self.Timeout
+        if not r1.poll(self.timeout * 4): answer = self.Timeout
         else:
             answer = r1.recv()
             if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t

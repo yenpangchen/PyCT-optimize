@@ -21,30 +21,32 @@ os.system(f"rm -rf './project_statistics/{project_name}'")
 
 for dirpath, _, _ in os.walk(rootdir):
     dirpath = os.path.abspath(dirpath) + '/'
-    if dirpath != rootdir and not dirpath.startswith(rootdir + '.') and '__pycache__' not in dirpath:
+    if dirpath != rootdir and not dirpath.startswith(rootdir + '.') and '__pycache__' not in dirpath and '.venv' not in dirpath:
         print(dirpath)
         os.system(f"touch '{dirpath}/__init__.py'")
 
 # Please note this function must be executed in a child process, or
 # the import action will affect the coverage measurement later.
 def extract_function_list_from_modpath(modpath):
-    ans = []#; print(modpath, '==> ', end='')
+    ans = []; print(modpath, '==> ', end='')
     try:
         signal.alarm(10) # imported scripts may contain blocking inputs...
-        mod = importlib.import_module(modpath)#; print(mod, end='')
+        mod = importlib.import_module(modpath); print(mod, end='')
         for _, obj in inspect.getmembers(mod):
             if inspect.isclass(obj):
                 for _, o in inspect.getmembers(obj):
-                    if inspect.isfunction(o) and inspect.signature(o).parameters:
+                    if inspect.isfunction(o): # and inspect.signature(o).parameters:
                         if get_funcobj_from_modpath_and_funcname(modpath, o.__qualname__):
                             ans.append(o.__qualname__)#; print(o.__qualname__)
-            elif inspect.isfunction(obj) and inspect.signature(obj).parameters:
+            elif inspect.isfunction(obj): # and inspect.signature(obj).parameters:
                 if get_funcobj_from_modpath_and_funcname(modpath, obj.__qualname__):
                     ans.append(obj.__qualname__)#; print(obj.__qualname__)
     except Exception as e:
-        pass
-        # print('Exception: ' + str(e), end='')
-    # print()
+        print('Exception: ' + str(e), end='')
+        if 'No module named' in str(e):
+            print(' Raise Exception!!!')
+            raise e
+    print()
     signal.alarm(0)
     return ans
 
@@ -60,14 +62,14 @@ except: pass
 start = time.time()
 pid = None
 try:
-    signal.alarm(6*60*60)
+    if not read_functions: signal.alarm(3*60*60)
     for dirpath, _, files in os.walk(rootdir):
         dirpath += '/'
         for file in files:
             if file.endswith('.py'):
                 modpath = os.path.abspath(dirpath + file)[len(rootdir):-3].replace('/', '.')
-                if not modpath.startswith('.venv'):
-                    # if 'src.flask.sessions' in modpath: cont = True
+                if not modpath.startswith('.venv') and '__pycache__' not in modpath:
+                    # if 'solutions.system_design.mint.mint_mapreduce' not in modpath: continue #cont = True
                     # if not cont: continue
                     r, s = multiprocessing.Pipe()
                     if (pid := os.fork()) == 0: # child process
@@ -80,12 +82,16 @@ try:
                                     (a, b) = f.split('.')
                                     if b.startswith('__') and not b.endswith('__'): b = '_' + a + b
                                     f = a + '.' + b
-                                if args.mode == '1': cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --include_exception --dump_projstats"
-                                elif args.mode == '2': cmd = f"./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --dump_projstats"
-                                else: cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
-                                print(modpath, '+', f, '>>>'); print(cmd)
-                                try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
-                                except subprocess.CalledProcessError as e: print(e.output)
+                                try:
+                                    signal.alarm(15*60)
+                                    if args.mode == '1': cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --include_exception --dump_projstats"
+                                    elif args.mode == '2': cmd = f"./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --dump_projstats"
+                                    else: cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
+                                    print(modpath, '+', f, '>>>'); print(cmd)
+                                    try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
+                                    except subprocess.CalledProcessError as e: print(e.output)
+                                except TimeoutError: pass
+                                signal.alarm(0)
                         os._exit(os.EX_OK)
                     os.wait(); r.close(); s.close(); pid = None
 except TimeoutError:
@@ -128,8 +134,8 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                     s.send((coverage_data, coverage_accumulated_missing_lines))
                 process = multiprocessing.Process(target=child_process); process.start()
                 try:
-                    signal.alarm(TIMEOUT * 2)
-                    if r.poll(TIMEOUT * 2): # may get stuck here for some unknown reason
+                    signal.alarm(TIMEOUT * 4)
+                    if r.poll(TIMEOUT * 4): # may get stuck here for some unknown reason
                         (coverage_data, coverage_accumulated_missing_lines) = r.recv()
                 except: pass
                 signal.alarm(0); r.close(); s.close()
@@ -139,6 +145,16 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
 if not read_functions:
     with open('../' + project_name + '_function_domain_' + args.mode + '.pkl', 'wb') as f:
         pickle.dump(function_domain, f)
+
+content = ''
+for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
+    for file in files:
+        if file == 'exception.txt':
+            with open(os.path.join(dirpath, file), 'r') as f:
+                for e in f.readlines():
+                    content += e
+with open(os.path.abspath(f"./project_statistics/{project_name}/exceptions.txt"), 'w') as f:
+    f.write(content)
 
 total_lines = 0
 executed_lines = 0
