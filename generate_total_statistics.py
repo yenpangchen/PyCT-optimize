@@ -2,7 +2,7 @@ import os
 
 class JumpOutOfLoop(Exception): pass
 
-data = [['Project', 'Line Coverage', '# of SAT']]
+data = [['Project', 'Line Coverage', '# of SAT', 'Running Time']]
 for item in os.listdir('./project_statistics'):
     try:
         first_layer = True; data2 = [item]; num = 0
@@ -13,6 +13,7 @@ for item in os.listdir('./project_statistics'):
                     with open(dirpath + '/inputs_and_coverage.txt', 'r') as f:
                         lines = f.read().splitlines()
                         data2.append(lines[-2].replace('Total line coverage ', ''))
+                        data2.append(lines[-1].replace('Time(sec.): ', ''))
                 except:
                     raise JumpOutOfLoop()
                 continue
@@ -21,7 +22,7 @@ for item in os.listdir('./project_statistics'):
                     lines = f.read().splitlines()
                     num += int(lines[1].split(',')[1])
             except: pass
-        data2.append(num)
+        data2.insert(-1, num)
         data.append(data2)
     except JumpOutOfLoop: pass
 
