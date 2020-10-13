@@ -42,19 +42,6 @@ class Solver:
     @classmethod
     def find_model_from_constraint(cls, engine, constraint):
         formulas = Solver._build_formulas_from_constraint(engine, constraint); log.smtlib2(f"Solving To: {constraint}")
-        ##########################################################################################
-        if cls.store is not None:
-            if re.compile(r"^\d+$").match(cls.store):
-                if int(cls.store) == Solver.cnt:
-                    with open(cls.store + '.smt2', 'w') as f:
-                        f.write(formulas)
-            else:
-                with open(os.path.join(cls.store, f"{Solver.cnt}.smt2"), 'w') as f:
-                    f.write(formulas)
-        if cls.statsdir:
-            with open(cls.statsdir + f"/formula/{Solver.cnt}.smt2", 'w') as f:
-                f.write(formulas)
-        ##########################################################################################
         start = time.time()
         try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
         except subprocess.CalledProcessError as e: print(e.output)
@@ -75,8 +62,20 @@ class Solver:
                 model = Solver._get_model(engine, outputs[1:])
             else:
                 if "unsat" == status: cls.stats['unsat_number'] += 1; cls.stats['unsat_time'] += elapsed
-                else: cls.stats['otherwise_number'] += 1; cls.stats['otherwise_time'] += elapsed
-                status = "UNKNOWN"
+                else: status = "UNKNOWN"; cls.stats['otherwise_number'] += 1; cls.stats['otherwise_time'] += elapsed
+        ##########################################################################################
+        if cls.store is not None:
+            if re.compile(r"^\d+$").match(cls.store):
+                if int(cls.store) == Solver.cnt:
+                    with open(cls.store + f"_{status}.smt2", 'w') as f:
+                        f.write(formulas)
+            else:
+                with open(os.path.join(cls.store, f"{Solver.cnt}_{status}.smt2"), 'w') as f:
+                    f.write(formulas)
+        if cls.statsdir:
+            with open(cls.statsdir + f"/formula/{Solver.cnt}_{status}.smt2", 'w') as f:
+                f.write(formulas)
+        ##########################################################################################
         log.smtlib2(f"SMT-id: {Solver.cnt}／Status: {status}／Model: {model}")
         Solver.cnt += 1
         return model

@@ -5,6 +5,7 @@ TIMEOUT = 15
 def timeout_handler(signum, frame):
     raise TimeoutError()
 signal.signal(signal.SIGALRM, timeout_handler)
+class JumpOutOfLoop(Exception): pass
 
 parser = argparse.ArgumentParser(); parser.add_argument("mode"); parser.add_argument("project"); args = parser.parse_args()
 
@@ -44,7 +45,7 @@ def extract_function_list_from_modpath(modpath):
     except Exception as e:
         print('Exception: ' + str(e), end='')
         if 'No module named' in str(e):
-            print(' Raise Exception!!!')
+            print(' Raise Exception!!!', end='')
             raise e
     print()
     signal.alarm(0)
@@ -59,10 +60,9 @@ try:
 except: pass
 
 # cont = False
-start = time.time()
 pid = None
+start = time.time()
 try:
-    if not read_functions: signal.alarm(3*60*60)
     for dirpath, _, files in os.walk(rootdir):
         dirpath += '/'
         for file in files:
@@ -94,83 +94,18 @@ try:
                                 signal.alarm(0)
                         os._exit(os.EX_OK)
                     os.wait(); r.close(); s.close(); pid = None
-except TimeoutError:
+                end = time.time()
+                if not read_functions and end - start > 3 * 60 * 60:
+                    raise JumpOutOfLoop()
+except:
     if pid:
         os.system(f"kill -KILL {pid}")
         os.wait()
-signal.alarm(0)
-end = time.time()
 
-func_inputs = {}
-coverage_data = coverage.CoverageData()
-coverage_accumulated_missing_lines = {}
-cov = coverage.Coverage(data_file=None, source=[rootdir], omit=['**/__pycache__/**', '**/.venv/**'])
-for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
-    for file in files:
-        if file == 'inputs.pkl':
-            with open(os.path.abspath(dirpath + '/' + file), 'rb') as f:
-                inputs = pickle.load(f)
-            if not read_functions:
-                function_domain.append((dirpath.split('/')[-2], dirpath.split('/')[-1]))
-            func_inputs[(dirpath.split('/')[-2], dirpath.split('/')[-1])] = inputs
-            for i in inputs:
-                r, s = multiprocessing.Pipe()
-                def child_process():
-                    sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
-                    cov.start(); execute = get_funcobj_from_modpath_and_funcname(dirpath.split('/')[-2], dirpath.split('/')[-1])
-                    pri_args, pri_kwargs = _complete_primitive_arguments(execute, i)
-                    try:
-                        signal.alarm(TIMEOUT)
-                        execute(*pri_args, **pri_kwargs)
-                    except: pass
-                    signal.alarm(0)
-                    cov.stop(); coverage_data.update(cov.get_data())
-                    for file in coverage_data.measured_files(): # "file" is absolute here.
-                        _, _, missing_lines, _ = cov.analysis(file)
-                        if file not in coverage_accumulated_missing_lines:
-                            coverage_accumulated_missing_lines[file] = set(missing_lines)
-                        else:
-                            coverage_accumulated_missing_lines[file] = coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
-                    s.send((coverage_data, coverage_accumulated_missing_lines))
-                process = multiprocessing.Process(target=child_process); process.start()
-                try:
-                    signal.alarm(TIMEOUT * 4)
-                    if r.poll(TIMEOUT * 4): # may get stuck here for some unknown reason
-                        (coverage_data, coverage_accumulated_missing_lines) = r.recv()
-                except: pass
-                signal.alarm(0); r.close(); s.close()
-                if process.is_alive(): process.kill()
+with open(os.path.abspath(f"./project_statistics/{project_name}/coverage_time.txt"), 'w') as f:
+    print(f"Time(sec.): {end-start}", file=f)
 
 # Save inputs to the parent directory if necessary.
 if not read_functions:
     with open('../' + project_name + '_function_domain_' + args.mode + '.pkl', 'wb') as f:
         pickle.dump(function_domain, f)
-
-content = ''
-for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
-    for file in files:
-        if file == 'exception.txt':
-            with open(os.path.join(dirpath, file), 'r') as f:
-                for e in f.readlines():
-                    content += e
-with open(os.path.abspath(f"./project_statistics/{project_name}/exceptions.txt"), 'w') as f:
-    f.write(content)
-
-total_lines = 0
-executed_lines = 0
-with open(os.path.abspath(f"./project_statistics/{project_name}/missing_lines.txt"), 'w') as f:
-    for file in coverage_data.measured_files():
-        _, executable_lines, _, _ = cov.analysis(file)
-        m_lines = coverage_accumulated_missing_lines[file]
-        total_lines += len(set(executable_lines))
-        executed_lines += len(set(executable_lines)) - len(m_lines)
-        if m_lines:
-            print(file, sorted(m_lines), file=f)
-
-with open(os.path.abspath(f"./project_statistics/{project_name}/inputs_and_coverage.txt"), 'w') as f:
-    for (func, inputs) in func_inputs.items():
-        print(func, inputs, file=f)
-    print("\nTotal line coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0), file=f)
-    print(f"Time(sec.): {end-start}", file=f)
-print("\nTotal line coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0))
-print(f"Time(sec.): {end-start}")

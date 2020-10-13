@@ -1,11 +1,13 @@
-from xmlrpc.server import DocXMLRPCServer
-
 #######################################################################################
 # Remember to modify the source code of line 898 in /usr/lib/python3.8/xmlrpc/server.py
 # from: return documenter.page(html.escape(self.server_title), documentation)
 #   to: return documenter.page(self.server_title, documentation)
-# in order to make this example work!
+# in order to make this example work! The following code segment has done it for us.
+import html
+html.escape = lambda x: x # disable the functionality
 #######################################################################################
+
+from xmlrpc.server import DocXMLRPCServer
 
 def docxmlrpcserver(title, name, documentation):
     serv = DocXMLRPCServer(("localhost", 8081), logRequests=False)
