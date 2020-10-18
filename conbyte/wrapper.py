@@ -160,26 +160,30 @@ class ConcolicLoader(importlib.machinery.SourceFileLoader):
         fix_missing_locations(tree)
         return _call_with_frames_removed(compile, tree, path, 'exec')
 
-_real_pathfinder = sys.meta_path[-1]
+i = 0
+for j in range(1, len(sys.meta_path)+1):
+    if hasattr(sys.meta_path[-j], 'find_spec'): i = j; break
 
-class ConcolicFinder(type(_real_pathfinder)):
-    @classmethod
-    def find_spec(cls, fullname, path=None, target=None):
-        # print(fullname, path, target)
-        spec = _real_pathfinder.find_spec(fullname, path, target)
-        if not spec: return spec
-        if not fullname.startswith('conbyte') and fullname not in ['rpyc.core.brine']:
-            module = importlib.util.module_from_spec(spec)
-            try:
-                inspect.getsource(module) # this line is used to check if the source is available
-                spec.loader.__class__ = ConcolicLoader # if the source is available, replace it with our own
-            except Exception as exception:
-                msg = str(exception)
-                if not (isinstance(exception, OSError) and msg in ('could not get source code',
-                                                                   'source code not available')) \
-                    and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
-                    traceback.print_exc()
-                    sys.exit(1)
-        return spec
+if i > 0:
+    _real_pathfinder = sys.meta_path[-i]
+    class ConcolicFinder(type(_real_pathfinder)):
+        @classmethod
+        def find_spec(cls, fullname, path=None, target=None):
+            # print(fullname, path, target)
+            spec = _real_pathfinder.find_spec(fullname, path, target)
+            if not spec: return spec
+            if not fullname.startswith('conbyte') and fullname not in ['rpyc.core.brine']:
+                module = importlib.util.module_from_spec(spec)
+                try:
+                    inspect.getsource(module) # this line is used to check if the source is available
+                    spec.loader.__class__ = ConcolicLoader # if the source is available, replace it with our own
+                except Exception as exception:
+                    msg = str(exception)
+                    if not (isinstance(exception, OSError) and msg in ('could not get source code',
+                                                                       'source code not available')) \
+                        and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
+                        traceback.print_exc()
+                        sys.exit(1)
+            return spec
+    sys.meta_path[-i] = ConcolicFinder
 
-sys.meta_path[-1] = ConcolicFinder

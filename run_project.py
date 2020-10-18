@@ -95,8 +95,8 @@ try:
                         os._exit(os.EX_OK)
                     os.wait(); r.close(); s.close(); pid = None
                 end = time.time()
-                if not read_functions and end - start > 3 * 60 * 60:
-                    raise JumpOutOfLoop()
+                #if not read_functions and end - start > 3 * 60 * 60:
+                #    raise JumpOutOfLoop()
 except:
     if pid:
         os.system(f"kill -KILL {pid}")

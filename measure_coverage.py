@@ -62,7 +62,7 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                 signal.alarm(0); r.close(); s.close()
                 if process.is_alive(): process.kill()
                 if time.time() - start > 15 * 60: break
-            if time.time() - start2 > 3 * 60 * 60: break
+            # if time.time() - start2 > 3 * 60 * 60: break
 end = time.time()
 print(f"Time(sec.): {end-start2}")
 
@@ -94,5 +94,5 @@ with open(os.path.abspath(f"./project_statistics/{project_name}/inputs_and_cover
     print("\nTotal line coverage {}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0), file=f)
     try:
         with open(os.path.abspath(f"./project_statistics/{project_name}/coverage_time.txt"), 'r') as f2:
-            print(f2.readlines()[0], file=f)
+            print(f2.readlines()[0], end='', file=f)
     except: pass
