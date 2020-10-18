@@ -123,7 +123,7 @@ class ExplorationEngine:
         return False # stop iteration
 
     def _one_execution_concolic(self, all_args):
-        r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe()
+        r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive environment from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
@@ -147,13 +147,14 @@ class ExplorationEngine:
                         print(f"Exception for: {all_args}", file=f); print(e, file=f)
             ###################################### Communication Section ######################################
             signal.alarm(0)
+            s0.send(0) # just a notification to the parent process that we're going to send data
             try: s2.send(result)
             except: s2.send(self.Unpicklable)
             try: s3.send((self.constraints_to_solve, self.path))
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
-        if not r2.poll(self.timeout * 4):
+        if not r0.poll(self.timeout + 5):
             result = self.Timeout
             log.error(f"Timeout (hard) for: {all_args}")
             if self.statsdir:
@@ -162,12 +163,12 @@ class ExplorationEngine:
         else:
             result = r2.recv()
             if (t:=r3.recv()) is not self.Unpicklable: (self.constraints_to_solve, self.path) = t
-        r2.close(); s2.close(); r3.close(); s3.close()
+        r2.close(); s2.close(); r3.close(); s3.close(); r0.close(); s0.close()
         if process.is_alive(): process.kill()
         return result
 
     def _one_execution_primitive(self, all_args):
-        r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe()
+        r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
             sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
             self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
@@ -187,6 +188,7 @@ class ExplorationEngine:
                 else:
                     self.coverage_accumulated_missing_lines[file] = self.coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
             ###################################### Communication Section ######################################
+            s0.send(0) # just a notification to the parent process that we're going to send data
             try: s1.send(answer)
             except: answer = self.Unpicklable; s1.send(answer)
             if self.include_exception or (answer is not self.Exception):
@@ -194,11 +196,11 @@ class ExplorationEngine:
             else:
                 s2.send(self.Exception)
         process = multiprocessing.Process(target=child_process); process.start()
-        if not r1.poll(self.timeout * 4): answer = self.Timeout
+        if not r0.poll(self.timeout + 5): answer = self.Timeout
         else:
             answer = r1.recv()
             if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t
-        self.in_out.append((all_args.copy(), answer)); r1.close(); s1.close(); r2.close(); s2.close()
+        self.in_out.append((all_args.copy(), answer)); r1.close(); s1.close(); r2.close(); s2.close(); r0.close(); s0.close()
         if process.is_alive(): process.kill()
         return answer
 

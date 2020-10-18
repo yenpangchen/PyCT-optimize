@@ -34,7 +34,7 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
             func_inputs[(dirpath.split('/')[-2], dirpath.split('/')[-1])] = inputs
             start = time.time()
             for i in inputs:
-                r, s = multiprocessing.Pipe()
+                r, s = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
                 def child_process():
                     sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
                     cov.start(); execute = get_funcobj_from_modpath_and_funcname(dirpath.split('/')[-2], dirpath.split('/')[-1])
@@ -52,14 +52,15 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                             coverage_accumulated_missing_lines[file] = set(missing_lines)
                         else:
                             coverage_accumulated_missing_lines[file] = coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
+                    s0.send(0) # just a notification to the parent process that we're going to send data
                     s.send((coverage_data, coverage_accumulated_missing_lines))
                 process = multiprocessing.Process(target=child_process); process.start()
                 try:
-                    signal.alarm(TIMEOUT * 4)
-                    if r.poll(TIMEOUT * 4): # may get stuck here for some unknown reason
+                    signal.alarm(TIMEOUT + 5)
+                    if r0.poll(TIMEOUT + 5): # may get stuck here for some unknown reason
                         (coverage_data, coverage_accumulated_missing_lines) = r.recv()
                 except: pass
-                signal.alarm(0); r.close(); s.close()
+                signal.alarm(0); r.close(); s.close(); r0.close(); s0.close()
                 if process.is_alive(): process.kill()
                 if time.time() - start > 15 * 60: break
             # if time.time() - start2 > 3 * 60 * 60: break
