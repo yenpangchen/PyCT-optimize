@@ -74,5 +74,5 @@ def get_funcobj_from_modpath_and_funcname(modpath, funcname):
                 except: pass # class_object() requires some arguments we don't know
         return func
     except Exception as e:
-        print(e); import traceback; traceback.print_exc()#; raise e
+        print(e); import traceback; traceback.print_exc(); raise e
         return None

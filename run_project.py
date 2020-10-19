@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse, coverage, importlib, inspect, multiprocessing, os, pickle, signal, subprocess, sys, time
+os.system('/usr/bin/Xorg -noreset +extension GLX +extension RANDR +extension RENDER -config /etc/X11/xorg.conf :1 &')
 
 TIMEOUT = 15
 def timeout_handler(signum, frame):
@@ -31,24 +32,37 @@ for dirpath, _, _ in os.walk(rootdir):
 def extract_function_list_from_modpath(modpath):
     ans = []; print(modpath, '==> ', end='')
     try:
-        signal.alarm(10) # imported scripts may contain blocking inputs...
-        mod = importlib.import_module(modpath); print(mod, end='')
+        now_dir = os.getcwd()
+        os.chdir(os.path.abspath(os.path.dirname(os.path.join(rootdir, modpath.replace('.', '/') + '.py'))))
+        sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.join(rootdir, modpath.replace('.', '/') + '.py'))))
+        signal.alarm(10); mod = importlib.import_module(modpath); signal.alarm(0); print(mod, end='')
         for _, obj in inspect.getmembers(mod):
             if inspect.isclass(obj):
                 for _, o in inspect.getmembers(obj):
-                    if inspect.isfunction(o): # and inspect.signature(o).parameters:
-                        if get_funcobj_from_modpath_and_funcname(modpath, o.__qualname__):
-                            ans.append(o.__qualname__)#; print(o.__qualname__)
-            elif inspect.isfunction(obj): # and inspect.signature(obj).parameters:
-                if get_funcobj_from_modpath_and_funcname(modpath, obj.__qualname__):
-                    ans.append(obj.__qualname__)#; print(obj.__qualname__)
+                    if (inspect.isfunction(o) or inspect.ismethod(o)) and o.__module__ == modpath: # and inspect.signature(o).parameters:
+                        ans.append(o.__qualname__)#; print(o.__qualname__)
+            elif (inspect.isfunction(obj) or inspect.ismethod(obj)) and obj.__module__ == modpath: # and inspect.signature(obj).parameters:
+                ans.append(obj.__qualname__)#; print(obj.__qualname__)
+        i = 0
+        while i < len(ans):
+            if '<locals>' in ans[i]: del ans[i]; continue # cannot access nested functions
+            if len(ans[i].split('.')) == 2:
+                (a, b) = ans[i].split('.')
+                if b.startswith('__') and not b.endswith('__'): b = '_' + a + b
+                ans[i] = a + '.' + b
+            get_funcobj_from_modpath_and_funcname(modpath, ans[i]) # assert 的效果
+            i += 1
+    except TimeoutError: pass
     except Exception as e:
-        print('Exception: ' + str(e), end='')
+        signal.alarm(0)
+        print('Exception: ' + str(e), end='', flush=True)
+        print('\nWe\'re going to get stuck here...', flush=True)
+        while True: pass
         if 'No module named' in str(e):
             print(' Raise Exception!!!', end='')
             raise e
     print()
-    signal.alarm(0)
+    signal.alarm(0); os.chdir(now_dir)
     return ans
 
 # Decide whether to use given functions or not.
@@ -71,29 +85,22 @@ try:
                 if not modpath.startswith('.venv') and '__pycache__' not in modpath:
                     # if 'solutions.system_design.mint.mint_mapreduce' not in modpath: continue #cont = True
                     # if not cont: continue
-                    r, s = multiprocessing.Pipe()
                     if (pid := os.fork()) == 0: # child process
                         funcs = extract_function_list_from_modpath(modpath)
                         for f in funcs:
-                            if read_functions:
-                                if (modpath, f) not in function_domain: continue
-                            if '<locals>' not in f: # cannot access nested functions
-                                if len(f.split('.')) == 2:
-                                    (a, b) = f.split('.')
-                                    if b.startswith('__') and not b.endswith('__'): b = '_' + a + b
-                                    f = a + '.' + b
-                                try:
-                                    signal.alarm(15*60)
-                                    if args.mode == '1': cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --include_exception --dump_projstats"
-                                    elif args.mode == '2': cmd = f"./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --dump_projstats"
-                                    else: cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
-                                    print(modpath, '+', f, '>>>'); print(cmd)
-                                    try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
-                                    except subprocess.CalledProcessError as e: print(e.output)
-                                except TimeoutError: pass
-                                signal.alarm(0)
+                            if read_functions and (modpath, f) not in function_domain: continue
+                            try:
+                                signal.alarm(15*60)
+                                if args.mode == '1': cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --include_exception --dump_projstats"
+                                elif args.mode == '2': cmd = f"./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 20 --lib '{lib}' --dump_projstats"
+                                else: cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
+                                print(modpath, '+', f, '>>>'); print(cmd)
+                                try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
+                                except subprocess.CalledProcessError as e: print(e.output)
+                            except TimeoutError: pass
+                            signal.alarm(0)
                         os._exit(os.EX_OK)
-                    os.wait(); r.close(); s.close(); pid = None
+                    os.wait(); pid = None
                 end = time.time()
                 #if not read_functions and end - start > 3 * 60 * 60:
                 #    raise JumpOutOfLoop()
@@ -109,3 +116,5 @@ with open(os.path.abspath(f"./project_statistics/{project_name}/coverage_time.tx
 if not read_functions:
     with open('../' + project_name + '_function_domain_' + args.mode + '.pkl', 'wb') as f:
         pickle.dump(function_domain, f)
+
+print('End of running project.')

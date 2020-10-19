@@ -77,7 +77,8 @@ class ExplorationEngine:
         else:
             self.coverage = coverage.Coverage(data_file=None, source=[self.root], omit=['**/__pycache__/**', '**/.venv/**'])
         if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
-        sys.path.insert(0, self.root)
+        sys.path.insert(0, self.root); sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py'))))
+        now_dir = os.getcwd(); os.chdir(os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py'))))
         try:
             signal.alarm(15*60)
             iterations = 1; cont = self._one_execution(all_args) # the 1st execution
@@ -94,8 +95,8 @@ class ExplorationEngine:
                     all_args.update(model) # from model to argument
                     cont = self._one_execution(all_args) # other consecutive executions following the 1st execution
         except TimeoutError: pass
-        signal.alarm(0); sys.path.remove(self.root)
-        if self.lib: sys.path.remove(os.path.abspath(self.lib))
+        signal.alarm(0); os.chdir(now_dir); del sys.path[0:2]
+        if self.lib: del sys.path[0]
         if self.statsdir:
             with open(self.statsdir + '/inputs.pkl', 'wb') as f:
                 pickle.dump([e[0] for e in self.in_out], f) # store only inputs
@@ -136,15 +137,15 @@ class ExplorationEngine:
                 log.info(f"Return: {result}")
             except TimeoutError:
                 result = self.Timeout
-                log.error(f"Timeout (soft) for: {all_args}")#; traceback.print_exc()
+                log.error(f"Timeout (soft) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats")#; traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
-                        print(f"Timeout (soft) for: {all_args}", file=f)
+                        print(f"Timeout (soft) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats", file=f)
             except Exception as e:
-                log.error(f"Exception for: {all_args}")#; log.error(e); traceback.print_exc()
+                log.error(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats")#; log.error(e); traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
-                        print(f"Exception for: {all_args}", file=f); print(e, file=f)
+                        print(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats", file=f); print(e, file=f)
             ###################################### Communication Section ######################################
             signal.alarm(0)
             s0.send(0) # just a notification to the parent process that we're going to send data
@@ -156,10 +157,10 @@ class ExplorationEngine:
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
         if not r0.poll(self.timeout + 5):
             result = self.Timeout
-            log.error(f"Timeout (hard) for: {all_args}")
+            log.error(f"Timeout (hard) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats")
             if self.statsdir:
                 with open(self.statsdir + '/exception.txt', 'a') as f:
-                    print(f"Timeout (hard) for: {all_args}", file=f)
+                    print(f"Timeout (hard) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats", file=f)
         else:
             result = r2.recv()
             if (t:=r3.recv()) is not self.Unpicklable: (self.constraints_to_solve, self.path) = t
