@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-import argparse, coverage, importlib, inspect, multiprocessing, os, pickle, signal, subprocess, sys, time
+import argparse, coverage, func_timeout, importlib, inspect, multiprocessing, os, pickle, signal, subprocess, sys, time
 os.system('/usr/bin/Xorg -noreset +extension GLX +extension RANDR +extension RENDER -config /etc/X11/xorg.conf :1 &')
 
-TIMEOUT = 15
 def timeout_handler(signum, frame):
     raise TimeoutError()
 signal.signal(signal.SIGALRM, timeout_handler)
@@ -35,7 +34,8 @@ def extract_function_list_from_modpath(modpath):
         now_dir = os.getcwd()
         os.chdir(os.path.abspath(os.path.dirname(os.path.join(rootdir, modpath.replace('.', '/') + '.py'))))
         sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.join(rootdir, modpath.replace('.', '/') + '.py'))))
-        signal.alarm(10); mod = importlib.import_module(modpath); signal.alarm(0); print(mod, end='')
+        mod = func_timeout.func_timeout(10, importlib.import_module, args=(modpath,))
+        print(mod, end='')
         for _, obj in inspect.getmembers(mod):
             if inspect.isclass(obj):
                 for _, o in inspect.getmembers(obj):
@@ -52,9 +52,8 @@ def extract_function_list_from_modpath(modpath):
                 ans[i] = a + '.' + b
             get_funcobj_from_modpath_and_funcname(modpath, ans[i]) # assert 的效果
             i += 1
-    except TimeoutError: pass
+    except func_timeout.FunctionTimedOut: pass
     except Exception as e:
-        signal.alarm(0)
         print('Exception: ' + str(e), end='', flush=True)
         print('\nWe\'re going to get stuck here...', flush=True)
         while True: pass
@@ -62,7 +61,7 @@ def extract_function_list_from_modpath(modpath):
             print(' Raise Exception!!!', end='')
             raise e
     print()
-    signal.alarm(0); os.chdir(now_dir)
+    os.chdir(now_dir)
     return ans
 
 # Decide whether to use given functions or not.

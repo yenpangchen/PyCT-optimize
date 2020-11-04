@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
-import argparse, coverage, importlib, inspect, multiprocessing, os, pickle, signal, subprocess, sys, time
+import argparse, coverage, func_timeout, importlib, inspect, multiprocessing, os, pickle, signal, subprocess, sys, time
 
 TIMEOUT = 15
-def timeout_handler(signum, frame):
-    raise TimeoutError()
-signal.signal(signal.SIGALRM, timeout_handler)
-
 parser = argparse.ArgumentParser(); parser.add_argument("mode"); parser.add_argument("project"); args = parser.parse_args()
 
 if args.mode != '2':
@@ -17,6 +13,10 @@ else:
 
 rootdir = os.path.abspath(args.project) + '/'; lib = rootdir + '.venv/lib/python3.8/site-packages'
 sys.path.insert(0, lib); sys.path.insert(0, rootdir); project_name = rootdir[:-1].split('/')[-1]
+
+def f1(r0, r):
+    if r0.poll(TIMEOUT + 5): # may get stuck here for some unknown reason
+        return r.recv()
 
 # cont = False
 func_inputs = {}
@@ -41,10 +41,8 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                     print('currently measuring >>>', dirpath.split('/')[-2], dirpath.split('/')[-1])
                     pri_args, pri_kwargs = _complete_primitive_arguments(execute, i)
                     try:
-                        signal.alarm(TIMEOUT)
-                        execute(*pri_args, **pri_kwargs)
+                        func_timeout.func_timeout(TIMEOUT, execute, args=pri_args, kwargs=pri_kwargs)
                     except: pass
-                    signal.alarm(0)
                     cov.stop(); coverage_data.update(cov.get_data())
                     for file in coverage_data.measured_files(): # "file" is absolute here.
                         _, _, missing_lines, _ = cov.analysis(file)
@@ -55,12 +53,9 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                     s0.send(0) # just a notification to the parent process that we're going to send data
                     s.send((coverage_data, coverage_accumulated_missing_lines))
                 process = multiprocessing.Process(target=child_process); process.start()
-                try:
-                    signal.alarm(TIMEOUT + 5)
-                    if r0.poll(TIMEOUT + 5): # may get stuck here for some unknown reason
-                        (coverage_data, coverage_accumulated_missing_lines) = r.recv()
+                try: (coverage_data, coverage_accumulated_missing_lines) = func_timeout.func_timeout(TIMEOUT + 5 + 1, f1, args=(r0, r))
                 except: pass
-                signal.alarm(0); r.close(); s.close(); r0.close(); s0.close()
+                r.close(); s.close(); r0.close(); s0.close()
                 if process.is_alive(): process.kill()
                 if time.time() - start > 15 * 60: break
             # if time.time() - start2 > 3 * 60 * 60: break
