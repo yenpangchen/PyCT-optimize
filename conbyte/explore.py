@@ -89,10 +89,11 @@ class ExplorationEngine:
         else:
             self.coverage = coverage.Coverage(data_file=None, source=[self.root], omit=['**/__pycache__/**', '**/.venv/**'])
         if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
-        sys.path.insert(0, self.root); sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py'))))
-        now_dir = os.getcwd(); os.chdir(os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py'))))
+        sys.path.insert(0, self.root)#; sys.path.insert(0, file_dir)
+        file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py')))
+        now_dir = os.getcwd(); os.chdir(file_dir)
         iterations = func_timeout.func_timeout(15*60, self._execution_loop, args=(max_iterations, all_args))
-        os.chdir(now_dir); del sys.path[0:2]
+        os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
         if self.statsdir:
             with open(self.statsdir + '/inputs.pkl', 'wb') as f:
@@ -125,7 +126,7 @@ class ExplorationEngine:
         def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive environment from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
-            import conbyte.wrapper; execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
+            import conbyte.wrapper; execute = get_funcobj_from_modpath_and_funcname(self.root, self.modpath, self.funcname)
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
@@ -138,7 +139,7 @@ class ExplorationEngine:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print(f"Timeout (soft) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats", file=f)
             except Exception as e:
-                log.error(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats")#; log.error(e); traceback.print_exc()
+                log.error(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats"); log.error(e); traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats", file=f); print(e, file=f)
@@ -167,7 +168,7 @@ class ExplorationEngine:
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
             sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
-            self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.modpath, self.funcname)
+            self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.root, self.modpath, self.funcname)
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
             answer = self.Exception
             try:
