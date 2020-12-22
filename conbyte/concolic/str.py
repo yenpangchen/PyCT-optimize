@@ -366,10 +366,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, isidentifier is called")
         return ConcolicObject(super().isidentifier())
 
-    def islower(self, /): # <method 'islower' of 'str' objects> TODO
+    def islower(self, /): # <method 'islower' of 'str' objects>
         """Return True if the string is a lowercase string, False otherwise.\n\nA string is lowercase if all cased characters in the string are lowercase and\n there is at least one cased character in the string."""
         log.debug("ConStr, islower is called")
-        return ConcolicObject(super().islower())
+        value = super().islower()
+        expr = ["str.in.re", self, ["re.+", ["re.range", py2smt('a'), py2smt('z')]]]
+        return ConcolicObject(value, expr)
 
     def isnumeric(self, /): # <method 'isnumeric' of 'str' objects> TODO
         """Return True if the string is a numeric string, False otherwise.\n\nA string is numeric if all characters in the string are numeric and there is at\nleast one character in the string."""
@@ -391,10 +393,12 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, istitle is called")
         return ConcolicObject(super().istitle())
 
-    def isupper(self, /): # <method 'isupper' of 'str' objects> TODO
+    def isupper(self, /): # <method 'isupper' of 'str' objects>
         """Return True if the string is an uppercase string, False otherwise.\n\nA string is uppercase if all cased characters in the string are uppercase and\nthere is at least one cased character in the string."""
         log.debug("ConStr, isupper is called")
-        return ConcolicObject(super().isupper())
+        value = super().isupper()
+        expr = ["str.in.re", self, ["re.+", ["re.range", py2smt('A'), py2smt('Z')]]]
+        return ConcolicObject(value, expr)
 
     def join(self, iterable, /): # <method 'join' of 'str' objects> TODO
         """Concatenate any number of strings.\n\nThe string whose method is called is inserted in between each given string.\nThe result is returned as a new string.\n\nExample: '.'.join(['ab', 'pq', 'rs']) -> 'ab.pq.rs'"""
