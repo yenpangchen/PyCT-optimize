@@ -107,7 +107,8 @@ class Solver:
                 # Note the order above must be in reverse with its encoding method (line 41 in conbyte/utils.py)
             else:
                 raise NotImplementedError
-            model[name] = value
+            assert name.endswith('_python') # '_python' is used to avoid name collision
+            model[name[:-len('_python')]] = value
         return model
 
     @staticmethod

@@ -226,13 +226,14 @@ class ExplorationEngine:
                     if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
                     else: value = ''
                 prim_args[v.name] = value if type(value) in (bool, float, int, str) else self.LazyLoading
-            if type(value) in (bool, float, int, str): value = ConcolicObject(value, v.name, self)
+            if type(value) in (bool, float, int, str): value = ConcolicObject(value, v.name + '_python', self) # '_python' is used to avoid name collision
             if v.kind is inspect.Parameter.KEYWORD_ONLY:
                 ccc_kwargs[v.name] = value
             else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
                 ccc_args.append(value)
         if not self.var_to_types: # remain unchanged once determined
             for (k, v) in prim_args.items():
+                k += '_python' # '_python' is used to avoid name collision
                 if type(v) is bool: self.var_to_types[k] = 'Bool'
                 elif type(v) is float: self.var_to_types[k] = 'Real'
                 elif type(v) is int: self.var_to_types[k] = 'Int'
