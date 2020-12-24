@@ -1,4 +1,4 @@
-import functools, importlib, inspect
+import functools, importlib, inspect, os
 
 def _int(obj):
     from conbyte.concolic import Concolic
@@ -59,20 +59,33 @@ def py2smt(x): # convert the Python object into the smtlib2 string constant
         return x
     raise NotImplementedError
 
-def get_funcobj_from_modpath_and_funcname(modpath, funcname):
+def get_funcobj_from_modpath_and_funcname(rootdir, modpath, funcname):
     try:
-        class_object = importlib.import_module(modpath)
-        while '.' in funcname:
-            class_object = getattr(class_object, funcname.split('.')[0])
-            funcname = funcname.split('.')[1]
-        func = getattr(class_object, funcname)
-        if len(list(inspect.signature(func).parameters)) > 0:
-            if list(inspect.signature(func).parameters)[0] == 'cls':
-                func = functools.partial(func, class_object)
-            elif list(inspect.signature(func).parameters)[0] == 'self':
-                try: func = functools.partial(func, class_object())
-                except: pass # class_object() requires some arguments we don't know
-        return func
+        filepath = os.path.join(rootdir, modpath.replace('.', '/') + '.py')
+        spec = importlib.util.spec_from_file_location(modpath, os.path.abspath(filepath))
+        class_object = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(class_object)
+        try:
+            while '.' in funcname:
+                class_object = getattr(class_object, funcname.split('.')[0])
+                funcname = funcname.split('.')[1]
+            func = getattr(class_object, funcname)
+            ###########################################################################
+            if len(list(inspect.signature(func).parameters)) > 0:
+                for v in inspect.signature(func).parameters.values():
+                    if v.annotation not in (int, str):
+                        return None
+                return func
+            return None
+            ###########################################################################
+            if len(list(inspect.signature(func).parameters)) > 0:
+                if list(inspect.signature(func).parameters)[0] == 'cls':
+                    func = functools.partial(func, class_object)
+                elif list(inspect.signature(func).parameters)[0] == 'self':
+                    try: func = functools.partial(func, class_object())
+                    except: pass # class_object() requires some arguments we don't know
+            return func
+        except Exception as e:
+            print(e); import traceback; traceback.print_exc(); return None
     except Exception as e:
         print(e); import traceback; traceback.print_exc(); raise e
-        return None

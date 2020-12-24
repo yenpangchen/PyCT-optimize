@@ -33,17 +33,23 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
             except: continue
             func_inputs[(dirpath.split('/')[-2], dirpath.split('/')[-1])] = inputs
             start = time.time()
+            small_missing_lines = set(); our_filename = rootdir + dirpath.split('/')[-2].replace('.', '/') + '.py'; is_first = True
             for i in inputs:
                 r, s = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
-                def child_process():
+                def child_process(is_first, small_missing_lines):
                     sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
-                    cov.start(); execute = get_funcobj_from_modpath_and_funcname(dirpath.split('/')[-2], dirpath.split('/')[-1])
+                    cov.start(); execute = get_funcobj_from_modpath_and_funcname(rootdir, dirpath.split('/')[-2], dirpath.split('/')[-1])
                     print('currently measuring >>>', dirpath.split('/')[-2], dirpath.split('/')[-1])
                     pri_args, pri_kwargs = _complete_primitive_arguments(execute, i)
                     try:
                         func_timeout.func_timeout(TIMEOUT, execute, args=pri_args, kwargs=pri_kwargs)
                     except: pass
                     cov.stop(); coverage_data.update(cov.get_data())
+                    if is_first:
+                        small_missing_lines = set(cov.analysis(our_filename)[2])
+                        is_first = False
+                    else:
+                        small_missing_lines = small_missing_lines.intersection(set(cov.analysis(our_filename)[2]))
                     for file in coverage_data.measured_files(): # "file" is absolute here.
                         _, _, missing_lines, _ = cov.analysis(file)
                         if file not in coverage_accumulated_missing_lines:
@@ -51,14 +57,26 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                         else:
                             coverage_accumulated_missing_lines[file] = coverage_accumulated_missing_lines[file].intersection(set(missing_lines))
                     s0.send(0) # just a notification to the parent process that we're going to send data
-                    s.send((coverage_data, coverage_accumulated_missing_lines))
-                process = multiprocessing.Process(target=child_process); process.start()
-                try: (coverage_data, coverage_accumulated_missing_lines) = func_timeout.func_timeout(TIMEOUT + 5 + 1, f1, args=(r0, r))
+                    s.send((coverage_data, coverage_accumulated_missing_lines, small_missing_lines, is_first, inspect.getsourcelines(execute)[0]))
+                process = multiprocessing.Process(target=child_process, args=(is_first, small_missing_lines)); process.start()
+                try: (coverage_data, coverage_accumulated_missing_lines, small_missing_lines, is_first, func_lines) = func_timeout.func_timeout(TIMEOUT + 5 + 1, f1, args=(r0, r))
                 except: pass
                 r.close(); s.close(); r0.close(); s0.close()
                 if process.is_alive(): process.kill()
                 if time.time() - start > 15 * 60: break
             # if time.time() - start2 > 3 * 60 * 60: break
+            for i, e in enumerate(func_lines):
+                if e.strip().startswith('def'):
+                    offset = i
+                    func_def = e[:-1]
+                    break
+            try: completed_process = subprocess.run(f"grep -Fn '{func_def}' {our_filename}", shell=True, capture_output=True) #, stdout=sys.stdout, stderr=sys.stderr)
+            except subprocess.CalledProcessError as e: print(e.output)
+            lb = int(completed_process.stdout.decode('utf-8').split(':')[0]) - offset
+            ub = lb + len(func_lines) - 1
+            mylist = sorted([x for x in small_missing_lines if lb <= x <= ub])
+            with open(f'./project_statistics/{project_name}/incomplete_functions.txt', 'a') as fmf:
+                fmf.write(f"{our_filename}:{min(mylist)}, {func_def}, {mylist}\n")
 end = time.time()
 print(f"Time(sec.): {end-start2}")
 
