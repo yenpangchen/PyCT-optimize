@@ -12,7 +12,7 @@
 
 from ast import Call, Constant, Import, ImportFrom, Name, NamedExpr, NodeTransformer, Store, alias, dump, fix_missing_locations, parse
 from ast import And, BoolOp, Compare, Eq, Is, Load, Or # for ConcolicWrapperCompare
-import importlib, inspect, sys, traceback
+import importlib, inspect, sys, traceback, types
 
 #########################################################################################
 # ⚠ Warning: It is extremely important to note that node.args[i] may contain subroutines!
@@ -131,59 +131,50 @@ class ConcolicWrapperClassDef(NodeTransformer):
             node.body[0].value = node.body[0].value.args[0]
         return node
 
-def _call_with_frames_removed(func, *args, **kwargs):
-    return func(*args, **kwargs)
+def _exec_module(self, module): # """Execute the module."""
+    tree = parse(inspect.getsource(module))
+    ####################################################################
+    # special treatment for statements like "from __future__ import ..."
+    tree.body = tree.body[next((i for i, x in enumerate(tree.body) if isinstance(x, ImportFrom) and x.module == '__future__'), 0):]
+    i = 0
+    while i < len(tree.body) and isinstance(tree.body[i], ImportFrom) and tree.body[i].module == '__future__':
+        i += 1
+    ####################################################################
+    tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.bool', asname=None)]))
+    tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.float', asname=None)]))
+    tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.int', asname=None)]))
+    tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.str', asname=None)]))
+    tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.range', asname=None)]))
+    tree.body.insert(i, Import(names=[alias(name='conbyte.utils', asname=None)]))
+    tree = ConcolicWrapperCall().visit(tree)
+    tree = ConcolicWrapperConstant().visit(tree)
+    tree = ConcolicWrapperCompare().visit(tree)
+    tree = ConcolicWrapperAssign().visit(tree)
+    tree = ConcolicWrapperFunctionDef().visit(tree)
+    tree = ConcolicWrapperClassDef().visit(tree) # unwrap classes' docstrings
+    fix_missing_locations(tree)
+    code = compile(tree, module.__file__, 'exec')
+    importlib._bootstrap._call_with_frames_removed(exec, code, module.__dict__)
 
-class ConcolicLoader(importlib.machinery.SourceFileLoader):
-    def source_to_code(self, data, path):
-        source = importlib.util.decode_source(data)
-        tree = _call_with_frames_removed(parse, source)
-        ####################################################################
-        # special treatment for statements like "from __future__ import ..."
-        tree.body = tree.body[next((i for i, x in enumerate(tree.body) if isinstance(x, ImportFrom) and x.module == '__future__'), 0):]
-        i = 0
-        while i < len(tree.body) and isinstance(tree.body[i], ImportFrom) and tree.body[i].module == '__future__':
-            i += 1
-        ####################################################################
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.bool', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.float', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.int', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.str', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.concolic.range', asname=None)]))
-        tree.body.insert(i, Import(names=[alias(name='conbyte.utils', asname=None)]))
-        tree = ConcolicWrapperCall().visit(tree)
-        tree = ConcolicWrapperConstant().visit(tree)
-        tree = ConcolicWrapperCompare().visit(tree)
-        tree = ConcolicWrapperAssign().visit(tree)
-        tree = ConcolicWrapperFunctionDef().visit(tree)
-        tree = ConcolicWrapperClassDef().visit(tree) # unwrap classes' docstrings
-        fix_missing_locations(tree)
-        return _call_with_frames_removed(compile, tree, path, 'exec')
+def _find_spec(cls, fullname, path=None, target=None):
+    # print(fullname, path, target)
+    spec = cls.find_spec_original(fullname, path, target) # "find_spec_original" is its original version which is assigned at line 179
+    if not spec: return spec
+    if not fullname.startswith('conbyte') and fullname not in ['rpyc.core.brine']:
+        module = importlib.util.module_from_spec(spec)
+        try:
+            inspect.getsource(module) # this line is used to check if the source is available
+            spec.loader.exec_module = types.MethodType(_exec_module, spec.loader) # if the source is available, replace the function with our own
+        except Exception as exception:
+            msg = str(exception)
+            if not (isinstance(exception, OSError) and msg in ('could not get source code',
+                                                                'source code not available')) \
+                and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
+                traceback.print_exc()
+                sys.exit(1)
+    return spec
 
-i = 0
-for j in range(1, len(sys.meta_path)+1):
-    if hasattr(sys.meta_path[-j], 'find_spec'): i = j; break
-
-if i > 0:
-    _real_pathfinder = sys.meta_path[-i]
-    class ConcolicFinder(type(_real_pathfinder)):
-        @classmethod
-        def find_spec(cls, fullname, path=None, target=None):
-            # print(fullname, path, target)
-            spec = _real_pathfinder.find_spec(fullname, path, target)
-            if not spec: return spec
-            if not fullname.startswith('conbyte') and fullname not in ['rpyc.core.brine']:
-                module = importlib.util.module_from_spec(spec)
-                try:
-                    inspect.getsource(module) # this line is used to check if the source is available
-                    spec.loader.__class__ = ConcolicLoader # if the source is available, replace it with our own
-                except Exception as exception:
-                    msg = str(exception)
-                    if not (isinstance(exception, OSError) and msg in ('could not get source code',
-                                                                       'source code not available')) \
-                        and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
-                        traceback.print_exc()
-                        sys.exit(1)
-            return spec
-    sys.meta_path[-i] = ConcolicFinder
-
+for e in sys.meta_path:
+    if hasattr(e, 'find_spec'):
+        e.find_spec_original = e.find_spec
+        e.find_spec = types.MethodType(_find_spec, e)
