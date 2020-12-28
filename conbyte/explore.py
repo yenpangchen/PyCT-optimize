@@ -79,6 +79,20 @@ class ExplorationEngine:
                 cont = self._one_execution(all_args) # other consecutive executions following the 1st execution
         return iterations
 
+    def _can_use_concolic_wrapper(self, root, modpath):
+        r, s = multiprocessing.Pipe()
+        if os.fork() == 0: # child process
+            try:
+                import conbyte.wrapper
+                module = get_module_from_rootdir_and_modpath(root, modpath)
+                s.send(1)
+            except:
+                s.send(0)
+            os._exit(os.EX_OK)
+        os.wait()
+        ans = r.recv(); r.close(); s.close()
+        return ans
+
     def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, timeout=15, deadcode=None, include_exception=False, lib=None):
         self.modpath = modpath; self.funcname = funcname; self.timeout = timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
@@ -92,6 +106,7 @@ class ExplorationEngine:
         sys.path.insert(0, self.root)#; sys.path.insert(0, file_dir)
         file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py')))
         now_dir = os.getcwd(); os.chdir(file_dir)
+        self.can_use_concolic_wrapper = self._can_use_concolic_wrapper(self.root, self.modpath)
         iterations = func_timeout.func_timeout(15*60, self._execution_loop, args=(max_iterations, all_args))
         os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
@@ -126,7 +141,10 @@ class ExplorationEngine:
         def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive environment from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
-            import conbyte.wrapper
+            if self.can_use_concolic_wrapper:
+                import conbyte.wrapper
+            else:
+                import conbyte
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
             execute = get_function_from_module_and_funcname(module, self.funcname)
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
@@ -141,7 +159,7 @@ class ExplorationEngine:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print(f"Timeout (soft) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats", file=f)
             except Exception as e:
-                log.error(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats"); log.error(e); traceback.print_exc()
+                log.error(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats")#; log.error(e); traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats", file=f); print(e, file=f)
