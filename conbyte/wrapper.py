@@ -181,3 +181,22 @@ for e in sys.meta_path:
     if hasattr(e, 'find_spec'):
         e.find_spec_original = e.find_spec
         e.find_spec = types.MethodType(_find_spec, e)
+
+importlib.util.spec_from_file_location_original = importlib.util.spec_from_file_location
+def _spec_from_file_location(name, location=None, *, loader=None, submodule_search_locations=object()):
+    spec = importlib.util.spec_from_file_location_original(name, location, loader=loader, submodule_search_locations=submodule_search_locations)
+    if not spec: return spec
+    if not name.startswith('conbyte') and name not in ['rpyc.core.brine']:
+        module = importlib.util.module_from_spec(spec)
+        try:
+            inspect.getsource(module) # this line is used to check if the source is available
+            spec.loader.exec_module = types.MethodType(_exec_module, spec.loader) # if the source is available, replace the function with our own
+        except Exception as exception:
+            msg = str(exception)
+            if not (isinstance(exception, OSError) and msg in ('could not get source code',
+                                                                'source code not available')) \
+                and not (isinstance(exception, TypeError) and msg.endswith('is a built-in module')):
+                traceback.print_exc()
+                sys.exit(1)
+    return spec
+importlib.util.spec_from_file_location = _spec_from_file_location
