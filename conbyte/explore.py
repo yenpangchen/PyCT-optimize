@@ -1,7 +1,7 @@
 import builtins, coverage, func_timeout, inspect, json, logging, multiprocessing, os, pickle, re, signal, sys, traceback
 from conbyte.path import PathToConstraint
 from conbyte.solver import Solver
-from conbyte.utils import ConcolicObject, unwrap, get_funcobj_from_modpath_and_funcname
+from conbyte.utils import ConcolicObject, unwrap, get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
 
 log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
@@ -126,7 +126,9 @@ class ExplorationEngine:
         def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive environment from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
-            import conbyte.wrapper; execute = get_funcobj_from_modpath_and_funcname(self.root, self.modpath, self.funcname)
+            import conbyte.wrapper
+            module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
+            execute = get_function_from_module_and_funcname(module, self.funcname)
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
@@ -168,7 +170,9 @@ class ExplorationEngine:
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
             sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
-            self.coverage.start(); execute = get_funcobj_from_modpath_and_funcname(self.root, self.modpath, self.funcname)
+            self.coverage.start()
+            module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
+            execute = get_function_from_module_and_funcname(module, self.funcname)
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
             answer = self.Exception
             try:

@@ -120,6 +120,9 @@ class ConcolicWrapperFunctionDef(NodeTransformer):
                 x = parse('return conbyte.utils.unwrap()').body[0]; x.value.args = [node.value]; return x
             return node
     def visit_FunctionDef(self, node):
+        if len(node.body) > 0 and hasattr(node.body[0], 'value') and hasattr(node.body[0].value, 'func') \
+            and dump(node.body[0].value.func) == dump(parse('conbyte.concolic.str.ConcolicStr()').body[0].value.func):
+            node.body[0].value = node.body[0].value.args[0]
         if node.name in ['__bool__']: # other type castings (e.g., '__str__') can also be put here if required
             return self.ConcolicWrapperReturn().visit(node)
         return node

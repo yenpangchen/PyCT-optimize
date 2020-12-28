@@ -5,7 +5,8 @@ TIMEOUT = 15
 parser = argparse.ArgumentParser(); parser.add_argument("mode"); parser.add_argument("project"); args = parser.parse_args()
 
 if args.mode != '2':
-    from conbyte.utils import get_funcobj_from_modpath_and_funcname
+    from conbyte.utils import get_module_from_rootdir_and_modpath
+    from conbyte.utils import get_function_from_module_and_funcname
     import conbyte.explore; _complete_primitive_arguments = conbyte.explore.ExplorationEngine._complete_primitive_arguments
 else:
     import symbolic.loader; get_funcobj_from_modpath_and_funcname = symbolic.loader.Loader.get_funcobj_from_modpath_and_funcname
@@ -24,6 +25,7 @@ coverage_data = coverage.CoverageData()
 coverage_accumulated_missing_lines = {}
 cov = coverage.Coverage(data_file=None, source=[rootdir], omit=['**/__pycache__/**', '**/.venv/**'])
 start2 = time.time()
+os.system(f'rm ./project_statistics/{project_name}/incomplete_functions.txt')
 for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
     for file in files:
         if file == 'inputs.pkl':
@@ -38,7 +40,9 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
                 r, s = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
                 def child_process(is_first, small_missing_lines):
                     sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
-                    cov.start(); execute = get_funcobj_from_modpath_and_funcname(rootdir, dirpath.split('/')[-2], dirpath.split('/')[-1])
+                    cov.start()
+                    module = get_module_from_rootdir_and_modpath(rootdir, dirpath.split('/')[-2])
+                    execute = get_function_from_module_and_funcname(module, dirpath.split('/')[-1])
                     print('currently measuring >>>', dirpath.split('/')[-2], dirpath.split('/')[-1])
                     pri_args, pri_kwargs = _complete_primitive_arguments(execute, i)
                     try:
@@ -76,7 +80,9 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
             ub = lb + len(func_lines) - 1
             mylist = sorted([x for x in small_missing_lines if lb <= x <= ub])
             with open(f'./project_statistics/{project_name}/incomplete_functions.txt', 'a') as fmf:
-                fmf.write(f"{our_filename}:{min(mylist)}, {func_def}, {mylist}\n")
+                try: n = min(mylist)
+                except: n = 0
+                fmf.write(f"{our_filename}:{n}, {func_def.strip()}, {mylist}, timeout 900 ./py-conbyte.py -r '/root/04_Python' '{our_filename.split('.py:')[0][len('/root/04_Python/'):].replace('/', '.')}' -s {func_def.strip()[len('def '):].split('(')[0]} {{}} -m 200 --lib '/root/04_Python/.venv/lib/python3.8/site-packages' --include_exception\n")
 end = time.time()
 print(f"Time(sec.): {end-start2}")
 
