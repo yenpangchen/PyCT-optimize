@@ -80,14 +80,16 @@ try:
                 if not modpath.startswith('.venv') and '__pycache__' not in modpath:
                     # if 'solutions.system_design.mint.mint_mapreduce' not in modpath: continue #cont = True
                     # if not cont: continue
-                    TIMEOUT = 15*60; signal.signal(signal.SIGINT, functools.partial(SIGINT_handler, f"timeout {TIMEOUT} ./py-conbyte.py -r '{rootdir}' '{modpath}' -s "))
+                    TIMEOUT = 15*60
+                    if args.mode == '1': cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' --total_timeout {TIMEOUT} {{}} -m {args.iteration} --lib '{lib}' --include_exception --dump_projstats"
+                    elif args.mode == '2': cmd = f"./pyexz3.py -r '{rootdir}' '{modpath}' --total_timeout {TIMEOUT} {{}} -m {args.iteration} --lib '{lib}' --dump_projstats"
+                    else: cmd = f"./py-conbyte.py -r '{rootdir}' '{modpath}' --total_timeout {TIMEOUT} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
+                    signal.signal(signal.SIGINT, functools.partial(SIGINT_handler, cmd))
                     if os.fork() == 0: # child process
                         funcs = extract_function_list_from_modpath(rootdir, modpath)
                         for f in funcs:
                             if read_functions and (modpath, f) not in function_domain: continue
-                            if args.mode == '1': cmd = f"timeout {TIMEOUT} ./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m {args.iteration} --lib '{lib}' --include_exception --dump_projstats"
-                            elif args.mode == '2': cmd = f"timeout {TIMEOUT} ./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m {args.iteration} --lib '{lib}' --dump_projstats"
-                            else: cmd = f"timeout {TIMEOUT} ./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
+                            cmd += f" -s {f}"
                             print(modpath, '+', f, '>>>'); print(cmd)
                             try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
                             except subprocess.CalledProcessError as e: print(e.output)

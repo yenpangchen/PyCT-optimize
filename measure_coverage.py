@@ -82,7 +82,7 @@ for dirpath, _, files in os.walk(f"./project_statistics/{project_name}"):
             with open(f'./project_statistics/{project_name}/incomplete_functions.txt', 'a') as fmf:
                 try: n = min(mylist)
                 except: n = 0
-                fmf.write(f"{our_filename}:{n}, {func_def.strip()}, {mylist}, timeout 900 ./py-conbyte.py -r '/root/04_Python' '{our_filename.split('.py:')[0][len('/root/04_Python/'):].replace('/', '.')}' -s {func_def.strip()[len('def '):].split('(')[0]} {{}} -m 200 --lib '/root/04_Python/.venv/lib/python3.8/site-packages' --include_exception\n")
+                fmf.write(f"{our_filename}:{n}, {func_def.strip()}, {mylist}, ./py-conbyte.py -r '/root/04_Python' '{our_filename[len('/root/04_Python/'):-len('.py')].replace('/', '.')}' -s {func_def.strip()[len('def '):].split('(')[0]} {{}} -m 200 --lib '/root/04_Python/.venv/lib/python3.8/site-packages' --include_exception --total_timeout=900\n")
 end = time.time()
 print(f"Time(sec.): {end-start2}")
 

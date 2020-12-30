@@ -93,8 +93,8 @@ class ExplorationEngine:
         ans = r.recv(); r.close(); s.close()
         return ans
 
-    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, timeout=15, deadcode=None, include_exception=False, lib=None):
-        self.modpath = modpath; self.funcname = funcname; self.timeout = timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib
+    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, single_timeout=15, total_timeout=900, deadcode=None, include_exception=False, lib=None):
+        self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
         self.single_coverage = self.root.startswith(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
@@ -107,7 +107,11 @@ class ExplorationEngine:
         file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py')))
         now_dir = os.getcwd(); os.chdir(file_dir)
         self.can_use_concolic_wrapper = self._can_use_concolic_wrapper(self.root, self.modpath)
-        iterations = func_timeout.func_timeout(15*60, self._execution_loop, args=(max_iterations, all_args))
+        try: iterations = func_timeout.func_timeout(self.total_timeout, self._execution_loop, args=(max_iterations, all_args))
+        except Exception as e:
+            print('Was this exception triggered by total_timeout? ' + str(e))
+            traceback.print_exc()
+            iterations = 0 # usually catch timeout exceptions
         os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
         if self.statsdir:
@@ -150,7 +154,7 @@ class ExplorationEngine:
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
-                result = conbyte.utils.unwrap(func_timeout.func_timeout(self.timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
+                result = conbyte.utils.unwrap(func_timeout.func_timeout(self.single_timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
                 log.info(f"Return: {result}")
             except func_timeout.FunctionTimedOut:
                 result = self.Timeout
@@ -171,7 +175,7 @@ class ExplorationEngine:
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
-        if not r0.poll(self.timeout + 5):
+        if not r0.poll(self.single_timeout + 5):
             result = self.Timeout
             log.error(f"Timeout (hard) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception --dump_projstats")
             if self.statsdir:
@@ -194,7 +198,7 @@ class ExplorationEngine:
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
             answer = self.Exception
             try:
-                answer = func_timeout.func_timeout(self.timeout, execute, args=pri_args, kwargs=pri_kwargs)
+                answer = func_timeout.func_timeout(self.single_timeout, execute, args=pri_args, kwargs=pri_kwargs)
             except func_timeout.FunctionTimedOut: answer = self.Timeout
             except: pass
             self.coverage.stop(); self.coverage_data.update(self.coverage.get_data())
@@ -213,7 +217,7 @@ class ExplorationEngine:
             else:
                 s2.send(self.Exception)
         process = multiprocessing.Process(target=child_process); process.start()
-        if not r0.poll(self.timeout + 5): answer = self.Timeout
+        if not r0.poll(self.single_timeout + 5): answer = self.Timeout
         else:
             answer = r1.recv()
             if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t

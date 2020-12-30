@@ -18,6 +18,7 @@ parser.add_argument("--lib", dest="lib", help="another library path to be insert
 parser.add_argument("--safety", dest="safety", help="indicates the behavior when the values in Python and in SMTLIB2 of a concolic object are not equal. [default = 0]\n(0) The expression in a concolic object is still preserved even if the values are different.\n(1) The expression in a concolic object will be erased if the values are different, but the program still continues.\n(2) The expression in a concolic object will be erased if the values are different, and the program exits soon.\nOnly in level 0 don't we verify return values of the target function since some objects in fact are not picklable,\nand therefore information about return values will not printed in the end.", type=int, default=0)
 parser.add_argument("-t", "--timeout", dest="timeout", help="timeout (sec.) for the solver to solve a constraint [default = 10]", type=int, default=10)
 parser.add_argument("--timeout2", dest="timeout2", help="timeout (sec.) for the explorer to go through one iteration [default = 15]", type=int, default=15)
+parser.add_argument("--total_timeout", dest="total_timeout", help="", type=int, default=900)
 parser.add_argument("--include_exception", dest="include_exception", action='store_true', help="update coverage statistics also when the return value is not picklable.")
 
 # Logging configuration
@@ -41,7 +42,7 @@ engine = conbyte.explore.ExplorationEngine(solver=args.solver, timeout=args.time
                                            store=args.formula, verbose=args.verbose, logfile=args.logfile,
                                            statsdir=statsdir)
 print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root=args.root, funcname=args.func,
-                                            max_iterations=args.iter, timeout=args.timeout2, deadcode=None,
+                                            max_iterations=args.iter, single_timeout=args.timeout2, total_timeout=args.total_timeout, deadcode=None,
                                             include_exception=args.include_exception, lib=args.lib))
 ##############################################################################
 
