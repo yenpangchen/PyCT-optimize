@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-import argparse, coverage, func_timeout, importlib.util, inspect, multiprocessing, os, pickle, signal, subprocess, sys, time
+import argparse, coverage, func_timeout, functools, importlib.util, inspect, multiprocessing, os, pickle, signal, subprocess, sys, time
 os.system('/usr/bin/Xorg -noreset +extension GLX +extension RANDR +extension RENDER -config /etc/X11/xorg.conf :1 &')
+
+def SIGINT_handler(cmd, signum, frame):
+    os.system(f"pkill -f '{cmd}'")
 
 parser = argparse.ArgumentParser(); parser.add_argument("mode"); parser.add_argument("project"); parser.add_argument("iteration"); args = parser.parse_args()
 
@@ -67,7 +70,6 @@ try:
 except: pass
 
 cont = False
-pid = None
 start = time.time()
 try:
     for dirpath, _, files in os.walk(rootdir):
@@ -78,11 +80,11 @@ try:
                 if not modpath.startswith('.venv') and '__pycache__' not in modpath:
                     # if 'solutions.system_design.mint.mint_mapreduce' not in modpath: continue #cont = True
                     # if not cont: continue
-                    if (pid := os.fork()) == 0: # child process
+                    TIMEOUT = 15*60; signal.signal(signal.SIGINT, functools.partial(SIGINT_handler, f"timeout {TIMEOUT} ./py-conbyte.py -r '{rootdir}' '{modpath}' -s "))
+                    if os.fork() == 0: # child process
                         funcs = extract_function_list_from_modpath(rootdir, modpath)
                         for f in funcs:
                             if read_functions and (modpath, f) not in function_domain: continue
-                            TIMEOUT = 15*60
                             if args.mode == '1': cmd = f"timeout {TIMEOUT} ./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m {args.iteration} --lib '{lib}' --include_exception --dump_projstats"
                             elif args.mode == '2': cmd = f"timeout {TIMEOUT} ./pyexz3.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m {args.iteration} --lib '{lib}' --dump_projstats"
                             else: cmd = f"timeout {TIMEOUT} ./py-conbyte.py -r '{rootdir}' '{modpath}' -s {f} {{}} -m 1 --lib '{lib}' --include_exception --dump_projstats"
@@ -90,16 +92,13 @@ try:
                             try: completed_process = subprocess.run(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
                             except subprocess.CalledProcessError as e: print(e.output)
                         os._exit(os.EX_OK)
-                    os.wait(); pid = None
+                    os.wait()
                 end = time.time()
                 #if not read_functions and end - start > 3 * 60 * 60:
                 #    raise JumpOutOfLoop()
 except Exception as e:
     print('Exception: ' + str(e), end='', flush=True)
     import traceback; traceback.print_exc()
-    if pid:
-        os.system(f"kill -KILL {pid}")
-        os.wait()
 
 with open(os.path.abspath(f"./project_statistics/{project_name}/coverage_time.txt"), 'w') as f:
     print(f"Time(sec.): {end-start}", file=f)
