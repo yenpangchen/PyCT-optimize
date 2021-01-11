@@ -111,10 +111,10 @@ class ExplorationEngine:
         now_dir = os.getcwd(); os.chdir(file_dir)
         self.can_use_concolic_wrapper = self._can_use_concolic_wrapper(self.root, self.modpath)
         try: iterations = func_timeout.func_timeout(self.total_timeout, self._execution_loop, args=(max_iterations, all_args))
-        except Exception as e:
+        except BaseException as e: # importantly note that func_timeout.FunctionTimedOut is NOT inherited from the (general) Exception class.
             print('Was this exception triggered by total_timeout? ' + str(e))
-            traceback.print_exc()
             iterations = 0 # usually catches timeout exceptions
+            # traceback.print_exc()
         os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
         if self.statsdir:
@@ -133,10 +133,10 @@ class ExplorationEngine:
 
     def _one_execution(self, all_args):
         result = self._one_execution_concolic(all_args) # primitive input arguments "all_args" may be modified here.
-        if not self.single_coverage: # We don't measure coverage in primitive environments during the non-single coverage mode.
+        if not self.single_coverage: # We don't measure coverage in the primitive mode under the non-single coverage setting.
             self.in_out.append((all_args.copy(), result)) # .copy() is important! Think why.
             return True # continue iteration
-        answer = self._one_execution_primitive(all_args)
+        answer = self._one_execution_primitive(all_args) # we must measure the coverage in the primitive mode since self.constraints_to_solve would become unpicklable if measured in the concolic mode
         if self.Timeout not in (result, answer):
             if result != answer: print('Input:', all_args, '／My result:', result, '／Correct answer:', answer)
             assert result == answer
@@ -148,7 +148,7 @@ class ExplorationEngine:
     def _one_execution_concolic(self, all_args):
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
-            sys.dont_write_bytecode = True # very important to prevent the later primitive environment from using concolic objects imported here...
+            sys.dont_write_bytecode = True # very important to prevent the later primitive mode from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
             if self.can_use_concolic_wrapper:
                 import conbyte.wrapper
@@ -196,7 +196,7 @@ class ExplorationEngine:
     def _one_execution_primitive(self, all_args):
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
-            sys.dont_write_bytecode = True # same reason mentioned in the concolic environment
+            sys.dont_write_bytecode = True # same reason mentioned in the concolic mode
             self.coverage.start()
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
             execute = get_function_from_module_and_funcname(module, self.funcname)
@@ -225,12 +225,11 @@ class ExplorationEngine:
                 s2.send(self.Exception)
         process = multiprocessing.Process(target=child_process); process.start()
         self.module_lines_range = r1.recv(); self.function_lines_range = r1.recv()
-        if self.target_file not in self.coverage_accumulated_missing_lines:
-            self.coverage_accumulated_missing_lines[self.target_file] = self.module_lines_range
         if not r0.poll(self.single_timeout + 5): answer = self.Timeout
         else:
             answer = r1.recv()
             if (t:=r2.recv()) is not self.Exception: (self.coverage_data, self.coverage_accumulated_missing_lines) = t
+        if self.target_file not in self.coverage_accumulated_missing_lines: self.coverage_accumulated_missing_lines[self.target_file] = self.module_lines_range
         self.in_out.append((all_args.copy(), answer)); r1.close(); s1.close(); r2.close(); s2.close(); r0.close(); s0.close()
         if process.is_alive(): process.kill()
         return answer
