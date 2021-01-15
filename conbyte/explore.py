@@ -1,4 +1,5 @@
 import builtins, coverage, func_timeout, inspect, logging, multiprocessing, os, pickle, sys, traceback
+from conbyte.constraint import Constraint
 from conbyte.path import PathToConstraint
 from conbyte.solver import Solver
 from conbyte.utils import ConcolicObject, unwrap, get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
@@ -176,7 +177,7 @@ class ExplorationEngine:
             s0.send(0) # just a notification to the parent process that we're going to send data
             try: s2.send(result)
             except: s2.send(self.Unpicklable)
-            try: s3.send((self.constraints_to_solve, self.path))
+            try: s3.send((Constraint.global_constraints, self.constraints_to_solve, self.path))
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
@@ -188,7 +189,7 @@ class ExplorationEngine:
                     print(f"Timeout (hard) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception", file=f)
         else:
             result = r2.recv()
-            if (t:=r3.recv()) is not self.Unpicklable: (self.constraints_to_solve, self.path) = t
+            if (t:=r3.recv()) is not self.Unpicklable: (Constraint.global_constraints, self.constraints_to_solve, self.path) = t
         r2.close(); s2.close(); r3.close(); s3.close(); r0.close(); s0.close()
         if process.is_alive(): process.kill()
         return result
