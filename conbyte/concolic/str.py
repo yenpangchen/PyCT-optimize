@@ -51,6 +51,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     def __getitem__(self, key, /): # <slot wrapper '__getitem__' of 'str' objects>
         """Return self[key]."""
         log.debug("ConStr, __getitem__ is called")
+        if isinstance(key, int): (self.__len__() > key).__bool__() # insert a handmade branch since we cannot access an element whose index is beyond the scope of this string.
         value = super().__getitem__(unwrap(key))
         if isinstance(key, int):
             if not isinstance(key, Concolic): key = ConcolicObject(int(key)) # ConcolicInt
