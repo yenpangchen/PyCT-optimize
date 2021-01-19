@@ -390,6 +390,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['=', self, other]
             return ConcolicObject(value, expr)
         if op == '__floordiv__':
+            # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
+            (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
             try:
                 if (value := super().__floordiv__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rfloordiv__(unwrap(self))
@@ -465,6 +467,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['<', self, other]
             return ConcolicObject(value, expr)
         if op == '__mod__':
+            # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
+            (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
             try:
                 if (value := super().__mod__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rmod__(unwrap(self))
@@ -518,6 +522,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['+', other, self]
             return ConcolicObject(value, expr)
         if op == '__rfloordiv__':
+            # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
+            (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
             value = super().__rfloordiv__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
@@ -530,6 +536,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['div', other, self]
             return ConcolicObject(value, expr)
         if op == '__rmod__':
+            # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
+            (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
             value = super().__rmod__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
@@ -570,6 +578,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['-', other, self]
             return ConcolicObject(value, expr)
         if op == '__rtruediv__':
+            # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
+            (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
             value = super().__rtruediv__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
@@ -598,6 +608,8 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             expr = ['-', self, other]
             return ConcolicObject(value, expr)
         if op == '__truediv__':
+            # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
+            (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
             try:
                 if (value := super().__truediv__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rtruediv__(unwrap(self))

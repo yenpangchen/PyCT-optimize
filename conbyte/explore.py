@@ -142,9 +142,9 @@ class ExplorationEngine:
             if result != answer: print('Input:', all_args, '／My result:', result, '／Correct answer:', answer)
             assert result == answer
         # Note only in the self.single_coverage mode does the program go here.
-        if s := (self.function_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]:
-            log.info(f"Not Covered Yet: {self.target_file} {s}"); return True # continue iteration
-        return False # stop iteration if the target function coverage is already full.
+        s = (self.function_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
+        log.info(f"Not Covered Yet: {self.target_file} {sorted(s) if s else '{}'}")
+        return s # continue iteration only if the target function coverage is not full yet.
 
     def _one_execution_concolic(self, all_args):
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
