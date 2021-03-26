@@ -369,7 +369,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['+', self, other]
@@ -384,7 +386,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['=', self, other]
@@ -416,7 +420,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['>=', self, other]
@@ -431,7 +437,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['>', self, other]
@@ -446,7 +454,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['<=', self, other]
@@ -461,7 +471,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['<', self, other]
@@ -503,7 +515,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['not', ['=', self, other]]
@@ -516,7 +530,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['+', other, self]
@@ -559,7 +575,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # TODO: Currently not support the case when "other" is a str.
             else:
                 try: other = float(other)
-                except: other = 1.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['*', other, self]
@@ -572,7 +590,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['-', other, self]
@@ -587,7 +607,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['/', other, self]
@@ -602,7 +624,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 0.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['-', self, other]
@@ -619,7 +643,9 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 # so we cannot convert float to int here!
             else:
                 try: other = float(other)
-                except: other = 1.0
+                except:
+                    try: other = int(other)
+                    except: other = 0.0
                 if other == (t:=int(other)): other = t
                 other = ConcolicObject(other)
             expr = ['/', self, other]
