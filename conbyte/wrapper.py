@@ -151,19 +151,19 @@ def _exec_module(self, module): # """Execute the module."""
     tree.body.insert(i, Import(names=[alias(name='conbyte.utils', asname=None)]))
     tree = ConcolicWrapperCall().visit(tree)
     tree = ConcolicWrapperConstant().visit(tree)
-    tree = ConcolicWrapperCompare().visit(tree)
-    tree = ConcolicWrapperAssign().visit(tree)
-    tree = ConcolicWrapperFunctionDef().visit(tree)
-    tree = ConcolicWrapperClassDef().visit(tree) # unwrap classes' docstrings
+    # tree = ConcolicWrapperCompare().visit(tree)
+    # tree = ConcolicWrapperAssign().visit(tree)
+    # tree = ConcolicWrapperFunctionDef().visit(tree)
+    # tree = ConcolicWrapperClassDef().visit(tree) # unwrap classes' docstrings
     fix_missing_locations(tree)
     code = compile(tree, module.__file__, 'exec')
     importlib._bootstrap._call_with_frames_removed(exec, code, module.__dict__)
 
 def _find_spec(cls, fullname, path=None, target=None):
     # print(fullname, path, target)
-    spec = cls.find_spec_original(fullname, path, target) # "find_spec_original" is its original version which is assigned at line 179
+    spec = cls.find_spec_original(fullname, path, target) # "find_spec_original" is its original version which is assigned at line 182
     if not spec: return spec
-    if not fullname.startswith('conbyte') and fullname not in ['rpyc.core.brine']:
+    if not fullname.startswith('conbyte') and not fullname.startswith('rpyc'): #fullname not in ['rpyc.core.brine']:
         module = importlib.util.module_from_spec(spec)
         try:
             inspect.getsource(module) # this line is used to check if the source is available

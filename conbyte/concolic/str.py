@@ -628,101 +628,104 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             try:
                 if (value := super().__add__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__radd__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             expr = ['str.++', self, other]
             return ConcolicObject(value, expr)
         if op == '__contains__':
             value = super().__contains__(unwrap(other))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             expr = ['str.contains', self, other]
             return ConcolicObject(value, expr)
         if op == '__eq__':
             try:
                 if (value := super().__eq__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__eq__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             expr = ['=', self, other]
             return ConcolicObject(value, expr)
         if op == '__ge__':
             try:
                 if (value := super().__ge__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__le__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             # expr = ['str.<=', other, self]
-            expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
+            expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]] # TODO: may be incorrect in some cases
             return ConcolicObject(value, expr)
         if op == '__gt__':
             try:
                 if (value := super().__gt__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__lt__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             # expr = ['str.<', other, self]
-            expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]]
+            expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]] # TODO: may be incorrect in some cases
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
         if op == '__le__':
             try:
                 if (value := super().__le__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__ge__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             # expr = ['str.<=', self, other]
-            expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
+            expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]  # TODO: may be incorrect in some cases
             return ConcolicObject(value, expr)
         if op == '__lt__':
             try:
                 if (value := super().__lt__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__gt__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             # expr = ['str.<', self, other]
-            expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]
+            expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]] # TODO: may be incorrect in some cases
             expr = ["and", ["not", ["=", self, other]], expr]
             return ConcolicObject(value, expr)
-        if op == '__mul__': # TODO: Expressions not implemented
+        if op == '__mul__':
             try:
                 if (value := super().__mul__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rmul__(unwrap(self))
-            return ConcolicObject(value)
+            assert isinstance(other, (bool, int))
+            if isinstance(other, Concolic):
+                if isinstance(other, bool): other = other.__int2__()
+            else:
+                if type(other) is bool: other = int(other)
+                other = ConcolicObject(other)
+            result = ConcolicObject("")
+            while other > 0:
+                result += self
+                other -= 1
+            return ConcolicObject(value, result)
         if op == '__ne__':
             try:
                 if (value := super().__ne__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__ne__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             expr = ['not', ['=', self, other]]
             return ConcolicObject(value, expr)
         if op == '__radd__':
             value = unwrap(other).__add__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = str(other)
-                except: other = ''
-                other = ConcolicObject(other)
+            assert isinstance(other, str)
+            if not isinstance(other, Concolic): other = ConcolicObject(other)
             expr = ['str.++', other, self]
             return ConcolicObject(value, expr)
-        if op == '__rmul__': # TODO: Expressions not implemented
-            return ConcolicObject(super().__rmul__(unwrap(other)))
+        if op == '__rmul__':
+            value = super().__rmul__(unwrap(other))
+            assert isinstance(other, (bool, int))
+            if isinstance(other, Concolic):
+                if isinstance(other, bool): other = other.__int2__()
+            else:
+                if type(other) is bool: other = int(other)
+                other = ConcolicObject(other)
+            result = ConcolicObject("")
+            while other > 0:
+                result += self
+                other -= 1
+            return ConcolicObject(value, result)
         raise NotImplementedError
 
     def __bool__(self):

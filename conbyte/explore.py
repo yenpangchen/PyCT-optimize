@@ -97,8 +97,8 @@ class ExplorationEngine:
         ans = r.recv(); r.close(); s.close()
         return ans
 
-    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, single_timeout=15, total_timeout=900, deadcode=set(), include_exception=False, lib=None, single_coverage=True):
-        self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib
+    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, single_timeout=15, total_timeout=900, deadcode=set(), include_exception=False, lib=None, single_coverage=True, file_as_total=False):
+        self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib; self.file_as_total = file_as_total
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
         self.single_coverage = single_coverage
@@ -123,8 +123,12 @@ class ExplorationEngine:
                 pickle.dump([e[0] for e in self.in_out], f) # store only inputs
             if self.single_coverage:
                 with open(self.statsdir + '/missing_lines.txt', 'w') as f:
-                    f.write(str(sorted(self.function_lines_range & self.coverage_accumulated_missing_lines[self.target_file])) + '\n')
-                    f.write(str(sorted(self.function_lines_range)) + '\n')
+                    if self.file_as_total:
+                        f.write(str(sorted(self.module_lines_range & self.coverage_accumulated_missing_lines[self.target_file])) + '\n')
+                        f.write(str(sorted(self.module_lines_range)) + '\n')
+                    else:
+                        f.write(str(sorted(self.function_lines_range & self.coverage_accumulated_missing_lines[self.target_file])) + '\n')
+                        f.write(str(sorted(self.function_lines_range)) + '\n')
             with open(self.statsdir + '/smt.csv', 'w') as f:
                 f.write(',number,time\n')
                 f.write(f'sat,{Solver.stats["sat_number"]},{Solver.stats["sat_time"]}\n')
@@ -142,9 +146,12 @@ class ExplorationEngine:
             if result != answer: print('Input:', all_args, '／My result:', result, '／Correct answer:', answer)
             assert result == answer
         # Note only in the self.single_coverage mode does the program go here.
-        s = (self.function_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
+        if self.file_as_total:
+            s = (self.module_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
+        else:
+            s = (self.function_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
         log.info(f"Not Covered Yet: {self.target_file} {sorted(s) if s else '{}'}")
-        return s # continue iteration only if the target function coverage is not full yet.
+        return s # continue iteration only if the target file / function coverage is not full yet.
 
     def _one_execution_concolic(self, all_args):
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
@@ -156,7 +163,7 @@ class ExplorationEngine:
             else:
                 import conbyte
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
-            execute = get_function_from_module_and_funcname(module, self.funcname)
+            execute = get_function_from_module_and_funcname(module, self.funcname, True)
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
@@ -200,7 +207,7 @@ class ExplorationEngine:
             sys.dont_write_bytecode = True # same reason mentioned in the concolic mode
             self.coverage.start()
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
-            execute = get_function_from_module_and_funcname(module, self.funcname)
+            execute = get_function_from_module_and_funcname(module, self.funcname, True)
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(1, 1+len(inspect.getsourcelines(module)[0])))) # Note inspect.getsourcelines(module)[1] always returns 0, which is not the fact.
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(inspect.getsourcelines(execute)[1], inspect.getsourcelines(execute)[1] + len(inspect.getsourcelines(execute)[0]))))
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)

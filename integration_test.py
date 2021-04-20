@@ -67,7 +67,7 @@ class TestCodeSnippets(unittest.TestCase):
             engine = conbyte.explore.ExplorationEngine()
             iteration = 0
             while iteration == 0 or self._check_coverage(iteration, _id, missing_lines):
-                engine.explore(modpath, inputs, root=root, deadcode=self._missing_lines(_id), lib=lib)
+                engine.explore(modpath, inputs, root=root, deadcode=self._missing_lines(_id), lib=lib, file_as_total=True)
                 total_lines, executed_lines, missing_lines = engine.coverage_statistics() # missing_lines: dict
                 iteration += 1
             col_3 = str(list(map(lambda x: (list(x[0].values()), x[1]), engine.in_out)))[1:-1]
@@ -99,11 +99,13 @@ class TestCodeSnippets(unittest.TestCase):
             return {28, 35, 40}
         if _id == "48":
             return {34}
-        return {} # empty dictionary
+        return set()
 
     def _check_coverage(self, iteration, _id, missing_lines: dict):
         if missing_lines: # we only care about the primary file
             missing_lines = list(missing_lines.values())[0]
+        else:
+            missing_lines = set()
         status = self.assert_equal(iteration, missing_lines, self._missing_lines(_id))
         return not (iteration == self.iteration_max or status) # := not (termination condition)
 

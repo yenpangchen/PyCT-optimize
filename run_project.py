@@ -79,3 +79,5 @@ with open(os.path.abspath(f"./project_statistics/{project_name}/experiment_time.
     print(f"Time(sec.): {end-start}", file=f)
 
 print('End of running project.')
+
+os.system('python3 measure_coverage.py 1 ../04_Python')

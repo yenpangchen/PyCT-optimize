@@ -68,12 +68,13 @@ def get_module_from_rootdir_and_modpath(rootdir, modpath):
     os.chdir(now_dir)
     return module
 
-def get_function_from_module_and_funcname(module, funcname):
+def get_function_from_module_and_funcname(module, funcname, enforce=False):
     try:
         while '.' in funcname:
             module = getattr(module, funcname.split('.')[0])
             funcname = funcname.split('.')[1]
         func = getattr(module, funcname)
+        if enforce: return func
         ###########################################################################
         if len(list(inspect.signature(func).parameters)) > 0:
             for v in inspect.signature(func).parameters.values():

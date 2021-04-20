@@ -20,6 +20,7 @@ parser.add_argument("-t", "--timeout", dest="timeout", help="timeout (sec.) for 
 parser.add_argument("--single_timeout", dest="single_timeout", help="timeout (sec.) for the explorer to go through one iteration [default = 15]", type=int, default=15)
 parser.add_argument("--total_timeout", dest="total_timeout", help="", type=int, default=900)
 parser.add_argument("--include_exception", dest="include_exception", action='store_true', help="update coverage statistics also when the return value is not picklable.")
+parser.add_argument("--file_as_total", dest="file_as_total", action='store_true', default=False)
 
 # Logging configuration
 parser.add_argument("-v", "--verbose", dest='verbose', help="logging level [default = 1]\n(0) Show messages whose levels not lower than WARNING.\n(1) Show messages from (0), plus basic iteration information.\n(2) Show messages from (1), plus solver information.\n(3) Show messages from (2), plus all concolic objects' information.", type=int, default=1)
@@ -43,7 +44,7 @@ engine = conbyte.explore.ExplorationEngine(solver=args.solver, timeout=args.time
                                            statsdir=statsdir)
 print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root=args.root, funcname=args.func,
                                             max_iterations=args.iter, single_timeout=args.single_timeout, total_timeout=args.total_timeout, deadcode=set(),
-                                            include_exception=args.include_exception, lib=args.lib))
+                                            include_exception=args.include_exception, lib=args.lib, file_as_total=args.file_as_total))
 ##############################################################################
 
 ################################################################

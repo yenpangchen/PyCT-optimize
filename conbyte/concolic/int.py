@@ -365,14 +365,13 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__radd__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that int + float -> float instead of int,
-                # so we cannot convert float to int here!
+                # Please note that int + float -> float instead of int, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__radd__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['+', self, other]
             return ConcolicObject(value, expr)
@@ -382,31 +381,33 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__eq__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that (int = float) will convert int to float,
-                # so we cannot convert float to int here!
+                # Please note that (int = float) will convert int to float, so we cannot convert float to int here!
+                elif (hasattr(other, 'super') and isinstance(other.super, range)) or isinstance(other, str):
+                    return ConcolicObject(value) # smtlib2 cannot compare int with range and str.
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['=', self, other]
             return ConcolicObject(value, expr)
         if op == '__floordiv__':
             # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
-            (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            try: (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            except: pass
             try:
                 if (value := super().__floordiv__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rfloordiv__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that int.__floordiv__(float) will be changed to float.__rfloordiv__(int) in Python!
-                # TODO: Currently not support the case when "other" is a float.
-                # TODO: Currently not support the case when "other" is negative.
+                elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform int // float
+                elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__rfloordiv__(unwrap(self))
             else:
-                try: other = int(other)
-                except: other = 1
+                if type(other) is bool: other = int(other)
+                if not (type(other) is int and other > 0): return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = self.__class__(other)
             expr = ['div', self, other]
             return ConcolicObject(value, expr)
@@ -416,14 +417,13 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__le__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that (int >= float) will convert int to float,
-                # so we cannot convert float to int here!
+                # Please note that (int >= float) will convert int to float, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__le__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['>=', self, other]
             return ConcolicObject(value, expr)
@@ -433,14 +433,13 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__lt__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that (int > float) will convert int to float,
-                # so we cannot convert float to int here!
+                # Please note that (int > float) will convert int to float, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__lt__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['>', self, other]
             return ConcolicObject(value, expr)
@@ -450,14 +449,13 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__ge__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that (int <= float) will convert int to float,
-                # so we cannot convert float to int here!
+                # Please note that (int <= float) will convert int to float, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__ge__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['<=', self, other]
             return ConcolicObject(value, expr)
@@ -467,31 +465,34 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__gt__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that (int < float) will convert int to float,
-                # so we cannot convert float to int here!
+                # Please note that (int < float) will convert int to float, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__gt__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['<', self, other]
             return ConcolicObject(value, expr)
         if op == '__mod__':
             # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
-            (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            try: (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            except: pass
             try:
                 if (value := super().__mod__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rmod__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
                 # Please note that int.__mod__(float) will be changed to float.__rmod__(int) in Python!
-                # TODO: Currently not support the case when "other" is a float.
-                # TODO: Currently not support the case when "other" is negative.
+                elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform int // float
+                elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__rmod__(unwrap(self))
             else:
-                try: other = int(other)
-                except: other = 1
+                if type(other) is bool: other = int(other)
+                if not (type(other) is int and other > 0): return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = self.__class__(other)
             expr = ['mod', self, other]
             return ConcolicObject(value, expr)
@@ -499,9 +500,16 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             try:
                 if (value := super().__mul__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rmul__(unwrap(self))
-            if not isinstance(other, Concolic):
-                try: other = int(other)
-                except: other = 1
+            if isinstance(other, Concolic):
+                if isinstance(other, bool): other = other.__int2__()
+                # Please note that int * float -> float instead of int, so we cannot convert float to int here!
+                if isinstance(other, str): return other.__mul__(self)
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                # other cannot be of type "range" here, since Exception should be thrown at the statement: value = unwrap(other).__rmul__(unwrap(self))
+            else:
+                if type(other) is str: return ConcolicObject(other).__mul__(self)
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['*', self, other]
             return ConcolicObject(value, expr)
@@ -511,14 +519,12 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__ne__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that (int != float) will convert int to float,
-                # so we cannot convert float to int here!
+                # Please note that (int != float) will convert int to float, so we cannot convert float to int here!
+                elif (hasattr(other, 'super') and isinstance(other.super, range)) or isinstance(other, str):
+                    return ConcolicObject(value) # smtlib2 cannot compare int with range and str.
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['not', ['=', self, other]]
             return ConcolicObject(value, expr)
@@ -526,42 +532,49 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             value = super().__radd__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that float + int -> float instead of int,
-                # so we cannot convert float to int here!
+                # Please note that float + int -> float instead of int, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__radd__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['+', other, self]
             return ConcolicObject(value, expr)
         if op == '__rfloordiv__':
             # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
-            (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            try: (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            except: pass
             value = super().__rfloordiv__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # TODO: Currently not support the case when "other" is a float.
-                # TODO: Currently not support the case when "other" is negative.
+                elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform float // int
+                elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = super().__rfloordiv__(unwrap(other))
             else:
-                try: other = int(other)
-                except: other = 1
+                if type(other) is bool: other = int(other)
+                if not (type(other) is int and other > 0): return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = self.__class__(other)
             expr = ['div', other, self]
             return ConcolicObject(value, expr)
         if op == '__rmod__':
             # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
-            (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            try: (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            except: pass
             value = super().__rmod__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # TODO: Currently not support the case when "other" is a float.
-                # TODO: Currently not support the case when "other" is negative.
+                elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform float // int
+                elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = super().__rmod__(unwrap(other))
             else:
-                try: other = int(other)
-                except: other = 1
+                if type(other) is bool: other = int(other)
+                if not (type(other) is int and other > 0): return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = self.__class__(other)
             expr = ['mod', other, self]
             return ConcolicObject(value, expr)
@@ -569,16 +582,14 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             value = super().__rmul__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that float * int -> float instead of int,
-                # so we cannot convert float to int here!
-                # TODO: Currently not support the case when "other" is a list.
-                # TODO: Currently not support the case when "other" is a str.
+                # Please note that float * int -> float instead of int, so we cannot convert float to int here!
+                if isinstance(other, str): return other.__mul__(self)
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                # other cannot be of type "range" here, since Exception should be thrown at the statement: value = unwrap(other).__rmul__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is str: return ConcolicObject(other).__mul__(self)
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['*', other, self]
             return ConcolicObject(value, expr)
@@ -586,31 +597,30 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             value = super().__rsub__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that int - float -> float instead of int,
-                # so we cannot convert float to int here!
+                # Please note that float - int -> float instead of int, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = super().__rsub__(unwrap(other))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['-', other, self]
             return ConcolicObject(value, expr)
         if op == '__rtruediv__':
             # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
-            (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            try: (self != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            except: pass
             value = super().__rtruediv__(unwrap(other))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that int / float -> float instead of int,
-                # so we cannot convert float to int here!
+                # Please note that int / float -> float instead of int, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: super().__rtruediv__(unwrap(other))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['/', other, self]
             return ConcolicObject(value, expr)
@@ -620,33 +630,32 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__rsub__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that int - float -> float instead of int,
-                # so we cannot convert float to int here!
+                # Please note that int - float -> float instead of int, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__rsub__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['-', self, other]
             return ConcolicObject(value, expr)
         if op == '__truediv__':
             # TODO: not sure in the following statement what if "other" does not support the "!=" operator.
-            (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            try: (other != 0).__bool__() # insert a handmade branch since a number cannot be divided by zero.
+            except: pass
             try:
                 if (value := super().__truediv__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rtruediv__(unwrap(self))
             if isinstance(other, Concolic):
                 if isinstance(other, bool): other = other.__int2__()
-                # Please note that int / float -> float instead of int,
-                # so we cannot convert float to int here!
+                # Please note that int / float -> float instead of int, so we cannot convert float to int here!
+                assert not (hasattr(other, 'super') and isinstance(other.super, range))
+                assert not isinstance(other, str)
+                # other cannot be of type "range" and "str" here, since Exception should be thrown at the statement: value = unwrap(other).__rtruediv__(unwrap(self))
             else:
-                try: other = float(other)
-                except:
-                    try: other = int(other)
-                    except: other = 0.0
-                if other == (t:=int(other)): other = t
+                if type(other) is bool: other = int(other)
+                if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
                 other = ConcolicObject(other)
             expr = ['/', self, other]
             return ConcolicObject(value, expr)
