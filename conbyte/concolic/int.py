@@ -364,7 +364,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__add__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__radd__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that int + float -> float instead of int, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -380,7 +380,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__eq__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__eq__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that (int = float) will convert int to float, so we cannot convert float to int here!
                 elif (hasattr(other, 'super') and isinstance(other.super, range)) or isinstance(other, str):
                     return ConcolicObject(value) # smtlib2 cannot compare int with range and str.
@@ -398,7 +398,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__floordiv__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rfloordiv__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that int.__floordiv__(float) will be changed to float.__rfloordiv__(int) in Python!
                 elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform int // float
                 elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
@@ -416,7 +416,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__ge__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__le__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that (int >= float) will convert int to float, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -432,7 +432,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__gt__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__lt__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that (int > float) will convert int to float, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -448,7 +448,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__le__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__ge__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that (int <= float) will convert int to float, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -464,7 +464,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__lt__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__gt__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that (int < float) will convert int to float, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -483,7 +483,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__mod__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rmod__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that int.__mod__(float) will be changed to float.__rmod__(int) in Python!
                 elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform int // float
                 elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
@@ -501,7 +501,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__mul__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rmul__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that int * float -> float instead of int, so we cannot convert float to int here!
                 if isinstance(other, str): return other.__mul__(self)
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
@@ -518,7 +518,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__ne__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__ne__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that (int != float) will convert int to float, so we cannot convert float to int here!
                 elif (hasattr(other, 'super') and isinstance(other.super, range)) or isinstance(other, str):
                     return ConcolicObject(value) # smtlib2 cannot compare int with range and str.
@@ -531,7 +531,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         if op == '__radd__':
             value = super().__radd__(unwrap(other))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that float + int -> float instead of int, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -548,7 +548,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: pass
             value = super().__rfloordiv__(unwrap(other))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform float // int
                 elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
@@ -566,7 +566,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: pass
             value = super().__rmod__(unwrap(other))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 elif isinstance(other, float): return ConcolicObject(value) # TODO: smtlib2 cannot perform float // int
                 elif isinstance(other, int) and unwrap(other) < 0 : return ConcolicObject(value) # TODO: Currently not support the case when "other" is negative.
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
@@ -581,7 +581,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         if op == '__rmul__':
             value = super().__rmul__(unwrap(other))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that float * int -> float instead of int, so we cannot convert float to int here!
                 if isinstance(other, str): return other.__mul__(self)
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
@@ -596,7 +596,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
         if op == '__rsub__':
             value = super().__rsub__(unwrap(other))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that float - int -> float instead of int, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -613,7 +613,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
             except: pass
             value = super().__rtruediv__(unwrap(other))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that int / float -> float instead of int, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -629,7 +629,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__sub__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rsub__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that int - float -> float instead of int, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)
@@ -648,7 +648,7 @@ class ConcolicInt(int, Concolic, metaclass=MetaFinal):
                 if (value := super().__truediv__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__rtruediv__(unwrap(self))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
                 # Please note that int / float -> float instead of int, so we cannot convert float to int here!
                 assert not (hasattr(other, 'super') and isinstance(other.super, range))
                 assert not isinstance(other, str)

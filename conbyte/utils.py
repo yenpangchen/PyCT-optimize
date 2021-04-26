@@ -68,7 +68,7 @@ def get_module_from_rootdir_and_modpath(rootdir, modpath):
     os.chdir(now_dir)
     return module
 
-def get_function_from_module_and_funcname(module, funcname, enforce=False):
+def get_function_from_module_and_funcname(module, funcname, enforce=True):
     try:
         while '.' in funcname:
             module = getattr(module, funcname.split('.')[0])
@@ -83,12 +83,12 @@ def get_function_from_module_and_funcname(module, funcname, enforce=False):
             return func
         return None
         ###########################################################################
-        if len(list(inspect.signature(func).parameters)) > 0:
-            if list(inspect.signature(func).parameters)[0] == 'cls':
-                func = functools.partial(func, module)
-            elif list(inspect.signature(func).parameters)[0] == 'self':
-                try: func = functools.partial(func, module())
-                except: pass # module() requires some arguments we don't know
-        return func
+        # if len(list(inspect.signature(func).parameters)) > 0:
+        #     if list(inspect.signature(func).parameters)[0] == 'cls':
+        #         func = functools.partial(func, module)
+        #     elif list(inspect.signature(func).parameters)[0] == 'self':
+        #         try: func = functools.partial(func, module())
+        #         except: pass # module() requires some arguments we don't know
+        # return func
     except Exception as e:
         print(e); import traceback; traceback.print_exc(); return None

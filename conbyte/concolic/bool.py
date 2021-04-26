@@ -11,7 +11,7 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
         if value == 0: value = False # special handling for pickling
         if value == 1: value = True # special handling for pickling
         assert type(value) is bool
-        obj = super().__new__(cls, value)
+        obj = super().__new__(cls, value); obj.isBool = True
         Concolic.__init2__(obj, value, expr, engine)
         log.debug(f"ConBool, value: {value}, expr: {obj.expr}")
         return obj
@@ -36,6 +36,11 @@ class ConcolicBool(int, Concolic, metaclass=MetaFinal):
             other = self.__class__(other)
         expr = ['xor', self, other]
         return ConcolicObject(value, expr)
+
+    def __add__(self, value, /):
+        if isinstance(value, Concolic):
+            return value.__radd__(self)
+        return super().__add__(value)
 
     ################################################################
     # Other helper methods are implemented in the following section.

@@ -245,6 +245,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             except: args[2] = self.__len__() # Default values are also ok to have expressions.
             args[2] = ConcolicObject(args[2]) # ConcolicInt
         main = self._substr(args[1], args[2])
+        (args[0] in main).__bool__() # our handmade branch in order to produce more successful testcases
         expr = ["ite", ["<=", ["str.len", args[0]], "0"], ["+", "1", ["str.len", main]], ["div", ["-", ["str.len", ["str.replaceall", main, args[0], ["str.++", args[0], args[0]]]], ["str.len", main]], ["str.len", args[0]]]]
         return ConcolicObject(value, expr)
 
@@ -299,6 +300,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             try: args[2] = int(args[2])
             except: args[2] = self.__len__() # Default values are also ok to have expressions.
             args[2] = ConcolicObject(args[2]) # ConcolicInt
+        (args[0] in self._substr(args[1], args[2])).__bool__() # our handmade branch in order to produce more successful testcases
         expr = ["+", args[1], ["str.indexof", self._substr(args[1], args[2]), args[0], "0"]]
         return ConcolicObject(value, expr)
 
@@ -428,8 +430,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, lstrip is called")
         value = super().lstrip(unwrap(chars))
         if not isinstance(chars, Concolic):
-            try: chars = str(chars)
-            except: chars = ' ' # TODO: Only this kind of whitespace?
+            if not isinstance(chars, str): chars = ' ' # TODO: Only this kind of whitespace?
             chars = ConcolicObject(chars)
         expr = self
         s = unwrap(self)
@@ -515,8 +516,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, rstrip is called")
         value = super().rstrip(unwrap(chars))
         if not isinstance(chars, Concolic):
-            try: chars = str(chars)
-            except: chars = ' ' # TODO: Only this kind of whitespace?
+            if not isinstance(chars, str): chars = ' ' # TODO: Only this kind of whitespace?
             chars = ConcolicObject(chars)
         expr = self
         s = unwrap(self)
@@ -690,7 +690,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__rmul__(unwrap(self))
             assert isinstance(other, (bool, int))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
             else:
                 if type(other) is bool: other = int(other)
                 other = ConcolicObject(other)
@@ -717,7 +717,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             value = super().__rmul__(unwrap(other))
             assert isinstance(other, (bool, int))
             if isinstance(other, Concolic):
-                if isinstance(other, bool): other = other.__int2__()
+                if hasattr(other, 'isBool'): other = other.__int2__()
             else:
                 if type(other) is bool: other = int(other)
                 other = ConcolicObject(other)

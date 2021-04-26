@@ -152,7 +152,7 @@ def _exec_module(self, module): # """Execute the module."""
     tree = ConcolicWrapperCall().visit(tree)
     tree = ConcolicWrapperConstant().visit(tree)
     # tree = ConcolicWrapperCompare().visit(tree)
-    # tree = ConcolicWrapperAssign().visit(tree)
+    tree = ConcolicWrapperAssign().visit(tree)
     # tree = ConcolicWrapperFunctionDef().visit(tree)
     # tree = ConcolicWrapperClassDef().visit(tree) # unwrap classes' docstrings
     fix_missing_locations(tree)

@@ -19,7 +19,8 @@ class Constraint:
             self.last_predicate == other.last_predicate
 
     def __str__(self):
-        return str(self.last_predicate) + f"  (processed: {self.processed}, path_len: {self.height})"
+        return str(list(map(lambda x: str(x), self.get_all_asserts()))) + f"  (path_len: {self.height})"
+        # return str(self.last_predicate) + f"  (processed: {self.processed}, path_len: {self.height})"
 
     def add_child(self, predicate):
         # assert self.find_child(predicate) is None

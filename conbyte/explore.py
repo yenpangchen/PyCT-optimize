@@ -163,7 +163,7 @@ class ExplorationEngine:
             else:
                 import conbyte
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
-            execute = get_function_from_module_and_funcname(module, self.funcname, True)
+            execute = get_function_from_module_and_funcname(module, self.funcname)
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
@@ -207,7 +207,7 @@ class ExplorationEngine:
             sys.dont_write_bytecode = True # same reason mentioned in the concolic mode
             self.coverage.start()
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
-            execute = get_function_from_module_and_funcname(module, self.funcname, True)
+            execute = get_function_from_module_and_funcname(module, self.funcname)
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(1, 1+len(inspect.getsourcelines(module)[0])))) # Note inspect.getsourcelines(module)[1] always returns 0, which is not the fact.
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(inspect.getsourcelines(execute)[1], inspect.getsourcelines(execute)[1] + len(inspect.getsourcelines(execute)[0]))))
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
@@ -290,8 +290,12 @@ class ExplorationEngine:
         executed_lines = 0
         missing_lines = {}
         for file in self.coverage_data.measured_files():
-            _, executable_lines, _, _ = self.coverage.analysis(file)
+            executable_lines = set(self.coverage.analysis(file)[1])
+            if file == self.target_file and not self.file_as_total:
+                executable_lines &= self.function_lines_range
             m_lines = self.coverage_accumulated_missing_lines[file]
+            if file == self.target_file and not self.file_as_total:
+                m_lines &= self.function_lines_range
             total_lines += len(set(executable_lines))
             executed_lines += len(set(executable_lines)) - len(m_lines) # Do not use "len(set(self.coverage_data.lines(file)))" here!!!
             if m_lines: missing_lines[file] = m_lines
