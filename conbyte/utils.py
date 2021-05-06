@@ -49,10 +49,10 @@ def py2smt(x): # convert the Python object into the smtlib2 string constant
     if type(x) in (float, int): return '(- ' + str(-x) + ')' if x < 0 else str(x)
     if type(x) is str:
         x = x.replace("\\", "\\\\").replace('"', '""')
-        x_new = ""
-        for ch in x:
-            if x not in ('\\', '"'):
-                x_new += '\\u{' + str(hex(ord(ch)))[2:] + '}'
+        x_new = x #""
+        # for ch in x:
+        #     if x not in ('\\', '"'):
+        #         x_new += '\\u{' + str(hex(ord(ch)))[2:] + '}'
         x = '"' + x_new + '"' # This is very important!!! We must enclose "x_new" with double quotes since the SMT solver cannot tell the difference between "var name" and "string const".
         return x
     raise NotImplementedError

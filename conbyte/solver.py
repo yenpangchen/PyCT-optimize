@@ -106,7 +106,7 @@ class Solver:
                 def unichar(match):
                     match = match.group()
                     return chr(int(match[3:-1], 16))
-                value = re.sub(r'\\u\{[0-9a-fA-F]+\}', unichar, value)
+                # value = re.sub(r'\\u\{[0-9a-fA-F]+\}', unichar, value)
                 value = value.replace('""', '"').replace("\\\\", "\\")
                 # Note the order above must be in reverse with its encoding method (line 41 in conbyte/utils.py)
             else:
