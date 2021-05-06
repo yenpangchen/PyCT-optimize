@@ -67,7 +67,7 @@ class ExplorationEngine:
     def _execution_loop(self, max_iterations, all_args):
         tried_input_args = [all_args.copy()] # .copy() is important!!
         iterations = 1; cont = self._one_execution(all_args) # the 1st execution
-        while cont and iterations < max_iterations and len(self.constraints_to_solve) > 0:
+        while cont and (max_iterations==0 or iterations<max_iterations) and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
             # and try to solve for it. After that we'll obtain a model as
@@ -97,7 +97,7 @@ class ExplorationEngine:
         ans = r.recv(); r.close(); s.close()
         return ans
 
-    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=200, single_timeout=15, total_timeout=900, deadcode=set(), include_exception=False, lib=None, single_coverage=True, file_as_total=False):
+    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=0, single_timeout=15, total_timeout=900, deadcode=set(), include_exception=False, lib=None, single_coverage=True, file_as_total=False):
         self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib; self.file_as_total = file_as_total
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
@@ -134,7 +134,7 @@ class ExplorationEngine:
                 f.write(f'sat,{Solver.stats["sat_number"]},{Solver.stats["sat_time"]}\n')
                 f.write(f'unsat,{Solver.stats["unsat_number"]},{Solver.stats["unsat_time"]}\n')
                 f.write(f'otherwise,{Solver.stats["otherwise_number"]},{Solver.stats["otherwise_time"]}\n')
-        return iterations - 1
+        return (iterations-1, Solver.stats["sat_number"], Solver.stats["sat_time"], Solver.stats["unsat_number"], Solver.stats["unsat_time"], Solver.stats["otherwise_number"], Solver.stats["otherwise_time"])
 
     def _one_execution(self, all_args):
         result = self._one_execution_concolic(all_args) # primitive input arguments "all_args" may be modified here.

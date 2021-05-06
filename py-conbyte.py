@@ -13,7 +13,7 @@ parser.add_argument("modpath", metavar="path.to.module", help="absolute import p
 parser.add_argument("input", metavar="input_dict", help="dictionary of initial arguments to be passed into the target function\nPlease note that the double quotes outside the dictionary cannot be omitted!\nEx1: func(a=1,b=2) -> \"{'a':1,'b':2}\"\nEx2: func(a='',b='') -> \"{'a':'','b':''}\"")
 parser.add_argument("-r", "--root", dest="root", help="path to the project root which the target function belongs to [default = path/to/this/project]\nThis option should always be provided if the target function belongs to another project.\nIf the target project is put inside this project (i.e., the latter's root path is a prefix of the former's),\nthe scope of coverage is only the target \"file.\" Otherwise, the scope covers the whole \"project.\"", default=os.path.dirname(__file__))
 parser.add_argument("-s", "--func", dest="func", help="name of the target function\n(*) If the function \"func\" belongs to a class \"CLASS\", this name should be \"CLASS.func\".\n(*) If the function name is the same as that of the target file, this option can be omitted.", default=None)
-parser.add_argument("-m", "--iter", dest="iter", help="maximum number of iterations [default = 200]", type=int, default=200)
+parser.add_argument("-m", "--iter", dest="iter", help="maximum number of iterations [default = oo]", type=int, default=0)
 parser.add_argument("--lib", dest="lib", help="another library path to be inserted at the beginning of sys.path\nFor example, if the target function belongs to another project requiring a virtual environment,\nyou may want to do \"--lib ~/.local/share/virtualenvs/projectname-projectid/lib/python3.8/site-packages\".", default=None)
 parser.add_argument("--safety", dest="safety", help="indicates the behavior when the values in Python and in SMTLIB2 of a concolic object are not equal. [default = 0]\n(0) The expression in a concolic object is still preserved even if the values are different.\n(1) The expression in a concolic object will be erased if the values are different, but the program still continues.\n(2) The expression in a concolic object will be erased if the values are different, and the program exits soon.\nOnly in level 0 don't we verify return values of the target function since some objects in fact are not picklable,\nand therefore information about return values will not printed in the end.", type=int, default=0)
 parser.add_argument("-t", "--timeout", dest="timeout", help="timeout (sec.) for the solver to solve a constraint [default = 10]", type=int, default=10)
@@ -44,7 +44,7 @@ engine = conbyte.explore.ExplorationEngine(solver=args.solver, timeout=args.time
                                            statsdir=statsdir)
 print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root=args.root, funcname=args.func,
                                             max_iterations=args.iter, single_timeout=args.single_timeout, total_timeout=args.total_timeout, deadcode=set(),
-                                            include_exception=args.include_exception, lib=args.lib, file_as_total=args.file_as_total))
+                                            include_exception=args.include_exception, lib=args.lib, file_as_total=args.file_as_total)[0])
 ##############################################################################
 
 ################################################################

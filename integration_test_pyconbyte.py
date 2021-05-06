@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, subprocess, sys, unittest
+import os, subprocess, sys, time, unittest
 import conbyte.explore
 
 class TestCodeSnippets(unittest.TestCase):
@@ -42,7 +42,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_36(self): self._execute("test/target_int/lib_int", "datetime__parse_hh_mm_ss_ff", {'tstr':''}) # OK
     def test_37(self): self._execute("test/target_int/lib_int", "datetime__parse_isoformat_date", {'dtstr':''}) # OK
     def test_38(self): self._execute("test/target_int/lib_int", "distutils_get_build_version", {'version':''}, {26, 30}) # OK with deadcode [26, 30]
-    # def test_39(self): self._execute("test/target_int/lib_int", "email__parsedate_tz", {'data':'Mon, 16 Nov 2009 13:32:02 +0100'}) # TODO 本來就還不行
+    def test_39(self): self._execute("test/target_int/lib_int", "email__parsedate_tz", {'data':''}, {32, 34, 35, 36, 38, 39, 40, 41, 42, 43, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 77, 78, 79, 80, 81, 82, 84, 87, 88, 89, 90, 91, 92, 93, 100, 102, 103, 106, 108}) # TODO: ?/?
     def test_40(self): self._execute("test/target_int/lib_int", "http_parse_request", {'version':''}) # OK
     def test_41(self): self._execute("test/target_int/lib_int", "ipaddress__ip_int_from_string", {'ip_str':''}, {32, 70, 71, 102, 103, 111, 112, 113, 114, 115, 116, 117, 118, 119}) # TODO: 200 iterations is not many enough.
     def test_42(self): self._execute("test/target_int/lib_int", "nntplib__parse_datetime", {'date_str':''}) # OK
@@ -55,7 +55,7 @@ class TestCodeSnippets(unittest.TestCase):
     def _executesrv(self, root, modpath, inputs, _missing_lines):
         libpath = root + '/.venv/lib/python3.8/site-packages'; os.system('kill -KILL $(lsof -t -i:8080)')
         pid = subprocess.Popen(["python3", "test/realworld/rpyc/server.py"], env={**os.environ, 'PYTHONPATH': libpath + ':' + os.environ['PYTHONPATH']}).pid
-        import time; time.sleep(1) # this short wait is very important!!! (for the client to connect)
+        time.sleep(1) # this short wait is very important!!! (for the client to connect)
         self._execute(root, modpath, inputs, _missing_lines, lib=libpath)
         os.system(f'kill -KILL {pid}')
 
@@ -66,23 +66,31 @@ class TestCodeSnippets(unittest.TestCase):
             self.iteration_max = 1
             engine = conbyte.explore.ExplorationEngine()
             iteration = 0
+            start = time.time()
             while iteration == 0 or self._check_coverage(iteration, _missing_lines, missing_lines):
-                engine.explore(modpath, inputs, root=root, deadcode=_missing_lines, include_exception=True, lib=lib, file_as_total=True)
+                a, b, c, d, e, F, g = engine.explore(modpath, inputs, root=root, deadcode=set(), include_exception=True, lib=lib, file_as_total=True)
                 total_lines, executed_lines, missing_lines = engine.coverage_statistics() # missing_lines: dict
                 iteration += 1
-            col_3 = str(list(map(lambda x: (list(x[0].values()), x[1]), engine.in_out)))[1:-1]
-            print(modpath + ':', col_3)
+            finish = time.time()
+            # col_3 = str(list(map(lambda x: (list(x[0].values()), x[1]), engine.in_out)))[1:-1]
+            # print(modpath + ':', col_3)
         if self.dump: # Logging output section
             if self._omit(_id):
                 with open(f'{_id}.csv', 'w') as f:
                     f.write(f'{_id}|-|-|-\n')
             else:
                 col_1 = "{}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0)
-                col_2 = str(sorted(list(missing_lines.values())[0]) if missing_lines else '')
-                if col_2 == str(sorted(_missing_lines)):
-                    col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
+                # col_2 = str(sorted(list(missing_lines.values())[0]) if missing_lines else '')
+                # if col_2 == str(sorted(_missing_lines)):
+                #     col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
                 with open(f'{_id}.csv', 'w') as f:
-                    f.write(f'{_id}|{col_1}|{col_2}|{col_3}\n')
+                    # echo "ID|Function|Line Coverage|Time (sec.)"
+                    # echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True pytest integration_test_pyconbyte.py --workers 4 && cp /dev/null paper_statistics/pyconbyte_run_pyconbyte.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyconbyte_run_pyconbyte.csv
+                    cdivb = c / b if b else 0
+                    edivd = e / d if d else 0
+                    gdivF = g / F if F else 0
+                    # f.write(f'{_id}|{root.replace("/", ".") + "." + modpath}|{col_1}|{round(finish-start, 2)}\n')
+                    f.write(f'{_id}|{root.replace("/", ".") + "." + modpath}|{col_1}|{round(finish-start, 2)}|{b+d+F}|{b}|{round(cdivb, 2)}|{d}|{round(edivd, 2)}|{F}|{round(gdivF, 2)}\n')
 
     def _omit(self, _id):
         return False #_id in ('19', '34', '39', '41')

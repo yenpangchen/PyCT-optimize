@@ -103,7 +103,11 @@ class Solver:
             elif engine.var_to_types[name] == "String":
                 assert value.startswith('"') and value.endswith('"')
                 value = value[1:-1]
-                value = value.replace('""', '"').replace("\\t", "\t").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\")
+                def unichar(match):
+                    match = match.group()
+                    return chr(int(match[3:-1], 16))
+                value = re.sub(r'\\u\{[0-9a-fA-F]+\}', unichar, value)
+                value = value.replace('""', '"').replace("\\\\", "\\")
                 # Note the order above must be in reverse with its encoding method (line 41 in conbyte/utils.py)
             else:
                 raise NotImplementedError

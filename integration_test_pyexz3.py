@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, subprocess, sys, unittest
+import os, subprocess, sys, time, unittest
 import conbyte.explore
 
 class TestCodeSnippets(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_05(self): self._execute("test", "bignum", {'a':0}) # OK
     def test_06(self): self._execute("test", "binary_search", {'k':0}, {9, 14}) # OK with deadcode [9, 14]
     def test_07(self): self._execute("test", "bitwidth", {'a':0, 'b':0}, {3}) # OK with deadcode [3]
-    # def test_08(self): self._execute("test", "complex", {'x':0, 'y':0}) # TODO
+    def test_08(self): self._execute("test", "complex", {'x':0, 'y':0}, {7}) # TODO: cannot replay mismatch
     def test_09(self): self._execute("test", "cseppento1", {'x':0, 'y':0}, {14, 19}) # OK with deadcode [14, 19]
     def test_10(self): self._execute("test", "cseppento2", {'a':0, 'b':0}, {5}) # OK with deadcode [5]
     def test_11(self): self._execute("test", "cseppento3", {'x':0}) # OK
@@ -84,25 +84,33 @@ class TestCodeSnippets(unittest.TestCase):
             self.iteration_max = 1
             engine = conbyte.explore.ExplorationEngine()
             iteration = 0
+            start = time.time()
             while iteration == 0 or self._check_coverage(iteration, _missing_lines, missing_lines):
-                engine.explore(modpath, inputs, root='../PyExZ3/' + root, deadcode=_missing_lines, include_exception=True, lib='../PyExZ3/', file_as_total=False)
+                a, b, c, d, e, F, g = engine.explore(modpath, inputs, root='../PyExZ3/' + root, deadcode=set(), include_exception=True, lib='../PyExZ3/', file_as_total=False)
                 total_lines, executed_lines, missing_lines = engine.coverage_statistics() # missing_lines: dict
                 iteration += 1
                 # print(total_lines, executed_lines, missing_lines)
-            col_3 = str(list(map(lambda x: (list(x[0].values()), x[1]), engine.in_out)))[1:-1]
-            print(modpath + ':', col_3)
-            print(modpath + ':', _missing_lines)
+            finish = time.time()
+            # col_3 = str(list(map(lambda x: (list(x[0].values()), x[1]), engine.in_out)))[1:-1]
+            # print(modpath + ':', col_3)
+            # print(modpath + ':', _missing_lines)
         if self.dump: # Logging output section
             if self._omit(_id):
                 with open(f'{_id}.csv', 'w') as f:
                     f.write(f'{_id}|-|-|-\n')
             else:
                 col_1 = "{}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0)
-                col_2 = str(sorted(list(missing_lines.values())[0]) if missing_lines else '')
-                if col_2 == str(sorted(_missing_lines)):
-                    col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
+                # col_2 = str(sorted(list(missing_lines.values())[0]) if missing_lines else '')
+                # if col_2 == str(sorted(_missing_lines)):
+                #     col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
                 with open(f'{_id}.csv', 'w') as f:
-                    f.write(f'{_id}|{col_1}|{col_2}|{col_3}\n')
+                    # echo "ID|Function|Line Coverage|Time (sec.)"
+                    # echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True pytest integration_test_pyexz3.py --workers 4 && cp /dev/null paper_statistics/pyconbyte_run_pyexz3.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyconbyte_run_pyexz3.csv
+                    cdivb = c / b if b else 0
+                    edivd = e / d if d else 0
+                    gdivF = g / F if F else 0
+                    # f.write(f'{_id}|{root.replace("/", ".") + "." + modpath}|{col_1}|{round(finish-start, 2)}\n')
+                    f.write(f'{_id}|{root.replace("/", ".") + "." + modpath}|{col_1}|{round(finish-start, 2)}|{b+d+F}|{b}|{round(cdivb, 2)}|{d}|{round(edivd, 2)}|{F}|{round(gdivF, 2)}\n')
 
     def _omit(self, _id):
         return False #_id in ('19', '21', '23', '36', '41', '43')
