@@ -528,38 +528,16 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
     def split(self, /, sep=None, maxsplit=-1): # <method 'split' of 'str' objects> TODO: move from approximation to exact semantics
         """Return a list of the words in the string, using sep as the delimiter string.\n\n  sep\n    The delimiter according which to split the string.\n    None (the default value) means split according to any whitespace,\n    and discard empty strings from the result.\n  maxsplit\n    Maximum number of splits to do.\n    -1 (the default value) means no limit."""
         log.debug("ConStr, split is called")
+        sepori = sep
         if sep is None: sep = " "
         if len(self) == 0: return []
         sep_idx = self.find(sep)
         if maxsplit == 0 or sep_idx == -1: return [self]
         if maxsplit > 0: maxsplit -= 1
-        if self[0:sep_idx]:
-            return [self[0:sep_idx]] + self[sep_idx+1:].split(sep, maxsplit)
+        if sepori is not None or self[0:sep_idx]:
+            return [self[0:sep_idx]] + self[sep_idx+len(sep):].split(sepori, maxsplit)
         else:
-            return self[sep_idx+1:].split(sep, maxsplit)
-        # value = super().split(unwrap(sep), unwrap(maxsplit))
-        # if not isinstance(sep, ConcolicStr):
-        #     if sep is None: sep = ' ' # TODO: Only this kind of whitespace?
-        #     else:
-        #         try: sep = str(sep)
-        #         except: sep = ' '
-        #     sep = ConcolicObject(sep)
-        # result = []
-        # (self and sep not in self).__bool__() # our handmade branch in order to produce more successful testcases
-        # sep_len = len(sep) # a cached concolic constant for speeding up
-        # current = self # current substring after several rounds of "split"
-        # while True:
-        #     if maxsplit == 0 or (split_index := current.find(sep)) == -1:
-        #         result.append(current)
-        #         break
-        #     else: # maxsplit != 0
-        #         result.append(current._substr(end=split_index))
-        #         current = current._substr(start=split_index + sep_len)
-        #         if maxsplit > 0:
-        #             maxsplit -= 1
-        # # Since our concolic list is not mature enough, we can only return a primitive list containing concolic strings.
-        # # If our concolic result is different from the standard one, we can only return the standard result.
-        # return result if list(map(unwrap, result)) == value else ConcolicObject(value)
+            return self[sep_idx+len(sep):].split(sepori, maxsplit)
 
     def splitlines(self, /, keepends=False): # <method 'splitlines' of 'str' objects> TODO: move from approximation to exact computation
         """Return a list of the lines in the string, breaking at line boundaries.\n\nLine breaks are not included in the resulting list unless keepends is given and\ntrue."""

@@ -42,7 +42,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_36(self): self._execute("test/target_int/lib_int", "datetime__parse_hh_mm_ss_ff", {'tstr':''}) # OK
     def test_37(self): self._execute("test/target_int/lib_int", "datetime__parse_isoformat_date", {'dtstr':''}) # OK
     def test_38(self): self._execute("test/target_int/lib_int", "distutils_get_build_version", {'version':''}, {26, 30}) # OK with deadcode [26, 30]
-    def test_39(self): self._execute("test/target_int/lib_int", "email__parsedate_tz", {'data':''}, {32, 34, 35, 36, 38, 39, 40, 41, 42, 43, 45, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 77, 78, 79, 80, 81, 82, 84, 87, 88, 89, 90, 91, 92, 93, 100, 102, 103, 106, 108}) # TODO: ?/?
+    def test_39(self): self._execute("test/target_int/lib_int", "email__parsedate_tz", {'data':''}, {32, 36, 43, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 77, 78, 79, 80, 81, 82, 84, 87, 88, 89, 90, 91, 92, 93, 100, 102, 103, 106, 108}) # TODO: ?/?
     def test_40(self): self._execute("test/target_int/lib_int", "http_parse_request", {'version':''}) # OK
     def test_41(self): self._execute("test/target_int/lib_int", "ipaddress__ip_int_from_string", {'ip_str':''}, {32, 70, 71, 102, 103, 111, 112, 113, 114, 115, 116, 117, 118, 119}) # TODO: 200 iterations is not many enough.
     def test_42(self): self._execute("test/target_int/lib_int", "nntplib__parse_datetime", {'date_str':''}) # OK
