@@ -530,9 +530,11 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, split is called")
         sepori = sep
         if sep is None: sep = " "
-        if len(self) == 0: return []
         sep_idx = self.find(sep)
-        if maxsplit == 0 or sep_idx == -1: return [self]
+        if maxsplit == 0 or sep_idx == -1:
+            if sepori is not None or self:
+                return [self]
+            return []
         if maxsplit > 0: maxsplit -= 1
         if sepori is not None or self[0:sep_idx]:
             return [self[0:sep_idx]] + self[sep_idx+len(sep):].split(sepori, maxsplit)
