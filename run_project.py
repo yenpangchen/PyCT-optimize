@@ -64,8 +64,9 @@ try:
                         for f in funcs:
                             cmd2 = cmd + f" -s {f}"
                             print(modpath, '+', f, '>>>'); print(cmd2)
-                            try: completed_process = subprocess.run(cmd2, shell=True, stdout=sys.stdout, stderr=sys.stderr)
+                            try: completed_process = subprocess.run(cmd2, shell=True, timeout=TOTAL_TIMEOUT+5, stdout=sys.stdout, stderr=sys.stderr)
                             except subprocess.CalledProcessError as e: print(e.output)
+                            except: pass
                         os._exit(os.EX_OK)
                     os.wait()
                 end = time.time()
@@ -80,4 +81,5 @@ with open(os.path.abspath(f"./project_statistics/{project_name}/experiment_time.
 
 print('End of running project.')
 
-os.system('python3 measure_coverage.py 1 ../04_Python')
+#os.system('python3 measure_coverage.py 1 ../04_Python')
+os.system('mkdir -p paper_statistics && echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True python3 measure_coverage.py 1 ../04_Python && cp /dev/null paper_statistics/pyconbyte_run_04Python.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyconbyte_run_04Python.csv')
