@@ -336,15 +336,19 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         expr = ["str.indexof", self._substr(args[1], args[2]), args[0], "0"]
         return ConcolicObject(value, expr)
 
-    def isalnum(self, /): # <method 'isalnum' of 'str' objects> TODO
+    def isalnum(self, /): # <method 'isalnum' of 'str' objects> (also appears in 04_Python)
         """Return True if the string is an alpha-numeric string, False otherwise.\n\nA string is alpha-numeric if all characters in the string are alpha-numeric and\nthere is at least one character in the string."""
         log.debug("ConStr, isalnum is called")
-        return ConcolicObject(super().isalnum())
+        value = super().isalnum()
+        expr = ["str.in.re", self, ["re.+", ["re.union", ["re.union", ["re.range", py2smt("A"), py2smt("Z")], ["re.range", py2smt("a"), py2smt("z")]], ["re.range", py2smt("0"), py2smt("9")]]]]
+        return ConcolicObject(value, expr)
 
-    def isalpha(self, /): # <method 'isalpha' of 'str' objects> TODO
+    def isalpha(self, /): # <method 'isalpha' of 'str' objects> (also appears in 04_Python)
         """Return True if the string is an alphabetic string, False otherwise.\n\nA string is alphabetic if all characters in the string are alphabetic and there\nis at least one character in the string."""
         log.debug("ConStr, isalpha is called")
-        return ConcolicObject(super().isalpha())
+        value = super().isalpha()
+        expr = ["str.in.re", self, ["re.+", ["re.union", ["re.range", py2smt("A"), py2smt("Z")], ["re.range", py2smt("a"), py2smt("z")]]]]
+        return ConcolicObject(value, expr)
 
     def isascii(self, /): # <method 'isascii' of 'str' objects> TODO
         """Return True if all characters in the string are ASCII, False otherwise.\n\nASCII characters have code points in the range U+0000-U+007F.\nEmpty string is ASCII too."""
@@ -356,7 +360,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, isdecimal is called")
         return ConcolicObject(super().isdecimal())
 
-    def isdigit(self, /): # <method 'isdigit' of 'str' objects>
+    def isdigit(self, /): # <method 'isdigit' of 'str' objects> (also appears in 04_Python)
         """Return True if the string is a digit string, False otherwise.\n\nA string is a digit string if all characters in the string are digits and there\nis at least one character in the string."""
         log.debug("ConStr, isdigit is called")
         value = super().isdigit()
@@ -369,17 +373,19 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, isidentifier is called")
         return ConcolicObject(super().isidentifier())
 
-    def islower(self, /): # <method 'islower' of 'str' objects>
+    def islower(self, /): # <method 'islower' of 'str' objects> (also appears in 04_Python)
         """Return True if the string is a lowercase string, False otherwise.\n\nA string is lowercase if all cased characters in the string are lowercase and\n there is at least one cased character in the string."""
         log.debug("ConStr, islower is called")
         value = super().islower()
         expr = ["str.in.re", self, ["re.+", ["re.range", py2smt('a'), py2smt('z')]]]
         return ConcolicObject(value, expr)
 
-    def isnumeric(self, /): # <method 'isnumeric' of 'str' objects> TODO
+    def isnumeric(self, /): # <method 'isnumeric' of 'str' objects> (also appears in 04_Python)
         """Return True if the string is a numeric string, False otherwise.\n\nA string is numeric if all characters in the string are numeric and there is at\nleast one character in the string."""
         log.debug("ConStr, isnumeric is called")
-        return ConcolicObject(super().isnumeric())
+        value = super().isnumeric()
+        expr = ["str.in.re", self, ["re.+", ["re.range", py2smt('0'), py2smt('9')]]]
+        return ConcolicObject(value, expr)
 
     def isprintable(self, /): # <method 'isprintable' of 'str' objects> TODO
         """Return True if the string is printable, False otherwise.\n\nA string is printable if all of its characters are considered printable in\nrepr() or if it is empty."""
@@ -396,7 +402,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         log.debug("ConStr, istitle is called")
         return ConcolicObject(super().istitle())
 
-    def isupper(self, /): # <method 'isupper' of 'str' objects>
+    def isupper(self, /): # <method 'isupper' of 'str' objects> (also appears in 04_Python)
         """Return True if the string is an uppercase string, False otherwise.\n\nA string is uppercase if all cased characters in the string are uppercase and\nthere is at least one cased character in the string."""
         log.debug("ConStr, isupper is called")
         value = super().isupper()
@@ -628,6 +634,9 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             if not isinstance(other, Concolic): other = ConcolicObject(other)
             expr = ['str.contains', self, other]
             return ConcolicObject(value, expr)
+        # Note that string comparisons in smtlib2 may cause incorrect results if
+        # the strings contain non-alnum characters. For instance, ord('~')==126
+        # and ord('.')==46 but (str.< "~" ".") evaluates to true in smtlib2.
         if op == '__eq__':
             try:
                 if (value := super().__eq__(unwrap(other))) is NotImplemented: raise NotImplementedError
@@ -642,38 +651,44 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             except: value = unwrap(other).__le__(unwrap(self))
             assert isinstance(other, str)
             if not isinstance(other, Concolic): other = ConcolicObject(other)
-            # expr = ['str.<=', other, self]
-            expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]] # TODO: may be incorrect in some cases
-            return ConcolicObject(value, expr)
+            if self.isalnum() and other.isalnum():
+                expr = ['str.<=', other, self]
+                return ConcolicObject(value, expr)
+            else:
+                return ConcolicObject(value)
         if op == '__gt__':
             try:
                 if (value := super().__gt__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__lt__(unwrap(self))
             assert isinstance(other, str)
             if not isinstance(other, Concolic): other = ConcolicObject(other)
-            # expr = ['str.<', other, self]
-            expr = ["str.in.re", self, ["re.range", other, "\"\\xff\""]] # TODO: may be incorrect in some cases
-            expr = ["and", ["not", ["=", self, other]], expr]
-            return ConcolicObject(value, expr)
+            if self.isalnum() and other.isalnum():
+                expr = ['str.<', other, self]
+                return ConcolicObject(value, expr)
+            else:
+                return ConcolicObject(value)
         if op == '__le__':
             try:
                 if (value := super().__le__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__ge__(unwrap(self))
             assert isinstance(other, str)
             if not isinstance(other, Concolic): other = ConcolicObject(other)
-            # expr = ['str.<=', self, other]
-            expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]]  # TODO: may be incorrect in some cases
-            return ConcolicObject(value, expr)
+            if self.isalnum() and other.isalnum():
+                expr = ['str.<=', self, other]
+                return ConcolicObject(value, expr)
+            else:
+                return ConcolicObject(value)
         if op == '__lt__':
             try:
                 if (value := super().__lt__(unwrap(other))) is NotImplemented: raise NotImplementedError
             except: value = unwrap(other).__gt__(unwrap(self))
             assert isinstance(other, str)
             if not isinstance(other, Concolic): other = ConcolicObject(other)
-            # expr = ['str.<', self, other]
-            expr = ["str.in.re", self, ["re.range", "\"\\x00\"", other]] # TODO: may be incorrect in some cases
-            expr = ["and", ["not", ["=", self, other]], expr]
-            return ConcolicObject(value, expr)
+            if self.isalnum() and other.isalnum():
+                expr = ['str.<', self, other]
+                return ConcolicObject(value, expr)
+            else:
+                return ConcolicObject(value)
         if op == '__mul__':
             try:
                 if (value := super().__mul__(unwrap(other))) is NotImplemented: raise NotImplementedError
