@@ -27,7 +27,7 @@ def extract_function_list_from_modpath(rootdir, modpath):
         i = 0
         while i < len(ans):
             if '<locals>' in ans[i]: del ans[i]; continue # cannot access nested functions
-            if get_function_from_module_and_funcname(mod, ans[i], False) is None: del ans[i]; continue # assert 的效果
+            if get_function_from_module_and_funcname(mod, ans[i], False) is None: del ans[i]; continue # similar to assert
             if len(ans[i].split('.')) == 2:
                 (a, b) = ans[i].split('.')
                 if b.startswith('__') and not b.endswith('__'): b = '_' + a + b
@@ -82,4 +82,4 @@ with open(os.path.abspath(f"./project_statistics/{project_name}/experiment_time.
 print('End of running project.')
 
 #os.system('python3 measure_coverage.py 1 ../04_Python')
-os.system('mkdir -p paper_statistics && echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True python3 measure_coverage.py 1 ../04_Python && cp /dev/null paper_statistics/pyconbyte_run_04Python.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyconbyte_run_04Python.csv')
+# os.system('mkdir -p paper_statistics && echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True python3 measure_coverage.py 1 ../04_Python && cp /dev/null paper_statistics/pyconbyte_run_04Python.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyconbyte_run_04Python.csv')

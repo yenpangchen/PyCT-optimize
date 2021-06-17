@@ -124,7 +124,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
         """Return self%value.""" # I renamed the argument to "other" for convenience.
         log.debug("ConStr, __mod__ is called")
         value = super().__mod__(unwrap(other))
-        if not isinstance(other, tuple): return ConcolicObject(value) # TODO: 鴕鳥心態
+        if not isinstance(other, tuple): return ConcolicObject(value) # TODO: hide one's head in the sand
         # One split example: ['abcd%def%dga%ib%dc%idefg']
         # -> [['abcd', 'ef', 'ga%ib', 'c%idefg']]
         # -> [['abcd', '%d', 'ef', '%d', 'ga%ib', '%d', 'c%idefg']]
@@ -227,7 +227,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def count(self, *args): # <method 'count' of 'str' objects>
         """S.count(sub[, start[, end]]) -> int\n\nReturn the number of non-overlapping occurrences of substring sub in\nstring S[start:end].  Optional arguments start and end are\ninterpreted as in slice notation."""
-        log.debug("ConStr, count is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, count is called"); args = copy.copy(args) # disconnect the input arguments
         if isinstance(args, tuple): args = list(args)
         value = super().count(*map(unwrap, args))
         if not isinstance(args[0], Concolic):
@@ -256,7 +256,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def endswith(self, *args): # <method 'endswith' of 'str' objects>
         """S.endswith(suffix[, start[, end]]) -> bool\n\nReturn True if S ends with the specified suffix, False otherwise.\nWith optional start, test S beginning at that position.\nWith optional end, stop comparing S at that position.\nsuffix can also be a tuple of strings to try."""
-        log.debug("ConStr, endswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, endswith is called"); args = copy.copy(args) # disconnect the input arguments
         if isinstance(args, tuple): args = list(args)
         value = super().endswith(*map(unwrap, args)) # TODO: still not deal with the case when suffix is a tuple!!!
         if not isinstance(args[0], Concolic):
@@ -283,7 +283,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def find(self, *args): # <method 'find' of 'str' objects>
         """S.find(sub[, start[, end]]) -> int\n\nReturn the lowest index in S where substring sub is found,\nsuch that sub is contained within S[start:end].  Optional\narguments start and end are interpreted as in slice notation.\n\nReturn -1 on failure."""
-        log.debug("ConStr, find is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, find is called"); args = copy.copy(args) # disconnect the input arguments
         if isinstance(args, tuple): args = list(args)
         value = super().find(*map(unwrap, args))
         if not isinstance(args[0], Concolic):
@@ -316,7 +316,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def index(self, *args): # <method 'index' of 'str' objects>
         """S.index(sub[, start[, end]]) -> int\n\nReturn the lowest index in S where substring sub is found,\nsuch that sub is contained within S[start:end].  Optional\narguments start and end are interpreted as in slice notation.\n\nRaises ValueError when the substring is not found."""
-        log.debug("ConStr, index is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, index is called"); args = copy.copy(args) # disconnect the input arguments
         if isinstance(args, tuple): args = list(args)
         value = super().index(*map(unwrap, args))
         if not isinstance(args[0], Concolic):
@@ -556,7 +556,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
 
     def startswith(self, *args): # <method 'startswith' of 'str' objects>
         """S.startswith(prefix[, start[, end]]) -> bool\n\nReturn True if S starts with the specified prefix, False otherwise.\nWith optional start, test S beginning at that position.\nWith optional end, stop comparing S at that position.\nprefix can also be a tuple of strings to try."""
-        log.debug("ConStr, startswith is called"); args = copy.copy(args) # 斷開魂結，斷開鎖鏈，斷開一切的牽連！(by 美江牧師)
+        log.debug("ConStr, startswith is called"); args = copy.copy(args) # disconnect the input arguments
         if isinstance(args, tuple): args = list(args)
         value = super().startswith(*map(unwrap, args)) # TODO: still not deal with the case when prefix is a tuple!!!
         if not isinstance(args[0], Concolic):

@@ -27,4 +27,4 @@ class PathToConstraint:
             log.smtlib2(f"Now constraint: {c}"); log.smtlib2(f"Add constraint: {cneg}")
         else:
             assert c is not None and cneg is not None
-        self.current_constraint = c # 把當前的 constraint 移到我們要的 child
+        self.current_constraint = c # move the current constraint to the child we want now

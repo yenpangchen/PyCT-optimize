@@ -55,7 +55,7 @@ def py2smt(x): # convert the Python object into the smtlib2 string constant
                 x_new += '\\u{' + str(hex(ord(ch)))[2:] + '}'
             else:
                 x_new += ch
-        x = '"' + x_new + '"' # 這一步很重要，因為 SMT solver 分不清楚 var name 和 string const 的差別，所以必須藉由在兩側加上雙引號的方式去區別兩者！
+        x = '"' + x_new + '"' # all string constants must be enclosed by double quotes in smtlib2.
         return x
     raise NotImplementedError
 

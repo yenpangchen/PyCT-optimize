@@ -57,7 +57,7 @@ class ExplorationEngine:
         logging.Logger.smtlib2 = smtlib2
 
     def __init2__(self):
-        self.constraints_to_solve = [] # 指的是還沒、但即將被 solver 解出 model 的 constraint
+        self.constraints_to_solve = [] # consists of the constraints that are going to be solved by the solver
         self.path = PathToConstraint()
         self.in_out = []
         self.coverage_data = coverage.CoverageData()
