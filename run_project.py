@@ -6,7 +6,7 @@ os.system(f"rm -rf './project_statistics/{project_name}'")
 for dirpath, _, _ in os.walk(rootdir):
     dirpath = os.path.abspath(dirpath)
     if dirpath != rootdir and not dirpath.startswith(rootdir + '/.') and '__pycache__' not in dirpath: # and '.venv' not in dirpath:
-        print(dirpath)
+        # print(dirpath)
         os.system(f"touch '{dirpath}/__init__.py'")
 
 # Please note this function must be executed in a child process, or
