@@ -1,9 +1,9 @@
 # Copyright: see copyright.txt
 
 import logging
-from conbyte.constraint import Constraint
-from conbyte.predicate import Predicate
-from conbyte.utils import unwrap
+from libct.constraint import Constraint
+from libct.predicate import Predicate
+from libct.utils import unwrap
 
 log = logging.getLogger("ct.path")
 

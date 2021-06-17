@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse, logging, os, sys
-import conbyte.explore
+import libct.explore
 
 # Our main program starts now!
 f = argparse.RawTextHelpFormatter._split_lines
@@ -39,7 +39,7 @@ args = parser.parse_args()
 # This section creates an explorer instance and starts our analysis procedure!
 funcname = t if (t:=args.func) else args.modpath.split('.')[-1]
 statsdir = os.path.abspath(os.path.dirname(__file__)) + '/project_statistics/' + os.path.abspath(args.root).split('/')[-1] + '/' + args.modpath + '/' + funcname if args.dump_projstats else None
-engine = conbyte.explore.ExplorationEngine(solver='cvc4', timeout=args.timeout, safety=args.safety,
+engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=args.timeout, safety=args.safety,
                                            store=args.formula, verbose=args.verbose, logfile=args.logfile,
                                            statsdir=statsdir)
 print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root=args.root, funcname=args.func,

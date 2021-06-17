@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os, subprocess, sys, time, unittest
-import conbyte.explore
+import libct.explore
 
 class TestCodeSnippets(unittest.TestCase):
     dump = bool(os.environ.get('dump', False))
@@ -64,7 +64,7 @@ class TestCodeSnippets(unittest.TestCase):
         if _id == 'executesrv': _id = sys._getframe(2).f_code.co_name.split('_')[1]
         if not self._omit(_id):
             self.iteration_max = 1
-            engine = conbyte.explore.ExplorationEngine()
+            engine = libct.explore.ExplorationEngine()
             iteration = 0
             start = time.time()
             while iteration == 0 or self._check_coverage(iteration, _missing_lines, missing_lines):
@@ -85,7 +85,7 @@ class TestCodeSnippets(unittest.TestCase):
                 #     col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
                 with open(f'{_id}.csv', 'w') as f:
                     # echo "ID|Function|Line Coverage|Time (sec.)"
-                    # mkdir -p paper_statistics && echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True pytest integration_test_pyconbyte.py --workers 4 && cp /dev/null paper_statistics/pyconbyte_run_pyconbyte.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyconbyte_run_pyconbyte.csv
+                    # mkdir -p paper_statistics && echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True pytest integration_test_pyct.py --workers 4 && cp /dev/null paper_statistics/pyct_run_pyct.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyct_run_pyct.csv
                     cdivb = c / b if b else 0
                     edivd = e / d if d else 0
                     gdivF = g / F if F else 0

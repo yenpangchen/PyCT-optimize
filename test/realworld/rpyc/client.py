@@ -4,7 +4,7 @@
 # statements "host = unwrap(host); port = unwrap(port)" into the first line of that
 # function manually.
 #
-# If we do not avoid wrapping the file "/home/alan23273850/.local/share/virtualenvs/1_CODE_py-conbyte-AGrb4DSq/lib/python3.8/site-packages/rpyc/core/brine.py",
+# If we do not avoid wrapping the file ".venv/lib/python3.8/site-packages/rpyc/core/brine.py",
 # then the statement "return IMM_INTS_LOADER[tag]" in line 357 of that file should
 # also be replaced with the unwrapping "return int.__int__(IMM_INTS_LOADER[tag])"!
 ###################################################################################

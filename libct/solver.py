@@ -1,7 +1,7 @@
 import logging, os, re, subprocess, sys, time
-from conbyte.concolic import Concolic
-from conbyte.predicate import Predicate
-from conbyte.utils import py2smt
+from libct.concolic import Concolic
+from libct.predicate import Predicate
+from libct.utils import py2smt
 
 log = logging.getLogger("ct.solver")
 
@@ -104,11 +104,11 @@ class Solver:
                 assert value.startswith('"') and value.endswith('"')
                 value = value[1:-1]
                 value = value.replace('""', '"').replace("\\t", "\t").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\")
-                # Note the decoding order above must be in reverse with its encoding method (line 41 in conbyte/utils.py)
+                # Note the decoding order above must be in reverse with its encoding method (line 41 in libct/utils.py)
             else:
                 raise NotImplementedError
-            assert name.endswith('_python') # '_python' is used to avoid name collision
-            model[name[:-len('_python')]] = value
+            assert name.endswith('_VAR') # '_VAR' is used to avoid name collision
+            model[name[:-len('_VAR')]] = value
         return model
 
     @staticmethod

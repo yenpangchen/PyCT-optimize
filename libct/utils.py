@@ -1,28 +1,28 @@
 import functools, importlib, inspect, os
 
 def _int(obj):
-    from conbyte.concolic import Concolic
+    from libct.concolic import Concolic
     if isinstance(obj, Concolic) and hasattr(obj, '__int2__'): return obj.__int2__()
     return int(obj)
 
 def _str(obj):
-    from conbyte.concolic import Concolic
+    from libct.concolic import Concolic
     if isinstance(obj, Concolic) and hasattr(obj, '__str2__'): return obj.__str2__()
     return str(obj)
 
 def _is(obj1, obj2):
-    from conbyte.concolic import Concolic
-    from conbyte.utils import unwrap
+    from libct.concolic import Concolic
+    from libct.utils import unwrap
     if obj1 is obj2: return True
     if isinstance(obj1, Concolic): obj1 = unwrap(obj1)
     if isinstance(obj2, Concolic): obj2 = unwrap(obj2)
     return obj1 is obj2
 
 def ConcolicObject(value, expr=None, engine=None):
-    from conbyte.concolic.bool import ConcolicBool
-    from conbyte.concolic.float import ConcolicFloat
-    from conbyte.concolic.int import ConcolicInt
-    from conbyte.concolic.str import ConcolicStr
+    from libct.concolic.bool import ConcolicBool
+    from libct.concolic.float import ConcolicFloat
+    from libct.concolic.int import ConcolicInt
+    from libct.concolic.str import ConcolicStr
     if type(value) is bool: return ConcolicBool(value, expr, engine)
     if type(value) is float: return ConcolicFloat(value, expr, engine)
     if type(value) is int: return ConcolicInt(value, expr, engine)
@@ -32,10 +32,10 @@ def ConcolicObject(value, expr=None, engine=None):
     return value
 
 def unwrap(x): # call primitive's casting function to avoid getting stuck when the concolic's function is modified.
-    from conbyte.concolic.bool import ConcolicBool
-    from conbyte.concolic.float import ConcolicFloat
-    from conbyte.concolic.int import ConcolicInt
-    from conbyte.concolic.str import ConcolicStr
+    from libct.concolic.bool import ConcolicBool
+    from libct.concolic.float import ConcolicFloat
+    from libct.concolic.int import ConcolicInt
+    from libct.concolic.str import ConcolicStr
     if type(x) is ConcolicBool: return bool.__bool__(x)
     if type(x) is ConcolicFloat: return float.__float__(x)
     if type(x) is ConcolicInt: return int.__int__(x)

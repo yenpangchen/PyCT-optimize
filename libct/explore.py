@@ -1,8 +1,8 @@
 import builtins, coverage, func_timeout, inspect, logging, multiprocessing, os, pickle, sys, traceback
-from conbyte.constraint import Constraint
-from conbyte.path import PathToConstraint
-from conbyte.solver import Solver
-from conbyte.utils import ConcolicObject, unwrap, get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
+from libct.constraint import Constraint
+from libct.path import PathToConstraint
+from libct.solver import Solver
+from libct.utils import ConcolicObject, unwrap, get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
 
 log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
@@ -87,7 +87,7 @@ class ExplorationEngine:
         r, s = multiprocessing.Pipe()
         if os.fork() == 0: # child process
             try:
-                import conbyte.wrapper
+                import libct.wrapper
                 module = get_module_from_rootdir_and_modpath(root, modpath)
                 s.send(1)
             except:
@@ -159,15 +159,15 @@ class ExplorationEngine:
             sys.dont_write_bytecode = True # very important to prevent the later primitive mode from using concolic objects imported here...
             prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
             if self.can_use_concolic_wrapper:
-                import conbyte.wrapper
+                import libct.wrapper
             else:
-                import conbyte
+                import libct
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
             execute = get_function_from_module_and_funcname(module, self.funcname)
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types)); result = self.Exception
             try:
-                result = conbyte.utils.unwrap(func_timeout.func_timeout(self.single_timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
+                result = libct.utils.unwrap(func_timeout.func_timeout(self.single_timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
                 log.info(f"Return: {result}")
             except func_timeout.FunctionTimedOut:
                 result = self.Timeout
@@ -270,14 +270,14 @@ class ExplorationEngine:
                     if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
                     else: value = ''
                 prim_args[v.name] = value if type(value) in (bool, float, int, str) else self.LazyLoading
-            if type(value) in (bool, float, int, str): value = ConcolicObject(value, v.name + '_python', self) # '_python' is used to avoid name collision
+            if type(value) in (bool, float, int, str): value = ConcolicObject(value, v.name + '_VAR', self) # '_VAR' is used to avoid name collision
             if v.kind is inspect.Parameter.KEYWORD_ONLY:
                 ccc_kwargs[v.name] = value
             else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
                 ccc_args.append(value)
         if not self.var_to_types: # remain unchanged once determined
             for (k, v) in prim_args.items():
-                k += '_python' # '_python' is used to avoid name collision
+                k += '_VAR' # '_VAR' is used to avoid name collision
                 if type(v) is bool: self.var_to_types[k] = 'Bool'
                 elif type(v) is float: self.var_to_types[k] = 'Real'
                 elif type(v) is int: self.var_to_types[k] = 'Int'

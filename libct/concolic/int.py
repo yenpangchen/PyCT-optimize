@@ -1,8 +1,8 @@
 # Copyright: see copyright.txt
 
 import logging
-from conbyte.concolic import Concolic, MetaFinal
-from conbyte.utils import ConcolicObject, py2smt, unwrap
+from libct.concolic import Concolic, MetaFinal
+from libct.utils import ConcolicObject, py2smt, unwrap
 
 log = logging.getLogger("ct.con.int")
 

@@ -1,6 +1,6 @@
 # Copyright: see copyright.txt
 
-from conbyte.concolic import Concolic
+from libct.concolic import Concolic
 
 class Predicate:
     def __init__(self, expr, value):
