@@ -2,7 +2,7 @@
 from to_be_imported import *
 
 SINGLE_TIMEOUT = 15; testing_mode = False # default mode, this is better since a function may cover places of another function where that function cannot cover by itself.
-exe = './pyexz3.py' if args.mode == '2' else './py-conbyte.py'
+exe = './pyexz3.py' if args.mode == '2' else './pyct.py'
 
 def f1(r0, r):
     if r0.poll(SINGLE_TIMEOUT + 5): # may get stuck here for some unknown reason

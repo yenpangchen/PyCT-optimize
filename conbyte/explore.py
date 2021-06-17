@@ -171,15 +171,15 @@ class ExplorationEngine:
                 log.info(f"Return: {result}")
             except func_timeout.FunctionTimedOut:
                 result = self.Timeout
-                log.error(f"Timeout (soft) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception")#; traceback.print_exc()
+                log.error(f"Timeout (soft) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception")#; traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
-                        print(f"Timeout (soft) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception", file=f)
+                        print(f"Timeout (soft) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception", file=f)
             except Exception as e:
-                log.error(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception")#; log.error(e); traceback.print_exc()
+                log.error(f"Exception for: {all_args} >> ./pyct '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception")#; log.error(e); traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
-                        print(f"Exception for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception", file=f); print(e, file=f)
+                        print(f"Exception for: {all_args} >> ./pyct '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception", file=f); print(e, file=f)
             ###################################### Communication Section ######################################
             s0.send(0) # just a notification to the parent process that we're going to send data
             try: s2.send(result)
@@ -190,10 +190,10 @@ class ExplorationEngine:
         (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
         if not r0.poll(self.single_timeout + 5):
             result = self.Timeout
-            log.error(f"Timeout (hard) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception")
+            log.error(f"Timeout (hard) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception")
             if self.statsdir:
                 with open(self.statsdir + '/exception.txt', 'a') as f:
-                    print(f"Timeout (hard) for: {all_args} >> ./py-conbyte.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception", file=f)
+                    print(f"Timeout (hard) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception", file=f)
         else:
             result = r2.recv()
             if (t:=r3.recv()) is not self.Unpicklable: (Constraint.global_constraints, self.constraints_to_solve, self.path) = t
