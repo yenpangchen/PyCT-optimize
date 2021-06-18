@@ -1,167 +1,74 @@
-# Py-Conbyte
+# PyCT
 
-This project is a Python concolic testing tool taking advantage of inheritance from primitive types along with operator/function overriding and AST rewriting.
-
-It refers to the framework proposed in
-[Deconstructing Dynamic Symbolic Execution](http://research.microsoft.com/apps/pubs/?id=233035),
-[A Peer Architecture for Lightweight Symbolic Execution](http://hoheinzollern.files.wordpress.com/2008/04/seer1.pdf)
-and the tool [PyExZ3](https://github.com/GroundPound/PyExZ3).
-
-接下來是比較偏 methodology 的部分，要寫得比較正式的話需要點時間，之後再補。
+The main objective of PyCT is to produce as a minimum number of different input arguments to achieve as much coverage of the target function as possible by feeding the produced arguments one in an iteration. The currently supported input arguments can only be integers or strings. Other types of arguments may be supported in the future.
 
 ---
 
-## Functionality
+## Abstract
 
-The main objective of Py-Conbyte is to achieve as much coverage of the source file as possible where the target function belongs to by feeding various input arguments. The currently supported concolic types are `bool -> ConcolicBool`, `float -> ConcolicFloat`, `int -> ConcolicInt`, `range -> ConcolicRange`, and `str -> ConcolicStr`. However, the input arguments can only be `ConcolicInt` and `ConcolicStr`. Of course, not all operations of concolic types are supported yet. For more details, please refer to the folder `conbyte/concolic/*.py` (especially `int.py` and `str.py`).
+Concolic testing is a software testing technique for generating concrete inputs of programs to increase code coverage and has been developed for years. For programming languages such as C, JAVA, x86 binary code, and JavaScript, there are already plenty of available concolic testers. However, the concolic testers for Python are relatively less. Since Python is a popular programming language, we believe there is a strong need to develop a good one.
 
-最後這句話之後應該會被展開成細項分別說明有哪些功能。
+Among the existing testers for Python, PyExZ3 is the most well-known and advanced. However, we found some issues of PyExZ3: (1) it implements only a limited number of base types’ (e.g., integer, string) member functions and(2) it automatically downcasts concolic objects and discards related symbolic information as it encounters built-in types’ constructors.
 
----
-
-## Flow of Execution
+Based on the concept of PyExZ3, we develop a new tool called PyCT to alleviate these two issues. PyCT supports a more complete set of member functions of data types including integer, string, and range. We also proposes a new method to upcast constants to concolic ones to prevent unnecessary downcasting. Our evaluation shows that with more member functions being supported, the coverage rate is raised to (80.20%) from (71.55%). It continues to go up to (85.68%) as constant upcasting is also implemented.
 
 ---
 
-## How / Why It Works
+## Prerequisites
 
----
+- [Python](https://www.python.org/downloads/) version == 3.8.5<br>
+  Basically, it should also work for other versions not lower than 3.8. Simply follow the usual installation instructions for Python.<br>
 
-## Prerequisite
-- [Python](https://www.python.org/downloads/) version == 3.8.2<br>
-  It should also work for other versions not lower than 3.8.<br>
+- [CVC4](https://github.com/CVC4/CVC4) commit version == [d1f3225e26b9d64f065048885053392b10994e715](https://github.com/cvc5/cvc5/blob/d1f3225e26b9d64f065048885053392b10994e71/INSTALL.md)<br>
+  Since our CVC4 version has to cope with that of the base project PyExZ3 when we compare the performance of the two, our designated version above cannot be the latest. Otherwise, the CVC4 Python API bindings used in PyExZ3 cannot work.<br>The installation instructions for CVC4 is almost the same as that in the provided link, except that the configuration command should be modified to `./configure.sh --language-bindings=python --python3` for the use of CVC4 Python API bindings. A user must ensure by himself/herself that the command `cvc4` can be found by an operating system shell. Otherwise the tool may not work.<br>
 
-- [CVC4](https://github.com/CVC4/CVC4) == [d43f7760866a1a26769dfdebdffebdaf35309f9c](https://github.com/CVC4/CVC4/tree/d43f7760866a1a26769dfdebdffebdaf35309f9c)<br>
-  The commit version above is used in our testing process. Maybe other later versions are also fine.<br>
-  Please ensure the command `cvc4` can be automatically found by the operating system. ~~Our program will also do it, so it doesn't matter if the user fails to do so.~~<br>
-  Latest releases can be found [here](https://cvc4.github.io/downloads.html), but if you want to stay at the above version the [installation process](https://github.com/CVC4/CVC4/blob/d43f7760866a1a26769dfdebdffebdaf35309f9c/INSTALL.md) may be a little bit trivial.
+- [pipenv](https://pypi.org/project/pipenv/)<br>
+  This is required for the use of the virtual environment mechanism in our project. Install it as a usual Python package.<br>
 
-- [pipenv](https://pypi.org/project/pipenv/)
-
-- Other packages required for your target function to run
-
-<!---
-([Z3](https://github.com/Z3Prover/z3)
--->
+- additional settings<br>
+  For the CVC4 to be findable by the Python API, `export PYTHONPATH={path-to-CVC4-build-folder}/src/bindings/python` should be put in `~/.bashrc`. For pipenv to create a virtual environment in each project folder, `export PIPENV_VENV_IN_PROJECT=1` should be put in `~/.bashrc`, too.<br>
 
 ---
 
 ## Installation
 
 1. Clone our project to the local repository.<br>
-Run `$ git clone git@github.com:alan23273850/py-conbyte.git`,<br>
-or `$ git clone https://github.com/alan23273850/py-conbyte.git`<br>
-2. `$ cd py-conbyte` and `$ pipenv shell`.<br>
-3. `$ pipenv install`<br>
-This is used to create a virtual environment.
+Type `$ git clone git@github.com:alan23273850/PyCT.git` or `$ git clone https://github.com/alan23273850/PyCT.git`<br>
+2. Type `$ cd PyCT` and then `$ pipenv shell` for the first time to create a virtual environment.<br>
+3. Type `$ pipenv install` to install required packages for this environment.
+4. Type `$ exit` or `$ deactivate` to leave this virtual environment.
 
 ---
 
 ## Usage
 
-Keep in mind that always do `$ pipenv shell` first when entering this project directory.
+Keep in mind that always type `$ pipenv shell` or `$ source .venv/bin/activate` in this project directory beforehand when starting an experiment, and always type `$ exit` or `$ deactivate` after the experiment finishes.
+
+For example, to measure the target function `string_find(a, b)` in the target file `./test/strings/string_find.py`, and to let the two initial arguments be `a = ''` and `b = ''`, we can simply type the following command. A user can inspect all options of this script by typing `$ ./pyct.py -h`.
 ```
-usage: py-conbyte.py [-h] [-r ROOT] [-s FUNC] [-m ITER] [--lib LIB] [--safety SAFETY] [-t TIMEOUT] [--timeout2 TIMEOUT2] [--ignore_return] [-v VERBOSE] [-l LOGFILE]
-                     [-d FORMULA] [--dump_projstats] [--solver SOLVER]
-                     path.to.module input_dict
-
-positional arguments:
-  path.to.module        absolute import path to the target module (file) relative to the project root
-                        Ex1: ./a/b/c.py -> a.b.c
-                        Ex2: ./def.py -> def
-
-  input_dict            dictionary of initial arguments to be passed into the target function
-                        Please note that the double quotes outside the dictionary cannot be omitted!
-                        Ex1: func(a=1,b=2) -> "{'a':1,'b':2}"
-                        Ex2: func(a='',b='') -> "{'a':'','b':''}"
-
-
-optional arguments:
-  -h, --help            show this help message and exit
-
-  -r ROOT, --root ROOT  path to the project root which the target function belongs to [default = path/to/this/project]
-                        This option should always be provided if the target function belongs to another project.
-                        If the target project is put inside this project (i.e., the latter's root path is a prefix of the former's),
-                        the scope of coverage is only the target "file." Otherwise, the scope covers the whole "project."
-
-  -s FUNC, --func FUNC  name of the target function
-                        (*) If the function "func" belongs to a class "CLASS", this name should be "CLASS.func".
-                        (*) If the function name is the same as that of the target file, this option can be omitted.
-
-  -m ITER, --iter ITER  maximum number of iterations [default = 200]
-
-  --lib LIB             another library path to be inserted at the beginning of sys.path
-                        For example, if the target function belongs to another project requiring a virtual environment,
-                        you may want to do "--lib ~/.local/share/virtualenvs/projectname-projectid/lib/python3.8/site-packages".
-
-  --safety SAFETY       indicates the behavior when the values in Python and in SMTLIB2 of a concolic object are not equal. [default = 0]
-                        (0) The expression in a concolic object is still preserved even if the values are different.
-                        (1) The expression in a concolic object will be erased if the values are different, but the program still continues.
-                        (2) The expression in a concolic object will be erased if the values are different, and the program exits soon.
-                        Only in level 0 don't we verify return values of the target function since some objects in fact are not picklable,
-                        and therefore information about return values will not printed in the end.
-
-  -t TIMEOUT, --timeout TIMEOUT
-                        timeout (sec.) for the solver to solve a constraint [default = 10]
-
-  --timeout2 TIMEOUT2   timeout (sec.) for the explorer to go through one iteration [default = 15]
-
-  --ignore_return       disable examination of return values in case they are not picklable.
-
-  -v VERBOSE, --verbose VERBOSE
-                        logging level [default = 1]
-                        (0) Show messages whose levels not lower than WARNING.
-                        (1) Show messages from (0), plus basic iteration information.
-                        (2) Show messages from (1), plus solver information.
-                        (3) Show messages from (2), plus all concolic objects' information.
-
-  -l LOGFILE, --logfile LOGFILE
-                        name of the log file
-                        (*) When this argument is an empty string, all logging messages will not be dumped either to screens or to files.
-                        (*) When this option is not set, the logging messages will be dumped to screens.
-
-  -d FORMULA, --formula FORMULA
-                        name of directory or file to store smtlib2 formulas
-                        (*) When this argument is a pure positive integer N, it means that we only want to store the N_th constraint
-                        where N is the number "SMT-id" shown in the log. The file should be named {N}.smt2 in the current directory.
-                        (*) Otherwise, this argument names the directory, and all constraints will be stored in this directory whose
-                        names follow the rule mentioned above.
-                        In either case, these *.smt2 files should be able to be called by a solver directly.
-
-  --dump_projstats      dump project statistics under the directory "./project_statistics/{project_name}/{path.to.module}/{func_name}/**".
-
-  --solver SOLVER       solver type [default = cvc4]
-                        We currently only support CVC4.
-
+ $ ./pyct.py test.strings.string_find "{'a':'','b':''}" -r . -s string_find
 ```
-
-For example, to test the target function `build_in(a, b)` in the target file `test/build_in.py` (Note that they have the same name.), and to let the two initial arguments be `a = 0` and `b = 0`, we can simply use the following command.
+or
 ```
- $ ./py-conbyte.py -r test build_in "{'a':0,'b':0}"
+ $ ./pyct.py test.strings.string_find "{'a':'','b':''}"
 ```
-The output would be:
+Then the output would be:
 ```
-  ct.explore    INFO     Inputs: {'a': 0, 'b': 0}
+  ct.explore    INFO     Inputs: {'a': '', 'b': ''}
   ct.explore    INFO     Return: 1
-  ct.explore    INFO     Not Covered Yet: /mnt/d/ALAN_FOLDER/2020_RESEARCH/1_CODE_py-conbyte/test/build_in.py {11}
+  ct.explore    INFO     Not Covered Yet: /root/PyCT/test/strings/string_find.py [9]
   ct.explore    INFO     === Iterations: 1 ===
-  ct.explore    INFO     Inputs: {'a': 100, 'b': 0}
-  ct.explore    INFO     Return: 0
+  ct.explore    INFO     Inputs: {'a': 'ggg', 'b': ''}
+  ct.explore    INFO     Return: 1
+  ct.explore    INFO     Not Covered Yet: /root/PyCT/test/strings/string_find.py [9]
+  ct.explore    INFO     === Iterations: 2 ===
+  ct.explore    INFO     Inputs: {'a': 'ADBECggg', 'b': ''}
+  ct.explore    INFO     Return: 2
+  ct.explore    INFO     Not Covered Yet: /root/PyCT/test/strings/string_find.py {}
 
-Total iterations: 1
-
-Generated inputs
-[{'a': 0, 'b': 0}, {'a': 100, 'b': 0}]
-
-Line coverage 9/9 (100.00%)
-
-# of input vectors: 2
-[({'a': 0, 'b': 0}, 1), ({'a': 100, 'b': 0}, 0)]
-
+Total iterations: 2
 ```
-
-To leave this virtual environment, simply type `$ exit` in the terminal.
-
+<!-- 
 ---
 
 ## TODO
@@ -184,4 +91,4 @@ blablabla...
 
 Finally you may want to run the (parallel) integration test (in `integration_test.py`) to ensure the contribution is correct. The command is `pytest integration_test.py --workers [# of processes] -x`, and it takes almost 11 minutes to run.
 
-If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest integration_test.py --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file content is separated by "|" since "," is already contained in the data.
+If you want to create the csv file of the testing result, run `echo "ID|Line Coverage|Missing Lines|Inputs & Outputs" > output.csv2 && dump=True pytest integration_test.py --workers [# of processes] -x && cp /dev/null output.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 output.csv`. Make sure there are no existing *.csv files in the current directory before running the test. Our file content is separated by "|" since "," is already contained in the data. -->
