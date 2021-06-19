@@ -1,9 +1,25 @@
 #!/usr/bin/env python3
-import os, subprocess, sys, time, unittest
+import os, pytest, sys, time, unittest
 import libct.explore
 
 class TestCodeSnippets(unittest.TestCase):
-    dump = bool(os.environ.get('dump', False))
+    dump = True #bool(os.environ.get('dump', False))
+    @classmethod
+    def setup_class(cls): # still runs for each test function if in parallel mode
+        if cls.dump: # Logging output section
+            if os.path.isfile('paper_statistics/pyct_run_pyexz3.csv') and os.path.isdir('paper_statistics/pyct_run_pyexz3'):
+                os.system('rm -r paper_statistics/pyct_run_pyexz3*')
+            if not os.path.isdir('paper_statistics/pyct_run_pyexz3'):
+                os.system('mkdir -p paper_statistics/pyct_run_pyexz3')
+    @classmethod
+    def teardown_class(cls): # still runs for each test function if in parallel mode
+        if cls.dump: # Logging output section
+            if len(next(os.walk('paper_statistics/pyct_run_pyexz3'))[2]) == 73:
+                os.system('echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > paper_statistics/pyct_run_pyexz3.csv')
+                os.system('cat paper_statistics/pyct_run_pyexz3/*.csv >> paper_statistics/pyct_run_pyexz3.csv')
+                os.system('rm -r paper_statistics/pyct_run_pyexz3')
+                while True:
+                    pytest.raises(SystemExit)
     def test_01(self): self._execute("test", "abs_test", {'a':0, 'b':0}) # OK
     def test_02(self): self._execute("test", "andor", {'x':0, 'y':0}) # OK
     def test_03(self): self._execute("test", "arrayindex2", {'i':0}) # OK
@@ -96,16 +112,14 @@ class TestCodeSnippets(unittest.TestCase):
             # print(modpath + ':', _missing_lines)
         if self.dump: # Logging output section
             if self._omit(_id):
-                with open(f'{_id}.csv', 'w') as f:
+                with open(f'paper_statistics/pyct_run_pyexz3/{_id}.csv', 'w') as f:
                     f.write(f'{_id}|-|-|-\n')
             else:
                 col_1 = "{}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0)
                 # col_2 = str(sorted(list(missing_lines.values())[0]) if missing_lines else '')
                 # if col_2 == str(sorted(_missing_lines)):
                 #     col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
-                with open(f'{_id}.csv', 'w') as f:
-                    # echo "ID|Function|Line Coverage|Time (sec.)"
-                    # mkdir -p paper_statistics && echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True pytest integration_test_pyexz3.py --workers 4 && cp /dev/null paper_statistics/pyct_run_pyexz3.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyct_run_pyexz3.csv
+                with open(f'paper_statistics/pyct_run_pyexz3/{_id}.csv', 'w') as f:
                     cdivb = c / b if b else 0
                     edivd = e / d if d else 0
                     gdivF = g / F if F else 0

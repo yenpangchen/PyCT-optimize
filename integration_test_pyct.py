@@ -1,9 +1,25 @@
 #!/usr/bin/env python3
-import os, subprocess, sys, time, unittest
+import os, pytest, subprocess, sys, time, unittest
 import libct.explore
 
 class TestCodeSnippets(unittest.TestCase):
-    dump = bool(os.environ.get('dump', False))
+    dump = True #bool(os.environ.get('dump', False))
+    @classmethod
+    def setup_class(cls): # still runs for each test function if in parallel mode
+        if cls.dump: # Logging output section
+            if os.path.isfile('paper_statistics/pyct_run_pyct.csv') and os.path.isdir('paper_statistics/pyct_run_pyct'):
+                os.system('rm -r paper_statistics/pyct_run_pyct*')
+            if not os.path.isdir('paper_statistics/pyct_run_pyct'):
+                os.system('mkdir -p paper_statistics/pyct_run_pyct')
+    @classmethod
+    def teardown_class(cls): # still runs for each test function if in parallel mode
+        if cls.dump: # Logging output section
+            if len(next(os.walk('paper_statistics/pyct_run_pyct'))[2]) == 47:
+                os.system('echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > paper_statistics/pyct_run_pyct.csv')
+                os.system('cat paper_statistics/pyct_run_pyct/*.csv >> paper_statistics/pyct_run_pyct.csv')
+                os.system('rm -r paper_statistics/pyct_run_pyct')
+                while True:
+                    pytest.raises(SystemExit)
     def test_01(self): self._execute("test", "build_in", {'a':0, 'b':0}) # OK
     def test_02(self): self._execute("test", "call_obj", {'a':0, 'b':0}, {11, 26}) # OK with deadcode [11, 26]
     def test_03(self): self._execute("test", "do_abs", {'a':0, 'b':0}) # OK
@@ -76,16 +92,14 @@ class TestCodeSnippets(unittest.TestCase):
             # print(modpath + ':', col_3)
         if self.dump: # Logging output section
             if self._omit(_id):
-                with open(f'{_id}.csv', 'w') as f:
+                with open(f'paper_statistics/pyct_run_pyct/{_id}.csv', 'w') as f:
                     f.write(f'{_id}|-|-|-\n')
             else:
                 col_1 = "{}/{} ({:.2%})".format(executed_lines, total_lines, (executed_lines/total_lines) if total_lines > 0 else 0)
                 # col_2 = str(sorted(list(missing_lines.values())[0]) if missing_lines else '')
                 # if col_2 == str(sorted(_missing_lines)):
                 #     col_1 += ' >> (100.00%)' #; col_2 += ' (dead code)'
-                with open(f'{_id}.csv', 'w') as f:
-                    # echo "ID|Function|Line Coverage|Time (sec.)"
-                    # mkdir -p paper_statistics && echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > output.csv2 && dump=True pytest integration_test_pyct.py --workers 4 && cp /dev/null paper_statistics/pyct_run_pyct.csv && cat *.csv >> output.csv2 && rm -f *.csv && mv output.csv2 paper_statistics/pyct_run_pyct.csv
+                with open(f'paper_statistics/pyct_run_pyct/{_id}.csv', 'w') as f:
                     cdivb = c / b if b else 0
                     edivd = e / d if d else 0
                     gdivF = g / F if F else 0
