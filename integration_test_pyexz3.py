@@ -1,25 +1,14 @@
 #!/usr/bin/env python3
-import os, pytest, sys, time, unittest
+import argparse, os, signal, sys, threading, time, unittest
 import libct.explore
+from concurrencytest import ConcurrentTestSuite, fork_for_tests
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", dest='num', type=int, help="the number of processes", default=1)
+args = parser.parse_args()
 
 class TestCodeSnippets(unittest.TestCase):
-    dump = True #bool(os.environ.get('dump', False))
-    @classmethod
-    def setup_class(cls): # still runs for each test function if in parallel mode
-        if cls.dump: # Logging output section
-            if os.path.isfile('paper_statistics/pyct_run_pyexz3.csv') and os.path.isdir('paper_statistics/pyct_run_pyexz3'):
-                os.system('rm -r paper_statistics/pyct_run_pyexz3*')
-            if not os.path.isdir('paper_statistics/pyct_run_pyexz3'):
-                os.system('mkdir -p paper_statistics/pyct_run_pyexz3')
-    @classmethod
-    def teardown_class(cls): # still runs for each test function if in parallel mode
-        if cls.dump: # Logging output section
-            if len(next(os.walk('paper_statistics/pyct_run_pyexz3'))[2]) == 73:
-                os.system('echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > paper_statistics/pyct_run_pyexz3.csv')
-                os.system('cat paper_statistics/pyct_run_pyexz3/*.csv >> paper_statistics/pyct_run_pyexz3.csv')
-                os.system('rm -r paper_statistics/pyct_run_pyexz3')
-                while True:
-                    pytest.raises(SystemExit)
+    dump = False #bool(os.environ.get('dump', False))
     def test_01(self): self._execute("test", "abs_test", {'a':0, 'b':0}) # OK
     def test_02(self): self._execute("test", "andor", {'x':0, 'y':0}) # OK
     def test_03(self): self._execute("test", "arrayindex2", {'i':0}) # OK
@@ -39,7 +28,7 @@ class TestCodeSnippets(unittest.TestCase):
     def test_17(self): self._execute("test", "elseif", {'in1':0}, {26}) # OK with deadcode [26]
     def test_18(self): self._execute("test", "expand", {'in1':0, 'in2':0}) # OK
     def test_19(self): self._execute("test", "expressions", {'in1':0, 'in2':0}, {9}) # TODO: CVC4 cannot solve (in1) * (in2 + 47) == 53
-    def test_20(self): self._execute("test", "filesys", {'x':0}, {18, 20}) # OK with deadcode [18, 20]
+    def test_20(self): self._execute20("test", "filesys", {'x':0}, {18, 20}) # OK with deadcode [18, 20]
     def test_21(self): self._execute("test", "fp", {'a':0}) # OK
     def test_22(self): self._execute("test", "gcd", {'x':0, 'y':0}, {69}) # OK with deadcode [69]
     def test_23(self): self._execute("test", "hashval", {'key':0}, {12}) # OK with deadcode [12]
@@ -94,8 +83,13 @@ class TestCodeSnippets(unittest.TestCase):
     def test_72(self): self._execute("fail", "pow", {'x':0}, {7}) # TODO: CVC4 cannot solve 4 == x**2
     def test_73(self): self._execute("fail", "sqrttest", {'in1':0}, {8,9,10}) # TODO: sqrt is still handled concretely
 
+    def _execute20(self, root, modpath, inputs, _missing_lines=set(), *, lib=None):
+        os.system('rm ../PyExZ3/test/tmp.txt')
+        self._execute(root, modpath, inputs, _missing_lines, lib=lib)
+
     def _execute(self, root, modpath, inputs, _missing_lines=set(), *, lib=None):
         _id = sys._getframe(1).f_code.co_name.split('_')[1]
+        if _id == 'execute20': _id = sys._getframe(2).f_code.co_name.split('_')[1]
         if not self._omit(_id):
             self.iteration_max = 1
             engine = libct.explore.ExplorationEngine()
@@ -140,3 +134,31 @@ class TestCodeSnippets(unittest.TestCase):
     def assert_equal(self, iteration, a, b):
         if iteration == self.iteration_max: return True #self.assertEqual(a, b) # self.assertTrue(a.issubset(b))
         return a == b
+
+if __name__ == '__main__':
+    TestCodeSnippets.dump = True
+    os.system('rm -r paper_statistics/pyct_run_pyexz3*')
+    os.system('mkdir -p paper_statistics/pyct_run_pyexz3')
+
+    # load the TestSuite
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    suite.addTests(loader.loadTestsFromTestCase(TestCodeSnippets))
+
+    # start preparation
+    def job():
+        while len(next(os.walk('paper_statistics/pyct_run_pyexz3'))[2]) != suite.countTestCases(): pass
+        os.system('echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > paper_statistics/pyct_run_pyexz3.csv')
+        os.system('cat paper_statistics/pyct_run_pyexz3/*.csv >> paper_statistics/pyct_run_pyexz3.csv')
+        os.system('rm -r paper_statistics/pyct_run_pyexz3')
+        pid = os.getpid()
+        os.kill(pid, signal.SIGTERM) #or signal.SIGKILL
+    t = threading.Thread(target = job)
+    t.start()
+
+    # run the TestSuite
+    concurrent_suite = ConcurrentTestSuite(suite, fork_for_tests(args.num))
+    result = unittest.TextTestRunner().run(concurrent_suite)
+    result.stop()
+
+    print('Finish the integration test!!!')

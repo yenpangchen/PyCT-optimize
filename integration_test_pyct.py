@@ -1,25 +1,14 @@
 #!/usr/bin/env python3
-import os, pytest, subprocess, sys, time, unittest
+import argparse, os, signal, subprocess, sys, threading, time, unittest
 import libct.explore
+from concurrencytest import ConcurrentTestSuite, fork_for_tests
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", dest='num', type=int, help="the number of processes", default=1)
+args = parser.parse_args()
 
 class TestCodeSnippets(unittest.TestCase):
-    dump = True #bool(os.environ.get('dump', False))
-    @classmethod
-    def setup_class(cls): # still runs for each test function if in parallel mode
-        if cls.dump: # Logging output section
-            if os.path.isfile('paper_statistics/pyct_run_pyct.csv') and os.path.isdir('paper_statistics/pyct_run_pyct'):
-                os.system('rm -r paper_statistics/pyct_run_pyct*')
-            if not os.path.isdir('paper_statistics/pyct_run_pyct'):
-                os.system('mkdir -p paper_statistics/pyct_run_pyct')
-    @classmethod
-    def teardown_class(cls): # still runs for each test function if in parallel mode
-        if cls.dump: # Logging output section
-            if len(next(os.walk('paper_statistics/pyct_run_pyct'))[2]) == 47:
-                os.system('echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > paper_statistics/pyct_run_pyct.csv')
-                os.system('cat paper_statistics/pyct_run_pyct/*.csv >> paper_statistics/pyct_run_pyct.csv')
-                os.system('rm -r paper_statistics/pyct_run_pyct')
-                while True:
-                    pytest.raises(SystemExit)
+    dump = False #bool(os.environ.get('dump', False))
     def test_01(self): self._execute("test", "build_in", {'a':0, 'b':0}) # OK
     def test_02(self): self._execute("test", "call_obj", {'a':0, 'b':0}, {11, 26}) # OK with deadcode [11, 26]
     def test_03(self): self._execute("test", "do_abs", {'a':0, 'b':0}) # OK
@@ -120,3 +109,31 @@ class TestCodeSnippets(unittest.TestCase):
     def assert_equal(self, iteration, a, b):
         if iteration == self.iteration_max: return True #self.assertEqual(a, b)
         return a == b
+
+if __name__ == '__main__':
+    TestCodeSnippets.dump = True
+    os.system('rm -r paper_statistics/pyct_run_pyct*')
+    os.system('mkdir -p paper_statistics/pyct_run_pyct')
+
+    # load the TestSuite
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    suite.addTests(loader.loadTestsFromTestCase(TestCodeSnippets))
+
+    # start preparation
+    def job():
+        while len(next(os.walk('paper_statistics/pyct_run_pyct'))[2]) != suite.countTestCases(): pass
+        os.system('echo "ID|Function|Line Coverage|Time (sec.)|# of SMT files|# of SAT|Time of SAT|# of UNSAT|Time of UNSAT|# of OTHERWISE|Time of OTHERWISE" > paper_statistics/pyct_run_pyct.csv')
+        os.system('cat paper_statistics/pyct_run_pyct/*.csv >> paper_statistics/pyct_run_pyct.csv')
+        os.system('rm -r paper_statistics/pyct_run_pyct')
+        pid = os.getpid()
+        os.kill(pid, signal.SIGTERM) #or signal.SIGKILL
+    t = threading.Thread(target = job)
+    t.start()
+
+    # run the TestSuite
+    concurrent_suite = ConcurrentTestSuite(suite, fork_for_tests(args.num))
+    result = unittest.TextTestRunner().run(concurrent_suite)
+    result.stop()
+
+    print('Finish the integration test!!!')

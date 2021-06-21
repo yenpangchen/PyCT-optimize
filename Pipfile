@@ -5,8 +5,8 @@ name = "pypi"
 
 [packages]
 coverage = "==4.5.4"
-pytest-parallel = "*"
 func-timeout = "*"
+concurrencytest = "*"
 
 [dev-packages]
 
