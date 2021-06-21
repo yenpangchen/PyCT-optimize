@@ -26,7 +26,8 @@ Based on the concept of PyExZ3, we develop a new tool called PyCT to alleviate t
   This is required for the use of the virtual environment mechanism in our project. Install it as a usual Python package.<br>
 
 - additional settings<br>
-  For the CVC4 to be findable by the Python API, `export PYTHONPATH={path-to-CVC4-build-folder}/src/bindings/python` should be put in `~/.bashrc`. For pipenv to create a virtual environment in each project folder, `export PIPENV_VENV_IN_PROJECT=1` should be put in `~/.bashrc`, too.<br>
+  1. For CVC4 to be findable by the Python API, `export PYTHONPATH={path-to-CVC4-build-folder}/src/bindings/python` should be put in `~/.bashrc`.
+  2. For pipenv to create a virtual environment in each project folder, `export PIPENV_VENV_IN_PROJECT=1` should be put in `~/.bashrc`, too.
 
 ---
 
@@ -37,6 +38,7 @@ Type `$ git clone git@github.com:alan23273850/PyCT.git` or `$ git clone https://
 2. Type `$ cd PyCT` and then `$ pipenv shell` for the first time to create a virtual environment.<br>
 3. Type `$ pipenv install` to install required packages for this environment.
 4. Type `$ exit` or `$ deactivate` to leave this virtual environment.
+5. For case #46 of the integration test to work, one must repeat step 2. to 4. in the folder `./test/realworld/rpyc` for its own virtual environment first.
 
 ---
 
