@@ -75,7 +75,7 @@ Total iterations: 2
 
 ## Evaluation
 
-The following instructions can be used to reproduce Table 3 in the paper #76 of APLAS 2021. For the sake of convenience, we recommend to conduct the experiment in the provided docker image `docker pull alan23273850/pyct`.
+The following instructions can be used to reproduce Table 3 in the paper #76 of APLAS 2021. For the sake of convenience, we recommend to conduct the experiment in the provided docker image `docker pull alan23273850/pyct`. In this image, all statistics are already prepared except `./root/PyCT/project_statistics`, `./root/PyCT/project_statistics_disable_AST`, `./root/PyExZ3/project_statistics`, `./root/PyExZ3/project_statistics_disable_AST` in order to minimize its size. Please note that these folders contain no csv files, so never mind. To start a new container from the image, type `docker run -it --entrypoint bash [image id]`. To get into an existing container, type `docker start -ai [container id]`. To leave a container simply type `exit`.
 
 * Navigate to `/root/PyExZ3` and run the following three set of experiments with the virtual environment enabled (`pipenv shell` ... `exit`).
     1. Run `./integration_test_pyct.py -n 8`, where `8` can be adjusted to any number of runnable threads.
