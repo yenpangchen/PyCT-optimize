@@ -37,4 +37,5 @@ script.sh
 ignore/
 *.csv
 *.out
-project_statistics/
+paper_statistics*
+project_statistics*
