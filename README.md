@@ -70,6 +70,33 @@ Then the output would be:
 
 Total iterations: 2
 ```
+
+---
+
+## Evaluation
+
+The following instructions can be used to reproduce Table 3 in the paper #76 of APLAS 2021. For the sake of convenience, we recommend to conduct the experiment in the provided docker image `docker pull alan23273850/pyct`.
+
+* Navigate to `/root/PyExZ3` and run the following three set of experiments with the virtual environment enabled (`pipenv shell` ... `exit`).
+    1. Run `./integration_test_pyct.py -n 8`, where `8` can be adjusted to any number of runnable threads.
+    2. Run `./integration_test_pyexz3.py -n 8`, where `8` can be adjusted to any number of runnable threads.
+    3. Run `./run_project.py 2 ../04_Python` first and then `./measure_coverage.py 2 ../04_Python`.
+
+* Since our tool `/root/PyCT` cannot be switched to disable AST rewriting from input options, one must manually comment out line `180-183` and `202` of `/root/PyCT/libct/wrapper.py` first. Then navigate to `/root/PyCT` and run the following three set of experiments with the virtual environment enabled (`pipenv shell` ... `exit`).
+
+    1. Run `./integration_test_pyct.py -n 8`, where `8` can be adjusted to any number of runnable threads.
+    2. Run `./integration_test_pyexz3.py -n 8`, where `8` can be adjusted to any number of runnable threads.
+    3. Run `./run_project.py 1 ../04_Python` first and then `./measure_coverage.py 1 ../04_Python`.
+
+  After this series of commands, please `mv paper_statistics paper_statistics_disable_AST`, and `git restore libct/wrapper.py`. If you want to preserve `project_statistics`, also do `mv project_statistics project_statistics_disable_AST`.
+
+* Stay in `/root/PyCT` and run the following three set of experiments with the virtual environment enabled (`pipenv shell` ... `exit`).
+    1. Run `./integration_test_pyct.py -n 8`, where `8` can be adjusted to any number of runnable threads.
+    2. Run `./integration_test_pyexz3.py -n 8`, where `8` can be adjusted to any number of runnable threads.
+    3. Run `./run_project.py 1 ../04_Python` first and then `./measure_coverage.py 1 ../04_Python`.
+
+Finally `./produce_paper_statistics.py` and the output `./paper_total_table.csv` is what we want. The bottleneck of the elapsed time is `/root/04_Python` and it takes almost 2 to 3 days to complete the whole task.
+
 <!-- 
 ---
 
