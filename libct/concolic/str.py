@@ -246,7 +246,7 @@ class ConcolicStr(str, Concolic, metaclass=MetaFinal):
             args[2] = ConcolicObject(args[2]) # ConcolicInt
         main = self._substr(args[1], args[2])
         (args[0] in main).__bool__() # our handmade branch in order to produce more successful testcases
-        expr = ["ite", ["<=", ["str.len", args[0]], "0"], ["+", "1", ["str.len", main]], ["div", ["-", ["str.len", ["str.replaceall", main, args[0], ["str.++", args[0], args[0]]]], ["str.len", main]], ["str.len", args[0]]]]
+        expr = ["ite", ["<=", ["str.len", args[0]], "0"], ["+", "1", ["str.len", main]], ["div", ["-", ["str.len", main], ["str.len", ["str.replaceall", main, args[0], py2smt("")]]], ["str.len", args[0]]]]
         return ConcolicObject(value, expr)
 
     def encode(self, /, encoding='utf-8', errors='strict'): # <method 'encode' of 'str' objects> TODO
