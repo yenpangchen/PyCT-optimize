@@ -185,6 +185,7 @@ class Conv2DLayer:
                         tensor_out[row][col][channel] = tensor_in[i][j][k] * float(filter_weights[i-row][j-col][k]) + tensor_out[row][col][channel] 
                     if self.activation!="None":
                         tensor_out[row][col][channel] = actFunc(tensor_out[row][col][channel], self.activation)
+                    #print(type(tensor_out[row][col][channel]))
             #print("Finished %i feature Map" % channel)
         print("[DEBUG]Finish Conv2D Layer forwarding!!")
         #print("Feature Map Shape: %ix%ix%i" % tuple(out_shape))
@@ -229,6 +230,7 @@ class MaxPool2DLayer:
                     if tensor_in[row*r+1][col*c+1][depth]:
                         max_val = tensor_in[row*r+1][col*c+1][depth]
                     tensor_out[row][col][depth] = max_val
+                    #print(type(tensor_out[row][col][depth]))
         ## fix the shape of tensor_out
         print("[DEBUG]Finish MaxPool2D Layer forwarding!!")
         #print("Feature Map Shape: %ix%ix%i" % tuple(out_shape))

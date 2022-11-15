@@ -48,7 +48,7 @@ with open('dnn_predict.py', "w+") as f_pred, open(args.image, "r") as f_img:
     f_pred.write("\tmax_val, ret_class = -100.0, 0\n")
     f_pred.write("\tfor i,cl_val in enumerate(out_val):\n")
     f_pred.write("\t\tif cl_val > max_val:\n")
-    f_pred.write("\t\t\tmax_val, ret_cl = cl_val, i\n")
+    f_pred.write("\t\t\tmax_val, ret_class = cl_val, i\n")
     f_pred.write("\treturn ret_class")
 
 
@@ -69,9 +69,13 @@ with open('dnn_predict.py', "w+") as f_pred, open(args.image, "r") as f_img:
 verb_option = "-v 1"
 s_TO_option = "--single_timeout 900"
 norm_option = "-n 1"
+smt_option = "-d SMT_LOG"
 
-cmd = "./pyct.py dnn_predict \"{val_dict}\" -c \"{con_dict}\" {verb} {single_to} {n_option} -r . -s predict ".format(
-    val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option)
+cmd = "./pyct.py dnn_predict \"{val_dict}\" -c \"{con_dict}\" {verb} {single_to} {smt} {n_option} -r . -s predict ".format(
+    val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option, smt = smt_option)
+
+#cmd = "./pyct.py dnn_predict \"{val_dict}\"  {verb} {single_to} {smt} {n_option} -r . -s predict ".format(
+#    val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option, smt = smt_option)
 
 #print("running command: {command}".format(command=cmd))
 os.system(cmd)
