@@ -69,7 +69,7 @@ with open('dnn_predict.py', "w+") as f_pred, open(args.image, "r") as f_img:
 verb_option = "-v 1"
 s_TO_option = "--single_timeout 900"
 norm_option = "-n 1"
-smt_option = "-d SMT_LOG"
+#smt_option = "-d SMT_LOG"
 
 cmd = "./pyct.py dnn_predict \"{val_dict}\" -c \"{con_dict}\" {verb} {single_to} {smt} {n_option} -r . -s predict ".format(
     val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option, smt = smt_option)
