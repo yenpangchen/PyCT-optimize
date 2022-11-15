@@ -8,6 +8,7 @@ log = logging.getLogger("ct.solver")
 class Solver:
     # options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
     cnt = 1 # for store
+    normalization = True
 
     @classmethod # similar to our constructor
     def set_basic_configurations(cls, solver, timeout, safety, store, statsdir):
@@ -22,7 +23,8 @@ class Solver:
         ##########################################################################################
         # Build the command from the solver type
         if solver == "cvc4":
-            cls.cmd = ["cvc4"] + ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
+            #cls.cmd = ["cvc4"] + ["--produce-models", "--lang", "smt", "--strings-exp"]
+             cls.cmd = ["cvc4"] + ["--produce-models", "--lang", "smt", "--quiet", "--strings-exp"]
         # elif solver == "z3seq":
         #     cls.cmd = "z3 -in".split(' ')
         # elif solver == "z3str":
@@ -41,7 +43,8 @@ class Solver:
 
     @classmethod
     def find_model_from_constraint(cls, engine, constraint):
-        formulas = Solver._build_formulas_from_constraint(engine, constraint); log.smtlib2(f"Solving To: {constraint}")
+        #print("[DEBUG]Finding model ... ")
+        formulas = Solver._build_formulas_from_constraint(engine, constraint, Solver.normalization); log.smtlib2(f"Solving To: {constraint}")
         start = time.time()
         try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
         except subprocess.CalledProcessError as e: print(e.output)
@@ -92,12 +95,19 @@ class Solver:
                 else: raise NotImplementedError
             elif engine.var_to_types[name] == "Real":
                 if "(" in value:
-                    value = -float(value.replace("(", "").replace(")", "").split(" ")[1])
+                    tmp = value.replace("(", "").replace(")", "").replace("-", "").split()
+                    if value.count('-') % 2 == 1:
+                        value = - ( float(tmp[1])/float(tmp[2]) )
+                    else:
+                        value = ( float(tmp[1])/float(tmp[2]) ) 
                 else:
                     value = float(value)
             elif engine.var_to_types[name] == "Int":
                 if "(" in value:
-                    value = -int(value.replace("(", "").replace(")", "").split(" ")[1])
+                    if "-" in value:
+                        value = -int(value.replace("(", "").replace(")", "").split(" ")[2])
+                    else:
+                        value = int(value.replace("(", "").replace(")", "").split(" ")[1])
                 else:
                     value = int(value)
             elif engine.var_to_types[name] == "String":
@@ -112,11 +122,18 @@ class Solver:
         return model
 
     @staticmethod
-    def _build_formulas_from_constraint(engine, constraint):
-        declare_vars = "\n".join(f"(declare-const {name} {_type})" for (name, _type) in engine.var_to_types.items())
+    def _build_formulas_from_constraint(engine, constraint, norm):
+        declare_vars = "\n".join(f"(declare-const {name} {_type})" 
+                        for (name, _type) in engine.var_to_types.items()) #if engine.concolic_dict.get(name, 1))
+        # declare_vars = "\n".join(f"(declare-const {name} {engine.var_to_types[name]})"                 
+        #                         for (name) in engine.concolic_name_list)
         queries = "\n".join(assertion.get_formula() for assertion in constraint.get_all_asserts())
+        norm_queries = ""
+        if norm:
+            norm_queries = "\n".join(f"(assert (and (<= {name} 1) (>= {name} 0)))" 
+                            for (name) in engine.concolic_name_list)
         get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
-        return f"(set-logic ALL)\n{declare_vars}\n{queries}\n(check-sat)\n{get_vars}\n"
+        return f"(set-logic ALL)\n{declare_vars}\n{queries}\n{norm_queries}\n(check-sat)\n{get_vars}\n"
 
     @classmethod
     def _expr_has_engines_and_equals_value(cls, expr, value):

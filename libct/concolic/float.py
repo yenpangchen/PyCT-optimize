@@ -165,13 +165,16 @@ class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
             else:
                 if type(other) is bool: other = float(other)
                 if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
+                # FIXME
+                if type(other) is float and other==0.0: return ConcolicObject(0.0)
                 other = ConcolicObject(other)
             expr = ['*', other, self]
             return ConcolicObject(value, expr)
         if op == '__mul__':
             try:
                 if (value := super().__mul__(unwrap(other))) is NotImplemented: raise NotImplementedError
-            except: value = unwrap(other).__rmul__(unwrap(self))
+            except: 
+                value = unwrap(other).__rmul__(unwrap(self))
             if isinstance(other, Concolic):
                 if hasattr(other, 'isBool'): other = other.__float2__()
                 # Please note that int * float -> float instead of int, so we cannot convert float to int here!
@@ -181,6 +184,8 @@ class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
             else:
                 if type(other) is bool: other = int(other)
                 if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
+                # FIXME
+                if type(other) is float and other==0.0: return ConcolicObject(0.0)
                 other = ConcolicObject(other)
             expr = ['*', self, other]
             return ConcolicObject(value, expr)
@@ -276,6 +281,7 @@ class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
             else:
                 if type(other) is bool: other = float(other)
                 if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
+                if type(other) is float and other==0.0: return self
                 other = ConcolicObject(other)
             expr = ['+', other, self]
             return ConcolicObject(value, expr)
@@ -292,6 +298,8 @@ class ConcolicFloat(float, Concolic, metaclass=MetaFinal):
             else:
                 if type(other) is bool: other = float(other)
                 if type(other) is not int and type(other) is not float: return ConcolicObject(value) # discard the symbolic expression if it cannot match the concrete value
+                #FIXME
+                if type(other) is float and other==0.0: return self
                 other = ConcolicObject(other)
             expr = ['+', self, other]
             return ConcolicObject(value, expr)

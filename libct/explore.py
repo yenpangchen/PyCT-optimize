@@ -63,16 +63,22 @@ class ExplorationEngine:
         self.coverage_data = coverage.CoverageData()
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
+        self.concolic_name_list = []
+        self.normalize = False
 
-    def _execution_loop(self, max_iterations, all_args):
+    def _execution_loop(self, max_iterations, all_args, concolic_dict):
+        Solver.normalization = self.normalize
         tried_input_args = [all_args.copy()] # .copy() is important!!
-        iterations = 1; cont = self._one_execution(all_args) # the 1st execution
+        iterations = 1; cont = self._one_execution(all_args, concolic_dict) # the 1st execution
         while cont and (max_iterations==0 or iterations<max_iterations) and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
             # and try to solve for it. After that we'll obtain a model as
             # a list of arguments and continue the next iteration with it.
-            constraint = self.constraints_to_solve.pop(0)
+
+            # constraint = self.constraints_to_solve.pop(0)
+            #NOTE stack is used instead of queue for DNN
+            constraint = self.constraints_to_solve.pop()
             model = Solver.find_model_from_constraint(self, constraint)
             ##############################################################
             if model is not None:
@@ -80,7 +86,7 @@ class ExplorationEngine:
                 if all_args not in tried_input_args:
                     tried_input_args.append(all_args.copy()) # .copy() is important!!
                     log.info(f"=== Iterations: {iterations} ==="); iterations += 1
-                    cont = self._one_execution(all_args) # other consecutive executions following the 1st execution
+                    cont = self._one_execution(all_args, concolic_dict) # other consecutive executions following the 1st execution
         return iterations
 
     def _can_use_concolic_wrapper(self, root, modpath):
@@ -97,8 +103,9 @@ class ExplorationEngine:
         ans = r.recv(); r.close(); s.close()
         return ans
 
-    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=0, single_timeout=15, total_timeout=900, deadcode=set(), include_exception=False, lib=None, single_coverage=True, file_as_total=False):
-        self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib; self.file_as_total = file_as_total
+    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=0, single_timeout=15, total_timeout=900, deadcode=set(), 
+                include_exception=False, lib=None, single_coverage=True, file_as_total=False, concolic_dict={}, norm=False):
+        self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib; self.file_as_total = file_as_total; self.normalize = norm
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
         self.single_coverage = single_coverage
@@ -111,11 +118,11 @@ class ExplorationEngine:
         file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py')))
         now_dir = os.getcwd(); os.chdir(file_dir)
         self.can_use_concolic_wrapper = self._can_use_concolic_wrapper(self.root, self.modpath)
-        try: iterations = func_timeout.func_timeout(self.total_timeout, self._execution_loop, args=(max_iterations, all_args))
+        try: iterations = func_timeout.func_timeout(self.total_timeout, self._execution_loop, args=(max_iterations, all_args, concolic_dict))
         except BaseException as e: # importantly note that func_timeout.FunctionTimedOut is NOT inherited from the (general) Exception class.
             print('Was this exception triggered by total_timeout? ' + str(e))
             iterations = 0 # usually catches timeout exceptions
-            # traceback.print_exc()
+            traceback.print_exc()
         os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
         if self.statsdir:
@@ -136,8 +143,8 @@ class ExplorationEngine:
                 f.write(f'otherwise,{Solver.stats["otherwise_number"]},{Solver.stats["otherwise_time"]}\n')
         return (iterations-1, Solver.stats["sat_number"], Solver.stats["sat_time"], Solver.stats["unsat_number"], Solver.stats["unsat_time"], Solver.stats["otherwise_number"], Solver.stats["otherwise_time"])
 
-    def _one_execution(self, all_args):
-        result = self._one_execution_concolic(all_args) # primitive input arguments "all_args" may be modified here.
+    def _one_execution(self, all_args, concolic_dict):
+        result = self._one_execution_concolic(all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.
         if not self.single_coverage: # We don't measure coverage in the primitive mode under the non-single coverage setting.
             self.in_out.append((all_args.copy(), result)) # .copy() is important! Think why.
             return True # continue iteration
@@ -151,9 +158,11 @@ class ExplorationEngine:
         else:
             s = (self.function_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
         log.info(f"Not Covered Yet: {self.target_file} {sorted(s) if s else '{}'}")
-        return s # continue iteration only if the target file / function coverage is not full yet.
+        #FIXME
+        return 1
+        # return s # continue iteration only if the target file / function coverage is not full yet.
 
-    def _one_execution_concolic(self, all_args):
+    def _one_execution_concolic(self, all_args, concolic_dict):
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive mode from using concolic objects imported here...
@@ -164,8 +173,8 @@ class ExplorationEngine:
                 import libct
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
             execute = get_function_from_module_and_funcname(module, self.funcname)
-            ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args) # primitive input arguments "all_args" may be modified here.
-            s1.send((all_args, self.var_to_types)); result = self.Exception
+            ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.
+            s1.send((all_args, self.var_to_types, self.concolic_name_list)); result = self.Exception
             try:
                 result = libct.utils.unwrap(func_timeout.func_timeout(self.single_timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
                 log.info(f"Return: {result}")
@@ -176,7 +185,7 @@ class ExplorationEngine:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print(f"Timeout (soft) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception", file=f)
             except Exception as e:
-                log.error(f"Exception for: {all_args} >> ./pyct '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception")#; log.error(e); traceback.print_exc()
+                log.error(f"Exception for: {all_args} >> ./pyct '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception"); log.error(e); traceback.print_exc()
                 if self.statsdir:
                     with open(self.statsdir + '/exception.txt', 'a') as f:
                         print(f"Exception for: {all_args} >> ./pyct '{self.root}' '{self.modpath}' -s {self.funcname} {{}} -m 20 --lib '{self.lib}' --include_exception", file=f); print(e, file=f)
@@ -187,7 +196,7 @@ class ExplorationEngine:
             try: s3.send((Constraint.global_constraints, self.constraints_to_solve, self.path))
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
-        (all_args2, self.var_to_types) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
+        (all_args2, self.var_to_types, self.concolic_name_list) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
         if not r0.poll(self.single_timeout + 5):
             result = self.Timeout
             log.error(f"Timeout (hard) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception")
@@ -254,8 +263,9 @@ class ExplorationEngine:
                 prim_args.append(value)
         return prim_args, prim_kwargs
 
-    def _get_concolic_arguments(self, func, prim_args):
+    def _get_concolic_arguments(self, func, prim_args, concolic_dict):
         ccc_args = []; ccc_kwargs = {}
+        self.concolic_name_list = []
         for v in inspect.signature(func).parameters.values():
             if v.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
                 prim_args.pop(v.name, None); continue # do not support *args, **kwargs currently
@@ -270,7 +280,10 @@ class ExplorationEngine:
                     if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
                     else: value = ''
                 prim_args[v.name] = value if type(value) in (bool, float, int, str) else self.LazyLoading
-            if type(value) in (bool, float, int, str): value = ConcolicObject(value, v.name + '_VAR', self) # '_VAR' is used to avoid name collision
+            if type(value) in (bool, float, int, str) and concolic_dict.get(v.name, 1): 
+                #print(v.name + " set to ConcolicObj")
+                value = ConcolicObject(value, v.name + '_VAR', self) # '_VAR' is used to avoid name collision
+                self.concolic_name_list.append(v.name + '_VAR')
             if v.kind is inspect.Parameter.KEYWORD_ONLY:
                 ccc_kwargs[v.name] = value
             else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):

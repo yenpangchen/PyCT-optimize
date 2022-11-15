@@ -46,7 +46,8 @@ def unwrap(x): # call primitive's casting function to avoid getting stuck when t
 
 def py2smt(x): # convert the Python object into the smtlib2 string constant
     if type(x) is bool: return 'true' if x else 'false'
-    if type(x) in (float, int): return '(- ' + str(-x) + ')' if x < 0 else str(x)
+    if type(x) is (int): return '(- ' + str(-x) + ')' if x < 0 else str(x)
+    if type(x) is (float): return '(- ' + f"{-x:.15f}"  + ')' if x < 0 else f"{x:.15f}"
     if type(x) is str:
         x = x.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t").replace('"', '""')
         x_new = "" # this kind of encoding is just a workaround but incorrect since it changes the length of "\r", "\n", "\t".

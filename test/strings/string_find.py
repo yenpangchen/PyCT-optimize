@@ -1,7 +1,5 @@
-
-# Test find
 def string_find(a, b):
-    search = a.find('ggg')
+    search = b.find('ggg')
     ret = 0
     if search < 5:
         ret = 1

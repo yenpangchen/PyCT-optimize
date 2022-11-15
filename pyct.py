@@ -27,13 +27,16 @@ parser.add_argument("--single_timeout", dest="single_timeout", help="timeout (se
 parser.add_argument("-t", "--timeout", dest="timeout", help="timeout (sec.) for the solver to solve a constraint [default = 10]", type=int, default=10)
 parser.add_argument("--total_timeout", dest="total_timeout", help="timeout (sec.) for the tester to go through all iterations [default = 900]", type=int, default=900)
 parser.add_argument("-v", "--verbose", dest='verbose', help="logging level [default = 1]\n(0) Show messages whose levels not lower than WARNING.\n(1) Show messages from (0), plus basic iteration information.\n(2) Show messages from (1), plus solver information.\n(3) Show messages from (2), plus all concolic objects' information.", type=int, default=1)
-
+parser.add_argument("-c", "--is_concolic", dest='concolic_dict', help="dictionary from argument name -> bool indicating if the argument has symbolic value. If not specified, the argument is default to be concolic.", type=str, default="")
+parser.add_argument("-n", "--is_normalized", dest='norm', help="If normalize input to 0~1 (float type only) for DNN testing", type=bool, default=False)
 # Solver configuration
 # solver=[z3seq, z3str, trauc, cvc4]
 # parser.add_argument("--solver", dest='solver', help="solver type [default = cvc4]\nWe currently only support CVC4.", default="cvc4")
 
 # Parse arguments
 args = parser.parse_args()
+
+#print(eval(args.concolic_dict))
 
 ##############################################################################
 # This section creates an explorer instance and starts our analysis procedure!
@@ -42,9 +45,11 @@ statsdir = os.path.abspath(os.path.dirname(__file__)) + '/project_statistics/' +
 engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=args.timeout, safety=args.safety,
                                            store=args.formula, verbose=args.verbose, logfile=args.logfile,
                                            statsdir=statsdir)
+con_dict = eval(args.concolic_dict) if args.concolic_dict else {}
 print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root=args.root, funcname=args.func,
                                             max_iterations=args.iter, single_timeout=args.single_timeout, total_timeout=args.total_timeout, deadcode=set(),
-                                            include_exception=args.include_exception, lib=args.lib, file_as_total=args.file_as_total)[0])
+                                            include_exception=args.include_exception, lib=args.lib, file_as_total=args.file_as_total, concolic_dict=con_dict, norm=args.norm)[0]
+                                            )
 ##############################################################################
 
 ################################################################
