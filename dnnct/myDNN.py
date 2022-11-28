@@ -58,7 +58,7 @@ def dim(a):
 # acivation function
 def actFunc(val, type):
     if type=='linear':
-        pass
+        return val
     elif type=='relu':
         if val < 0.0:
             return 0.0
@@ -114,6 +114,8 @@ class ActivationLayer:
         #print("Output #Activations=%i" % len(tensor_out))
         ## DEBUG
         self._output = tensor_out
+        #print(tensor_in)
+        #print(tensor_out)
         return tensor_out
     def getOutput(self):
         return self._output
@@ -227,7 +229,7 @@ class MaxPool2DLayer:
                         max_val = tensor_in[row*r+1][col*c  ][depth]
                     if tensor_in[row*r  ][col*c+1][depth] > max_val:
                         max_val = tensor_in[row*r  ][col*c+1][depth]
-                    if tensor_in[row*r+1][col*c+1][depth]:
+                    if tensor_in[row*r+1][col*c+1][depth] > max_val:
                         max_val = tensor_in[row*r+1][col*c+1][depth]
                     tensor_out[row][col][depth] = max_val
                     #print(type(tensor_out[row][col][depth]))
@@ -264,6 +266,7 @@ class NNModel:
         print("[DEBUG]DNN start forwarding")
         for i, layer in enumerate(self.layers):
             tensor_in = layer.forward(tensor_in)
+            #print(tensor_in)
         print("[DEBUG]DNN finish forwarding")
         return tensor_in
 

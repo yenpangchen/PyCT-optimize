@@ -49,6 +49,7 @@ with open('dnn_predict.py', "w+") as f_pred, open(args.image, "r") as f_img:
     f_pred.write("\tfor i,cl_val in enumerate(out_val):\n")
     f_pred.write("\t\tif cl_val > max_val:\n")
     f_pred.write("\t\t\tmax_val, ret_class = cl_val, i\n")
+    f_pred.write("\tprint(\"[DEBUG]predicted class:\", ret_class)\n")
     f_pred.write("\treturn ret_class")
 
 
@@ -56,14 +57,14 @@ with open('dnn_predict.py', "w+") as f_pred, open(args.image, "r") as f_img:
     for ch in range(img_shape[2]):
         for row in range(img_shape[0]):
             line = f_img.readline().strip()
-            vals = [ float(s) for s in line.split(',')]
+            vals = [ float(s) for s in line.split()]
             for col in range(img_shape[1]):
                 value_dict["p_{r}_{c}_{ch}".format(r=row, c=col, ch=ch)] = vals[col]
                 
     
     for _ in range(num_concolic):
         line = f_img.readline().strip()
-        pos = [ int(s) for s in line.split(',')]
+        pos = [ int(s) for s in line.split()]
         concolic_dict["p_{r}_{c}_{ch}".format(r=pos[0], c=pos[1], ch=pos[2])] = 1
 
 verb_option = "-v 1"
@@ -71,8 +72,8 @@ s_TO_option = "--single_timeout 900"
 norm_option = "-n 1"
 #smt_option = "-d SMT_LOG"
 
-cmd = "./pyct.py dnn_predict \"{val_dict}\" -c \"{con_dict}\" {verb} {single_to} {smt} {n_option} -r . -s predict ".format(
-    val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option, smt = smt_option)
+cmd = "./pyct.py dnn_predict \"{val_dict}\" -c \"{con_dict}\" {verb} {single_to} {n_option} -r . -s predict ".format(
+    val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option)
 
 #cmd = "./pyct.py dnn_predict \"{val_dict}\"  {verb} {single_to} {smt} {n_option} -r . -s predict ".format(
 #    val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option, smt = smt_option)
@@ -88,20 +89,20 @@ with open("cmd.do", "w+" ) as f_cmd:
 
 
 # 4, 4, 3, 3
-# 11, 12, 13, 14
-# 21, 22, 23, 24
-# 31, 32, 33, 34
-# 41, 42, 43, 44
-# 11, 12, 13, 14
-# 21, 22, 23, 24
-# 31, 32, 33, 34
-# 41, 42, 43, 44
-# 11, 12, 13, 14
-# 21, 22, 23, 24
-# 31, 32, 33, 34
-# 41, 42, 43, 44
-# 1, 1, 1
-# 1, 2, 3
-# 2, 1, 3
+# 11  12  13  14
+# 21  22  23  24
+# 31  32  33  34
+# 41  42  43  44
+# 11  12  13  14
+# 21  22  23  24
+# 31  32  33  34
+# 41  42  43  44
+# 11  12  13  14
+# 21  22  23  24
+# 31  32  33  34
+# 41  42  43  44
+# 1  1  1
+# 1  2  3
+# 2  1  3
 
 

@@ -3103,4 +3103,5 @@ def predict(p_0_0_0, p_0_0_1, p_0_0_2, p_0_1_0, p_0_1_1, p_0_1_2, p_0_2_0, p_0_2
 	for i,cl_val in enumerate(out_val):
 		if cl_val > max_val:
 			max_val, ret_class = cl_val, i
+	print("[DEBUG]predicted class:", ret_class)
 	return ret_class

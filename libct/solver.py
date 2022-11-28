@@ -43,7 +43,7 @@ class Solver:
 
     @classmethod
     def find_model_from_constraint(cls, engine, constraint):
-        #print("[DEBUG]Finding model ... ")
+        # print("[DEBUG]Finding model ... ")
         formulas = Solver._build_formulas_from_constraint(engine, constraint, Solver.normalization); log.smtlib2(f"Solving To: {constraint}")
         start = time.time()
         try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
