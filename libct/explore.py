@@ -3,6 +3,11 @@ from libct.constraint import Constraint
 from libct.path import PathToConstraint
 from libct.solver import Solver
 from libct.utils import ConcolicObject, unwrap, get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
+import cProfile
+
+
+
+
 
 log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
@@ -29,7 +34,7 @@ class ExplorationEngine:
     class Unpicklable(metaclass=type('', (type,), {"__repr__": lambda self: '<UNPICKLABLE>'})): pass # indicate that an object is unpicklable
     class LazyLoading(metaclass=type('', (type,), {"__repr__": lambda self: '<DEFAULT>'})): pass # lazily loading default values of primitive arguments
 
-    def __init__(self, *, solver='cvc4', timeout=10, safety=0, store=None, verbose=1, logfile=None, statsdir=None):
+    def __init__(self, *, solver='cvc4', timeout=20, safety=0, store=None, verbose=1, logfile=None, statsdir=None):
         self.__init2__(); self.statsdir = statsdir
         if self.statsdir: os.system(f"rm -rf '{statsdir}'"); os.system(f"mkdir -p '{statsdir}'")
         Solver.set_basic_configurations(solver, timeout, safety, store, statsdir)
@@ -63,7 +68,8 @@ class ExplorationEngine:
         self.coverage_data = coverage.CoverageData()
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
-        self.concolic_name_list = []
+        self.concolic_name_list = [] ##NOTE for DNN testing
+        self.concolic_flag_dict = {} ##NOTE for DNN testing
         self.normalize = False
 
     def _execution_loop(self, max_iterations, all_args, concolic_dict):
@@ -174,7 +180,7 @@ class ExplorationEngine:
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
             execute = get_function_from_module_and_funcname(module, self.funcname)
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.
-            s1.send((all_args, self.var_to_types, self.concolic_name_list)); result = self.Exception
+            s1.send((all_args, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict)); result = self.Exception
             try:
                 result = libct.utils.unwrap(func_timeout.func_timeout(self.single_timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
                 log.info(f"Return: {result}")
@@ -196,7 +202,7 @@ class ExplorationEngine:
             try: s3.send((Constraint.global_constraints, self.constraints_to_solve, self.path))
             except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
         process = multiprocessing.Process(target=child_process); process.start()
-        (all_args2, self.var_to_types, self.concolic_name_list) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
+        (all_args2, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
         if not r0.poll(self.single_timeout + 5):
             result = self.Timeout
             log.error(f"Timeout (hard) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception")
@@ -280,10 +286,13 @@ class ExplorationEngine:
                     if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
                     else: value = ''
                 prim_args[v.name] = value if type(value) in (bool, float, int, str) else self.LazyLoading
+
+            self.concolic_flag_dict[v.name+'_VAR'] = 0
             if type(value) in (bool, float, int, str) and concolic_dict.get(v.name, 1): 
                 #print(v.name + " set to ConcolicObj")
                 value = ConcolicObject(value, v.name + '_VAR', self) # '_VAR' is used to avoid name collision
                 self.concolic_name_list.append(v.name + '_VAR')
+                self.concolic_flag_dict[v.name+'_VAR'] = 1
             if v.kind is inspect.Parameter.KEYWORD_ONLY:
                 ccc_kwargs[v.name] = value
             else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):

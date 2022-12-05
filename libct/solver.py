@@ -43,7 +43,7 @@ class Solver:
 
     @classmethod
     def find_model_from_constraint(cls, engine, constraint):
-        # print("[DEBUG]Finding model ... ")
+        print("[DEBUG]Finding model ... ")
         formulas = Solver._build_formulas_from_constraint(engine, constraint, Solver.normalization); log.smtlib2(f"Solving To: {constraint}")
         start = time.time()
         try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
@@ -63,6 +63,7 @@ class Solver:
             if "sat" == status:
                 cls.stats['sat_number'] += 1; cls.stats['sat_time'] += elapsed
                 model = Solver._get_model(engine, outputs[1:])
+                # FIXME make the value of non-concolic argument unchanged
             else:
                 if "unsat" == status: cls.stats['unsat_number'] += 1; cls.stats['unsat_time'] += elapsed
                 else: status = "UNKNOWN"; cls.stats['otherwise_number'] += 1; cls.stats['otherwise_time'] += elapsed
@@ -78,6 +79,7 @@ class Solver:
         if cls.statsdir:
             with open(cls.statsdir + f"/formula/{Solver.cnt}_{status}.smt2", 'w') as f:
                 f.write(formulas)
+        print(status)
         ##########################################################################################
         log.smtlib2(f"SMT-id: {Solver.cnt}／Status: {status}／Model: {model}")
         Solver.cnt += 1
@@ -87,6 +89,7 @@ class Solver:
     def _get_model(engine, models):
         model = {}
         for line in models:
+            #print(line)
             assert line.startswith('((') and line.endswith('))')
             name, value = line[2:-2].split(" ", 1)
             if engine.var_to_types[name] == "Bool":
@@ -123,16 +126,19 @@ class Solver:
 
     @staticmethod
     def _build_formulas_from_constraint(engine, constraint, norm):
-        declare_vars = "\n".join(f"(declare-const {name} {_type})" 
-                        for (name, _type) in engine.var_to_types.items()) #if engine.concolic_dict.get(name, 1))
-        # declare_vars = "\n".join(f"(declare-const {name} {engine.var_to_types[name]})"                 
-        #                         for (name) in engine.concolic_name_list)
+        # declare_vars = "\n".join(f"(declare-const {name} {_type})" 
+        #                for (name, _type) in engine.var_to_types.items()) #if engine.concolic_dict.get(name, 1))
+        #NOTE DNN
+        declare_vars = "\n".join(f"(declare-const {name} {engine.var_to_types[name]})"                 
+                                 for (name) in engine.concolic_name_list)
         queries = "\n".join(assertion.get_formula() for assertion in constraint.get_all_asserts())
         norm_queries = ""
         if norm:
             norm_queries = "\n".join(f"(assert (and (<= {name} 1) (>= {name} 0)))" 
                             for (name) in engine.concolic_name_list)
-        get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
+        # get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
+        #NOTE DNN
+        get_vars = "\n".join(f"(get-value ({name}))" for name in engine.concolic_name_list)
         return f"(set-logic ALL)\n{declare_vars}\n{queries}\n{norm_queries}\n(check-sat)\n{get_vars}\n"
 
     @classmethod
