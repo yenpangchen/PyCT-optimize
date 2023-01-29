@@ -71,20 +71,26 @@ class ExplorationEngine:
         self.concolic_name_list = [] ##NOTE for DNN testing
         self.concolic_flag_dict = {} ##NOTE for DNN testing
         self.normalize = False
+        self.previous_result = None
 
     def _execution_loop(self, max_iterations, all_args, concolic_dict):
         Solver.normalization = self.normalize
-        tried_input_args = [all_args.copy()] # .copy() is important!!
+        tried_input_args = [all_args.copy()] # .copy() is important!!        
         iterations = 1; cont = self._one_execution(all_args, concolic_dict) # the 1st execution
+        
+        # After First execution, no constr to solve
+        if len(self.constraints_to_solve) == 0:
+            print('[FIRST_NO_CONSTR]: After First execution, no constr to solve')
+
         while cont and (max_iterations==0 or iterations<max_iterations) and len(self.constraints_to_solve) > 0:
             ##############################################################
             # In each iteration, we take one constraint out of the queue
             # and try to solve for it. After that we'll obtain a model as
             # a list of arguments and continue the next iteration with it.
 
-            # constraint = self.constraints_to_solve.pop(0)
+            constraint = self.constraints_to_solve.pop(0) # queue
             #NOTE stack is used instead of queue for DNN
-            constraint = self.constraints_to_solve.pop()
+            # constraint = self.constraints_to_solve.pop() # stack
             model = Solver.find_model_from_constraint(self, constraint)
             ##############################################################
             if model is not None:
@@ -150,14 +156,26 @@ class ExplorationEngine:
         return (iterations-1, Solver.stats["sat_number"], Solver.stats["sat_time"], Solver.stats["unsat_number"], Solver.stats["unsat_time"], Solver.stats["otherwise_number"], Solver.stats["otherwise_time"])
 
     def _one_execution(self, all_args, concolic_dict):
-        result = self._one_execution_concolic(all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.
+        result = self._one_execution_concolic(all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.        
         if not self.single_coverage: # We don't measure coverage in the primitive mode under the non-single coverage setting.
             self.in_out.append((all_args.copy(), result)) # .copy() is important! Think why.
             return True # continue iteration
         answer = self._one_execution_primitive(all_args) # we must measure the coverage in the primitive mode since self.constraints_to_solve would become unpicklable if measured in the concolic mode
+        
         if self.Timeout not in (result, answer):
             if result != answer: print('Input:', all_args, '／My result:', result, '／Correct answer:', answer)
             assert result == answer
+        else:
+            print('[DEBUG] Single Timeout happened')
+
+        if self.previous_result != None and self.previous_result != result:
+            print('#'*60)
+            print('[Result Change]: self.previous_result != result')
+            print('#'*60)
+
+        self.previous_result = result
+
+
         # Note only in the self.single_coverage mode does the program go here.
         if self.file_as_total:
             s = (self.module_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
@@ -172,7 +190,8 @@ class ExplorationEngine:
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive mode from using concolic objects imported here...
-            prepare(); self.path.__init__(); log.info("Inputs: " + str(all_args))
+            prepare(); self.path.__init__();
+            # log.info("Inputs: " + str(all_args))
             if self.can_use_concolic_wrapper:
                 import libct.wrapper
             else:
