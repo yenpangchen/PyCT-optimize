@@ -11,6 +11,7 @@ import cProfile
 
 log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
+execute = None
 
 def prepare():
     #################################################################
@@ -117,9 +118,17 @@ class ExplorationEngine:
 
     def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=0, single_timeout=15, total_timeout=900, deadcode=set(), 
                 include_exception=False, lib=None, single_coverage=True, file_as_total=False, concolic_dict={}, norm=False):
+        global execute
         self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib; self.file_as_total = file_as_total; self.normalize = norm
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
-        self.__init2__(); self.root = os.path.abspath(root); self.target_file = self.root + '/' + self.modpath.replace('.', '/') + '.py'
+        self.__init2__()
+        self.root = os.path.abspath(root)
+        self.target_file = os.path.join(self.root, self.modpath.replace('./', ''))
+        
+        module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
+        # self.execute = get_function_from_module_and_funcname(module, self.funcname)
+        execute = get_function_from_module_and_funcname(module, self.funcname)
+
         self.single_coverage = single_coverage
         if self.single_coverage:
             self.coverage = coverage.Coverage(data_file=None, include=[self.target_file])
@@ -127,7 +136,8 @@ class ExplorationEngine:
             self.coverage = coverage.Coverage(data_file=None, source=[self.root], omit=['**/__pycache__/**', '**/.venv/**'])
         if self.lib: sys.path.insert(0, os.path.abspath(self.lib))
         sys.path.insert(0, self.root)#; sys.path.insert(0, file_dir)
-        file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py')))
+        # file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('.', '/') + '.py')))
+        file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('./', '') + '.py')))
         now_dir = os.getcwd(); os.chdir(file_dir)
         self.can_use_concolic_wrapper = self._can_use_concolic_wrapper(self.root, self.modpath)
         try: iterations = func_timeout.func_timeout(self.total_timeout, self._execution_loop, args=(max_iterations, all_args, concolic_dict))
@@ -196,8 +206,10 @@ class ExplorationEngine:
                 import libct.wrapper
             else:
                 import libct
-            module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
-            execute = get_function_from_module_and_funcname(module, self.funcname)
+
+            # module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
+            # execute = get_function_from_module_and_funcname(module, self.funcname)
+
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.
             s1.send((all_args, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict)); result = self.Exception
             try:
@@ -218,10 +230,17 @@ class ExplorationEngine:
             s0.send(0) # just a notification to the parent process that we're going to send data
             try: s2.send(result)
             except: s2.send(self.Unpicklable)
-            try: s3.send((Constraint.global_constraints, self.constraints_to_solve, self.path))
-            except: s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
+
+            try:
+                s3.send((Constraint.global_constraints, self.constraints_to_solve, self.path))                
+            except Exception as e:
+                traceback.print_exc()
+                s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
+
         process = multiprocessing.Process(target=child_process); process.start()
-        (all_args2, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict) = r1.recv(); r1.close(); s1.close(); all_args.clear(); all_args.update(all_args2) # update the parameter directly
+        (all_args2, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict) = r1.recv(); r1.close(); s1.close(); all_args.clear()
+        all_args.update(all_args2) # update the parameter directly
+
         if not r0.poll(self.single_timeout + 5):
             result = self.Timeout
             log.error(f"Timeout (hard) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception")
@@ -230,7 +249,13 @@ class ExplorationEngine:
                     print(f"Timeout (hard) for: {all_args} >> ./pyct.py -r '{self.root}' '{self.modpath}' -s {self.funcname} {{}} --lib '{self.lib}' --include_exception", file=f)
         else:
             result = r2.recv()
-            if (t:=r3.recv()) is not self.Unpicklable: (Constraint.global_constraints, self.constraints_to_solve, self.path) = t
+
+            if (t:=r3.recv()) is not self.Unpicklable:
+                Constraint.global_constraints, self.constraints_to_solve, self.path = t
+            else:
+                assert r3 is not self.Unpicklable
+
+                
         r2.close(); s2.close(); r3.close(); s3.close(); r0.close(); s0.close()
         if process.is_alive(): process.kill()
         return result
@@ -241,7 +266,7 @@ class ExplorationEngine:
             sys.dont_write_bytecode = True # same reason mentioned in the concolic mode
             self.coverage.start()
             module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
-            execute = get_function_from_module_and_funcname(module, self.funcname)
+            # execute = get_function_from_module_and_funcname(module, self.funcname)
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(1, 1+len(inspect.getsourcelines(module)[0])))) # Note inspect.getsourcelines(module)[1] always returns 0, which is not the fact.
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(inspect.getsourcelines(execute)[1], inspect.getsourcelines(execute)[1] + len(inspect.getsourcelines(execute)[0]))))
             pri_args, pri_kwargs = self._complete_primitive_arguments(execute, all_args)
