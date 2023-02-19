@@ -39,7 +39,11 @@ parser.add_argument("-n", "--is_normalized", dest='norm', help="If normalize inp
 
 #print(eval(args.concolic_dict))
 
-PYCT_ROOT = 'PyCT-optimize'
+# PYCT_ROOT = 'PyCT-optimize'
+PYCT_ROOT = './'
+MODULE_ROOT = os.path.join(PYCT_ROOT, "dnn_predict_py")
+MODEL_ROOT = os.path.join(MODULE_ROOT, 'model')
+MODEL_NAME = "simple_mnist_m6_09585"
 
 
 def read_in_file(filepath):
@@ -87,7 +91,7 @@ def create_dnn_predict_py_file(model_path):
     with open(f'{PYCT_ROOT}/dnnct/template.py', "r") as f:
         f_temp = f.read()
 
-    f_temp = f_temp.replace("REPLACEME", model_path)
+    f_temp = f_temp.replace("REPLACEME", f"model/{Path(model_path).name}")
     model = load_model(model_path)
     img_shape = model.input_shape[1:]
 
@@ -121,12 +125,12 @@ def create_dnn_predict_py_file(model_path):
 
 
 
-create_dnn_predict_py_file(f'{PYCT_ROOT}/model/simple_mnist_m6_09585.h5')
+create_dnn_predict_py_file(os.path.join(MODEL_ROOT, f"{MODEL_NAME}.h5"))
 
 
 ##########################################
 in_dict, con_dict = read_in_file(f'{PYCT_ROOT}/dnn_example/mnist/0_12_random.in')
-modpath = "dnn_predict"
+modpath = os.path.join(MODULE_ROOT, f"{MODEL_NAME}.py")
 func = "predict"
 funcname = t if (t:=func) else modpath.split('.')[-1]
 
@@ -142,7 +146,7 @@ safety = 0
 single_timeout = 900
 timeout = 10
 total_timeout = 900
-verbose = 1
+verbose = 0
 norm = False
 
 statsdir = None
