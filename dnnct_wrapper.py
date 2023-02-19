@@ -10,8 +10,17 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
 parser.add_argument("nnpath", metavar="path.to.NN", help="import path to the target Neural Network in .hd5 format (file) relative to the project root")
 parser.add_argument("image", metavar="image_file", help="Initial vector/matrix (file) of the Concolic tester. The input should repect the format illustrated in README.md")
+# args = parser.parse_args()
 
-args = parser.parse_args()
+class TestArgs:
+    def __init__(self) -> None:
+        self.nnpath = None
+        self.image = None
+
+args = TestArgs()
+# args.nnpath = "model/simple_mnist_m6_09585.h5"
+args.nnpath = "model/simple_mnist_bad_07685.h5"
+args.image = "dnn_example/mnist/0_12_random.in"
 
 with open('dnnct/template.py', "r") as f:
     f_temp = f.read()
@@ -73,7 +82,7 @@ t_TO_option = "--total_timeout 7200"
 norm_option = "-n 1"
 #smt_option = "-d SMT_LOG"
 
-cmd = "./pyct.py dnn_predict \"{val_dict}\" -c \"{con_dict}\" {verb} {single_to} {total_to} {n_option} -r . -s predict ".format(
+cmd = "./pyct.py dnn_predict.py \"{val_dict}\" -c \"{con_dict}\" {verb} {single_to} {total_to} {n_option} -r . -s predict ".format(
     val_dict=value_dict, con_dict=concolic_dict, verb=verb_option, single_to=s_TO_option, n_option=norm_option,
     total_to=t_TO_option)
 
