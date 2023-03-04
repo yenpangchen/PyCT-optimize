@@ -46,10 +46,17 @@ engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=args.timeout, sa
                                            store=args.formula, verbose=args.verbose, logfile=args.logfile,
                                            statsdir=statsdir)
 con_dict = eval(args.concolic_dict) if args.concolic_dict else {}
-print("\nTotal iterations:", engine.explore(args.modpath, eval(args.input), root=args.root, funcname=args.func,
-                                            max_iterations=args.iter, single_timeout=args.single_timeout, total_timeout=args.total_timeout, deadcode=set(),
-                                            include_exception=args.include_exception, lib=args.lib, file_as_total=args.file_as_total, concolic_dict=con_dict, norm=args.norm)[0]
-                                            )
+
+res = engine.explore(
+    args.modpath, eval(args.input), root=args.root, funcname=args.func,
+    max_iterations=args.iter, single_timeout=args.single_timeout,
+    total_timeout=args.total_timeout, deadcode=set(),
+    include_exception=args.include_exception, lib=args.lib,
+    file_as_total=args.file_as_total, concolic_dict=con_dict, norm=args.norm)
+
+total_iter = res[0]
+
+print("\nTotal iterations:", total_iter)
 ##############################################################################
 
 ################################################################
