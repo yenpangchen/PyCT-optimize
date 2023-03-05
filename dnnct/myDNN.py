@@ -260,6 +260,7 @@ class FlattenLayer:
 class NNModel:
     def __init__(self):
         self.layers = []
+        self.input_shape = None
 
     def forward(self, tensor_in):
         # tensor_it = tensor_in
