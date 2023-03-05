@@ -134,7 +134,7 @@ class Solver:
         queries = "\n".join(assertion.get_formula() for assertion in constraint.get_all_asserts())
         norm_queries = ""
         if norm:
-            norm_queries = "\n".join(f"(assert (and (<= {name} 1) (>= {name} 0)))" 
+            norm_queries = "\n".join(f"(assert (and (<= {name} 1) (>= {name} 0)))"
                             for (name) in engine.concolic_name_list)
         # get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
         #NOTE DNN

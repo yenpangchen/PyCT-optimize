@@ -2,7 +2,7 @@ import builtins, coverage, func_timeout, inspect, logging, multiprocessing, os, 
 from libct.constraint import Constraint
 from libct.path import PathToConstraint
 from libct.solver import Solver
-from libct.utils import ConcolicObject, unwrap, get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
+from libct.utils import ConcolicObject, unwrap
 import cProfile
 
 
@@ -11,6 +11,7 @@ import cProfile
 
 log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
+module = None
 execute = None
 
 def prepare():
@@ -35,7 +36,14 @@ class ExplorationEngine:
     class Unpicklable(metaclass=type('', (type,), {"__repr__": lambda self: '<UNPICKLABLE>'})): pass # indicate that an object is unpicklable
     class LazyLoading(metaclass=type('', (type,), {"__repr__": lambda self: '<DEFAULT>'})): pass # lazily loading default values of primitive arguments
 
-    def __init__(self, *, solver='cvc4', timeout=20, safety=0, store=None, verbose=1, logfile=None, statsdir=None):
+    def __init__(self, *, solver='cvc4', timeout=20, safety=0, store=None,
+                 verbose=1, logfile=None, statsdir=None, module_, execute_):
+        global module, execute
+
+        module = module_
+        execute = execute_
+
+        self.normalize = None
         self.__init2__(); self.statsdir = statsdir
         if self.statsdir: os.system(f"rm -rf '{statsdir}'"); os.system(f"mkdir -p '{statsdir}'")
         Solver.set_basic_configurations(solver, timeout, safety, store, statsdir)
@@ -70,13 +78,12 @@ class ExplorationEngine:
         self.coverage_accumulated_missing_lines = {}
         self.var_to_types = {}
         self.concolic_name_list = [] ##NOTE for DNN testing
-        self.concolic_flag_dict = {} ##NOTE for DNN testing
-        self.normalize = False
+        self.concolic_flag_dict = {} ##NOTE for DNN testing        
         self.previous_result = None
 
     def _execution_loop(self, max_iterations, all_args, concolic_dict):
         Solver.normalization = self.normalize
-        tried_input_args = [all_args.copy()] # .copy() is important!!        
+        tried_input_args = [all_args.copy()] # .copy() is important!!
         iterations = 1; cont = self._one_execution(all_args, concolic_dict) # the 1st execution
         
         # After First execution, no constr to solve
@@ -102,32 +109,20 @@ class ExplorationEngine:
                     cont = self._one_execution(all_args, concolic_dict) # other consecutive executions following the 1st execution
         return iterations
 
-    def _can_use_concolic_wrapper(self, root, modpath):
-        r, s = multiprocessing.Pipe()
-        if os.fork() == 0: # child process
-            try:
-                import libct.wrapper
-                module = get_module_from_rootdir_and_modpath(root, modpath)
-                s.send(1)
-            except:
-                s.send(0)
-            os._exit(os.EX_OK)
-        os.wait()
-        ans = r.recv(); r.close(); s.close()
-        return ans
 
     def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=0, single_timeout=15, total_timeout=900, deadcode=set(), 
                 include_exception=False, lib=None, single_coverage=True, file_as_total=False, concolic_dict={}, norm=False):
-        global execute
-        self.modpath = modpath; self.funcname = funcname; self.single_timeout = single_timeout; self.total_timeout = total_timeout; self.include_exception = include_exception; self.deadcode = deadcode; self.lib = lib; self.file_as_total = file_as_total; self.normalize = norm
+        
+        self.modpath = modpath; self.funcname = funcname
+        self.single_timeout = single_timeout; self.total_timeout = total_timeout
+        self.include_exception = include_exception; self.deadcode = deadcode
+        self.lib = lib; self.file_as_total = file_as_total; self.normalize = norm
+
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         self.__init2__()
         self.root = os.path.abspath(root)
         self.target_file = os.path.join(self.root, self.modpath.replace('./', ''))
         
-        module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
-        # self.execute = get_function_from_module_and_funcname(module, self.funcname)
-        execute = get_function_from_module_and_funcname(module, self.funcname)
 
         self.single_coverage = single_coverage
         if self.single_coverage:
@@ -140,11 +135,16 @@ class ExplorationEngine:
         file_dir = os.path.abspath(os.path.dirname(os.path.join(self.root, self.modpath.replace('./', '') + '.py')))
         now_dir = os.getcwd(); os.chdir(file_dir)
         self.can_use_concolic_wrapper = self._can_use_concolic_wrapper(self.root, self.modpath)
-        try: iterations = func_timeout.func_timeout(self.total_timeout, self._execution_loop, args=(max_iterations, all_args, concolic_dict))
+        
+        try:
+            iterations = func_timeout.func_timeout(
+                self.total_timeout, self._execution_loop, args=(max_iterations, all_args, concolic_dict)
+            )
         except BaseException as e: # importantly note that func_timeout.FunctionTimedOut is NOT inherited from the (general) Exception class.
             print('Was this exception triggered by total_timeout? ' + str(e))
             iterations = 0 # usually catches timeout exceptions
             traceback.print_exc()
+
         os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
         if self.statsdir:
@@ -163,6 +163,7 @@ class ExplorationEngine:
                 f.write(f'sat,{Solver.stats["sat_number"]},{Solver.stats["sat_time"]}\n')
                 f.write(f'unsat,{Solver.stats["unsat_number"]},{Solver.stats["unsat_time"]}\n')
                 f.write(f'otherwise,{Solver.stats["otherwise_number"]},{Solver.stats["otherwise_time"]}\n')
+        
         return (iterations-1, Solver.stats["sat_number"], Solver.stats["sat_time"], Solver.stats["unsat_number"], Solver.stats["unsat_time"], Solver.stats["otherwise_number"], Solver.stats["otherwise_time"])
 
     def _one_execution(self, all_args, concolic_dict):
@@ -178,29 +179,34 @@ class ExplorationEngine:
         else:
             print('[DEBUG] Single Timeout happened')
 
-        if self.previous_result != None and self.previous_result != result:
-            print('#'*60)
-            print('[Result Change]: self.previous_result != result')
-            print('#'*60)
-
-        self.previous_result = result
-
-
+        
         # Note only in the self.single_coverage mode does the program go here.
         if self.file_as_total:
             s = (self.module_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
         else:
             s = (self.function_lines_range - self.deadcode) & self.coverage_accumulated_missing_lines[self.target_file]
         log.info(f"Not Covered Yet: {self.target_file} {sorted(s) if s else '{}'}")
-        #FIXME
-        return 1
+
+        if self.previous_result != None and self.previous_result != result:
+            print('#'*60)
+            print('[Result Change]: self.previous_result != result')
+            print('#'*60)
+            
+            with open("./atk/0_12_random.atk", 'wb') as f:
+                pickle.dump(all_args, f)
+                
+            return False
+
+        self.previous_result = result
+
+        return True
         # return s # continue iteration only if the target file / function coverage is not full yet.
 
     def _one_execution_concolic(self, all_args, concolic_dict):
         r1, s1 = multiprocessing.Pipe(); r2, s2 = multiprocessing.Pipe(); r3, s3 = multiprocessing.Pipe(); r0, s0 = multiprocessing.Pipe()
         def child_process():
             sys.dont_write_bytecode = True # very important to prevent the later primitive mode from using concolic objects imported here...
-            prepare(); self.path.__init__();
+            prepare(); self.path.__init__()
             # log.info("Inputs: " + str(all_args))
             if self.can_use_concolic_wrapper:
                 import libct.wrapper
@@ -211,7 +217,8 @@ class ExplorationEngine:
             # execute = get_function_from_module_and_funcname(module, self.funcname)
 
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.
-            s1.send((all_args, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict)); result = self.Exception
+            s1.send((all_args, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict))
+            result = self.Exception
             try:
                 result = libct.utils.unwrap(func_timeout.func_timeout(self.single_timeout, execute, args=ccc_args, kwargs=ccc_kwargs))
                 log.info(f"Return: {result}")
@@ -253,7 +260,7 @@ class ExplorationEngine:
             if (t:=r3.recv()) is not self.Unpicklable:
                 Constraint.global_constraints, self.constraints_to_solve, self.path = t
             else:
-                assert r3 is not self.Unpicklable
+                assert t is not self.Unpicklable
 
                 
         r2.close(); s2.close(); r3.close(); s3.close(); r0.close(); s0.close()
@@ -265,7 +272,7 @@ class ExplorationEngine:
         def child_process():
             sys.dont_write_bytecode = True # same reason mentioned in the concolic mode
             self.coverage.start()
-            module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
+            # module = get_module_from_rootdir_and_modpath(self.root, self.modpath)
             # execute = get_function_from_module_and_funcname(module, self.funcname)
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(1, 1+len(inspect.getsourcelines(module)[0])))) # Note inspect.getsourcelines(module)[1] always returns 0, which is not the fact.
             s1.send(set(self.coverage.analysis(self.target_file)[1]) & set(range(inspect.getsourcelines(execute)[1], inspect.getsourcelines(execute)[1] + len(inspect.getsourcelines(execute)[0]))))
@@ -305,42 +312,73 @@ class ExplorationEngine:
     def _complete_primitive_arguments(cls, func, all_args):
         prim_args = []; prim_kwargs = {}
         for v in inspect.signature(func).parameters.values():
-            if v.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD): continue # ignore *args, **kwargs at last
-            value = v.default if (t:=all_args[v.name]) is cls.LazyLoading else t
-            if v.kind is inspect.Parameter.KEYWORD_ONLY:
-                prim_kwargs[v.name] = value
-            else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
-                prim_args.append(value)
+            if v.kind in (inspect.Parameter.VAR_POSITIONAL, ):
+                continue # ignore *args
+            elif v.kind in (inspect.Parameter.VAR_KEYWORD, ):
+                # only support 1 **kwargs and no other arguments.
+                assert len(inspect.signature(func).parameters.values()) == 1
+                prim_kwargs = all_args.copy()
+                break                 
+            else:
+                value = v.default if (t:=all_args[v.name]) is cls.LazyLoading else t
+                if v.kind is inspect.Parameter.KEYWORD_ONLY:
+                    prim_kwargs[v.name] = value
+                else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+                    prim_args.append(value)
+
+
         return prim_args, prim_kwargs
 
     def _get_concolic_arguments(self, func, prim_args, concolic_dict):
         ccc_args = []; ccc_kwargs = {}
         self.concolic_name_list = []
-        for v in inspect.signature(func).parameters.values():
-            if v.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
-                prim_args.pop(v.name, None); continue # do not support *args, **kwargs currently
-            if v.name in prim_args:
-                value = prim_args[v.name]
-            else:
-                has_value = False
-                if (t:=v.annotation) is not inspect._empty:
-                    try: value = t(); has_value = True # may raise TypeError: Cannot instantiate ...
-                    except: pass
-                if not has_value:
-                    if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
-                    else: value = ''
-                prim_args[v.name] = value if type(value) in (bool, float, int, str) else self.LazyLoading
 
-            self.concolic_flag_dict[v.name+'_VAR'] = 0
-            if type(value) in (bool, float, int, str) and concolic_dict.get(v.name, 1): 
-                #print(v.name + " set to ConcolicObj")
-                value = ConcolicObject(value, v.name + '_VAR', self) # '_VAR' is used to avoid name collision
-                self.concolic_name_list.append(v.name + '_VAR')
-                self.concolic_flag_dict[v.name+'_VAR'] = 1
-            if v.kind is inspect.Parameter.KEYWORD_ONLY:
-                ccc_kwargs[v.name] = value
-            else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
-                ccc_args.append(value)
+        for v in inspect.signature(func).parameters.values():
+            if v.kind in (inspect.Parameter.VAR_POSITIONAL, ):
+                # do not support *args currently
+                prim_args.pop(v.name, None); continue
+            
+            elif v.kind in (inspect.Parameter.VAR_KEYWORD, ):
+                # only support 1 **kwargs and no other arguments.
+                assert len(inspect.signature(func).parameters.values()) == 1
+
+                for name, value in prim_args.items():
+                    ccc_obj_name = name + '_VAR'  # '_VAR' is used to avoid name collision
+                    self.concolic_flag_dict[ccc_obj_name] = 0
+                    if type(value) in (bool, float, int, str) and concolic_dict[name]:
+                        value = ConcolicObject(value, ccc_obj_name, self)
+                        self.concolic_name_list.append(ccc_obj_name)
+                        self.concolic_flag_dict[ccc_obj_name] = 1
+                    
+                    ccc_kwargs[name] = value
+
+                break                
+            else:
+                if v.name in prim_args:
+                    value = prim_args[v.name]
+                else:
+                    has_value = False
+                    if (t:=v.annotation) is not inspect._empty:
+                        try: value = t(); has_value = True # may raise TypeError: Cannot instantiate ...
+                        except: pass
+                    if not has_value:
+                        if (t:=v.default) is not inspect._empty: value = unwrap(t) # default values may also be wrapped
+                        else: value = ''
+                    prim_args[v.name] = value if type(value) in (bool, float, int, str) else self.LazyLoading
+
+                self.concolic_flag_dict[v.name+'_VAR'] = 0
+                if type(value) in (bool, float, int, str) and concolic_dict.get(v.name, 1): 
+                    #print(v.name + " set to ConcolicObj")
+                    value = ConcolicObject(value, v.name + '_VAR', self) # '_VAR' is used to avoid name collision
+                    self.concolic_name_list.append(v.name + '_VAR')
+                    self.concolic_flag_dict[v.name+'_VAR'] = 1
+                
+                if v.kind is inspect.Parameter.KEYWORD_ONLY:
+                    ccc_kwargs[v.name] = value
+                else: # v.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+                    ccc_args.append(value)
+
+
         if not self.var_to_types: # remain unchanged once determined
             for (k, v) in prim_args.items():
                 k += '_VAR' # '_VAR' is used to avoid name collision
@@ -349,7 +387,22 @@ class ExplorationEngine:
                 elif type(v) is int: self.var_to_types[k] = 'Int'
                 elif type(v) is str: self.var_to_types[k] = 'String'
                 else: pass # for some default values that cannot be concolic-ized
+
         return ccc_args, ccc_kwargs
+
+    def _can_use_concolic_wrapper(self, root, modpath):
+        r, s = multiprocessing.Pipe()
+        if os.fork() == 0: # child process
+            try:
+                import libct.wrapper
+                # module = get_module_from_rootdir_and_modpath(root, modpath)
+                s.send(1)
+            except:
+                s.send(0)
+            os._exit(os.EX_OK)
+        os.wait()
+        ans = r.recv(); r.close(); s.close()
+        return ans
 
     def coverage_statistics(self):
         total_lines = 0
