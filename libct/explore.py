@@ -3,6 +3,7 @@ from libct.constraint import Constraint
 from libct.path import PathToConstraint
 from libct.solver import Solver
 from libct.utils import ConcolicObject, unwrap
+from libct.record import ConcolicTestRecorder
 import cProfile
 
 
@@ -13,6 +14,7 @@ log = logging.getLogger("ct.explore")
 sys.setrecursionlimit(1000000) # The original limit is not enough in some special cases.
 module = None
 execute = None
+recorder = None
 
 def prepare():
     #################################################################
@@ -71,6 +73,9 @@ class ExplorationEngine:
         logging.Logger.smtlib2 = smtlib2
 
     def __init2__(self):
+        global recorder
+        recorder = ConcolicTestRecorder()
+
         self.constraints_to_solve = [] # consists of the constraints that are going to be solved by the solver
         self.path = PathToConstraint()
         self.in_out = []
@@ -80,33 +85,74 @@ class ExplorationEngine:
         self.concolic_name_list = [] ##NOTE for DNN testing
         self.concolic_flag_dict = {} ##NOTE for DNN testing        
         self.previous_result = None
+        
 
     def _execution_loop(self, max_iterations, all_args, concolic_dict):
+        recorder.start()
         Solver.normalization = self.normalize
         tried_input_args = [all_args.copy()] # .copy() is important!!
-        iterations = 1; cont = self._one_execution(all_args, concolic_dict) # the 1st execution
-        
+        iterations = 0
+        cont = True
+
+        # this execution only for generating constraints
+        log.info(f"=== Iterations: {iterations} ===")
+        recorder.iter_start()
+        recorder.execution_start()
+        self._one_execution(all_args, concolic_dict)
+        recorder.execution_end()
+        recorder.iter_end(Solver.stats, 0)
+        recorder.gen_constraint.append(len(self.constraints_to_solve))
+                
         # After First execution, no constr to solve
         if len(self.constraints_to_solve) == 0:
             print('[FIRST_NO_CONSTR]: After First execution, no constr to solve')
+            return 0
 
-        while cont and (max_iterations==0 or iterations<max_iterations) and len(self.constraints_to_solve) > 0:
+
+        while cont and (max_iterations==0 or iterations<=max_iterations):
             ##############################################################
             # In each iteration, we take one constraint out of the queue
             # and try to solve for it. After that we'll obtain a model as
             # a list of arguments and continue the next iteration with it.
+            iterations += 1                        
+            log.info(f"=== Iterations: {iterations} ===")
+            recorder.iter_start()
 
-            constraint = self.constraints_to_solve.pop(0) # queue
-            #NOTE stack is used instead of queue for DNN
-            # constraint = self.constraints_to_solve.pop() # stack
-            model = Solver.find_model_from_constraint(self, constraint)
+            recorder.solve_constr_start()
+            solve_constr_num = len(self.constraints_to_solve)
+            while len(self.constraints_to_solve) > 0:
+                constraint = self.constraints_to_solve.pop(0) # queue
+                # NOTE stack is used instead of queue for DNN
+                # constraint = self.constraints_to_solve.pop() # stack            
+
+                model = Solver.find_model_from_constraint(self, constraint)
+            
+                if model is not None:
+                    all_args.update(model) # from model to argument
+                    if all_args not in tried_input_args:
+                        tried_input_args.append(all_args.copy()) # .copy() is important!!
+                        break
+
+            recorder.solve_constr_end()            
+            solve_constr_num = solve_constr_num - len(self.constraints_to_solve)
+
+            # solve new input and use it to execute
+            gen_constr_num = len(self.constraints_to_solve)            
+            recorder.execution_start()
+            cont = self._one_execution(all_args, concolic_dict)
+            recorder.execution_end()
+            gen_constr_num = len(self.constraints_to_solve) - gen_constr_num
+            recorder.gen_constraint.append(gen_constr_num)
+
+            recorder.iter_end(Solver.stats, solve_constr_num)
+
+            if len(self.constraints_to_solve) == 0:
+                print('[SOLVED_ALL_CONSTR]: There is no constr to solve')
+                break
+                        
             ##############################################################
-            if model is not None:
-                all_args.update(model) # from model to argument
-                if all_args not in tried_input_args:
-                    tried_input_args.append(all_args.copy()) # .copy() is important!!
-                    log.info(f"=== Iterations: {iterations} ==="); iterations += 1
-                    cont = self._one_execution(all_args, concolic_dict) # other consecutive executions following the 1st execution
+
+        recorder.end(iterations)
         return iterations
 
 
@@ -143,7 +189,7 @@ class ExplorationEngine:
         except BaseException as e: # importantly note that func_timeout.FunctionTimedOut is NOT inherited from the (general) Exception class.
             print('Was this exception triggered by total_timeout? ' + str(e))
             iterations = 0 # usually catches timeout exceptions
-            traceback.print_exc()
+            traceback.print_exc()    
 
         os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
@@ -164,7 +210,8 @@ class ExplorationEngine:
                 f.write(f'unsat,{Solver.stats["unsat_number"]},{Solver.stats["unsat_time"]}\n')
                 f.write(f'otherwise,{Solver.stats["otherwise_number"]},{Solver.stats["otherwise_time"]}\n')
         
-        return (iterations-1, Solver.stats["sat_number"], Solver.stats["sat_time"], Solver.stats["unsat_number"], Solver.stats["unsat_time"], Solver.stats["otherwise_number"], Solver.stats["otherwise_time"])
+        explore_stats = recorder.output_stats_dict()
+        return iterations-1, explore_stats
 
     def _one_execution(self, all_args, concolic_dict):
         result = self._one_execution_concolic(all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.        
@@ -191,9 +238,10 @@ class ExplorationEngine:
             print('#'*60)
             print('[Result Change]: self.previous_result != result')
             print('#'*60)
-            
-            with open("./atk/0_12_random.atk", 'wb') as f:
-                pickle.dump(all_args, f)
+
+            # TODO save adversarial input
+            # with open("./atk/0_12_random.atk", 'wb') as f:
+            #     pickle.dump(all_args, f)
                 
             return False
 
