@@ -1,5 +1,5 @@
 import keras
-from dnnct.myDNN import ACTIVATIONS, NNModel, LAYERS 
+from dnnct.myDNN import NNModel 
 import numpy as np
 import itertools
 
