@@ -2,6 +2,7 @@
 
 import argparse, logging, os, sys
 import libct.explore
+from libct.utils import get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
 
 # Our main program starts now!
 # f = argparse.RawTextHelpFormatter._split_lines
@@ -37,13 +38,14 @@ parser.add_argument("-n", "--is_normalized", dest='norm', help="If normalize inp
 # Parse arguments
 # args = parser.parse_args()
 
-#print(eval(args.concolic_dict))
+
 
 # PYCT_ROOT = 'PyCT-optimize'
 PYCT_ROOT = './'
 MODULE_ROOT = os.path.join(PYCT_ROOT, "dnn_predict_py")
 MODEL_ROOT = os.path.join(MODULE_ROOT, 'model')
 MODEL_NAME = "simple_mnist_m6_09585"
+MODEL_PATH = os.path.join(MODEL_ROOT, f"{MODEL_NAME}.h5")
 
 
 def read_in_file(filepath):
@@ -125,14 +127,52 @@ def create_dnn_predict_py_file(model_path):
 
 
 
-create_dnn_predict_py_file(os.path.join(MODEL_ROOT, f"{MODEL_NAME}.h5"))
+# create_dnn_predict_py_file(MODEL_PATH)
 
 
 ##########################################
-in_dict, con_dict = read_in_file(f'{PYCT_ROOT}/dnn_example/mnist/0_12_random.in')
-modpath = os.path.join(MODULE_ROOT, f"{MODEL_NAME}.py")
+# in_dict, con_dict = read_in_file(f'{PYCT_ROOT}/dnn_example/mnist/0_12_random.in')
+
+import itertools
+from tensorflow import keras
+import numpy as np
+# Load the data and split it between train and test sets
+(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+
+# Scale images to the [0, 1] range
+x_train = x_train.astype("float32") / 255
+x_test = x_test.astype("float32") / 255
+
+# Make sure images have shape (28, 28, 1)
+x_train = np.expand_dims(x_train, -1)
+x_test = np.expand_dims(x_test, -1)
+
+in_dict = dict()
+con_dict = dict()
+
+idx = 511
+test_img = x_test[idx]
+
+for i,j,k in itertools.product(
+    range(test_img.shape[0]),
+    range(test_img.shape[1]),
+    range(test_img.shape[2])
+):
+    key = f"v_{i}_{j}_{k}"
+    in_dict[key] = float(test_img[i][j][k])
+    con_dict[key] = 0
+    
+# set concolic location
+# con_dict["v_9_14_0"] = 1 # 299
+con_dict["v_22_17_0"] = 1 # 511
+
+
+# modpath = os.path.join(MODULE_ROOT, f"{MODEL_NAME}.py")
+
+modpath = os.path.join(PYCT_ROOT, f"dnn_predict_common.py")
 func = "predict"
 funcname = t if (t:=func) else modpath.split('.')[-1]
+
 
 dump_projstats = False
 file_as_total = False
@@ -144,10 +184,11 @@ logfile = None
 root = os.path.dirname(__file__)
 safety = 0
 single_timeout = 900
-timeout = 10
+timeout = 900
 total_timeout = 900
-verbose = 0
-norm = False
+verbose = 1 # 5:all, 3:>=DEBUG. 2:including SMT, 1: >=INFO
+norm = True
+
 
 statsdir = None
 if dump_projstats:
@@ -155,21 +196,28 @@ if dump_projstats:
         os.path.abspath(os.path.dirname(__file__)), "project_statistics",
          os.path.abspath(root).split('/')[-1], modpath, funcname)
 
+
+module = get_module_from_rootdir_and_modpath(root, modpath)
+func_init_model = get_function_from_module_and_funcname(module, "init_model")
+execute = get_function_from_module_and_funcname(module, funcname)
+func_init_model(MODEL_PATH)
+
 ##############################################################################
 # This section creates an explorer instance and starts our analysis procedure!
 
 engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=timeout, safety=safety,
                                            store=formula, verbose=verbose, logfile=logfile,
-                                           statsdir=statsdir)
+                                           statsdir=statsdir, module_=module, execute_=execute)
 
 # con_dict = eval(args.concolic_dict) if args.concolic_dict else {}
 
 result = engine.explore(
-    modpath, in_dict, root=root, funcname=func, max_iterations=max_iter,
+     modpath, in_dict, root=root, funcname=func, max_iterations=max_iter,
      single_timeout=single_timeout, total_timeout=total_timeout, deadcode=set(),
      include_exception=include_exception, lib=lib,
      file_as_total=file_as_total, concolic_dict=con_dict, norm=norm)
 
+explore_stats = result[1]
 print("\nTotal iterations:", result[0])
 ##############################################################################
 
