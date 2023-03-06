@@ -5,11 +5,8 @@ import math
 from itertools import product
 import collections
 from functools import reduce  
-import operator
+import logging
 
-
-
-import keras
 from keras.layers import (
     Dense,
     Conv1D, Conv2D,
@@ -21,6 +18,7 @@ from keras.layers import (
     LSTM,
     Embedding,
     BatchNormalization,
+    SimpleRNN
 )
 
 LAYERS = (
@@ -48,12 +46,25 @@ ACTIVATIONS = (
     'softmax',
 )
 
+debug = False
+
+def act_tanh(x):
+    if x == 0:
+        return 0.0
+    elif x < 0:
+        return -act_tanh(-x)
+    else:
+        exp_x = math.exp(x)
+        exp_minus_x = math.exp(-x)
+        return (exp_x - exp_minus_x) / (exp_x + exp_minus_x)
+
 # https://stackoverflow.com/questions/17531796/find-the-dimensions-of-a-multidimensional-python-array
 # return the dimension of a python list
 def dim(a):
     if not type(a) == list:
         return []
     return [len(a)] + dim(a[0])
+
 
 # acivation function
 def actFunc(val, type):
@@ -69,7 +80,7 @@ def actFunc(val, type):
     elif type=='sigmoid':
         pass
     elif type=='tanh':
-        pass
+        return act_tanh(val)
     elif type=='elu':
         pass
     elif type=='softplus':
@@ -110,7 +121,10 @@ class ActivationLayer:
                 tensor_out[i][j][k] = actFunc(tensor_in[i][j][k], self.type)
         else:
             raise NotImplementedError()
-        print("[DEBUG]Finish Activation Layer forwarding!!")
+
+        if debug:
+            print("[DEBUG]Finish Activation Layer forwarding!!")
+
         #print("Output #Activations=%i" % len(tensor_out))
         ## DEBUG
         self._output = tensor_out
@@ -143,12 +157,15 @@ class DenseLayer:
             if self.activation!="None":
                 tensor_out[out_id] = actFunc(tensor_out[id], self.activation) 
 
-        print("[DEBUG]Finish Dense Layer forwarding!!")
+        if debug:
+            print("[DEBUG]Finish Dense Layer forwarding!!")
+
         #print("Output #Activations=%i" % len(tensor_out))
         self._output = tensor_out
         return tensor_out
     def getOutput(self):
         return self._output
+
 
 class Conv2DLayer:
     def __init__(self, weights, bias, shape, activation="None", stride=1, padding='valid'):
@@ -189,7 +206,10 @@ class Conv2DLayer:
                         tensor_out[row][col][channel] = actFunc(tensor_out[row][col][channel], self.activation)
                     #print(type(tensor_out[row][col][channel]))
             #print("Finished %i feature Map" % channel)
-        print("[DEBUG]Finish Conv2D Layer forwarding!!")
+        
+        if debug:
+            print("[DEBUG]Finish Conv2D Layer forwarding!!")
+
         #print("Feature Map Shape: %ix%ix%i" % tuple(out_shape))
         self._output = tensor_out
         return tensor_out
@@ -234,13 +254,17 @@ class MaxPool2DLayer:
                     tensor_out[row][col][depth] = max_val
                     #print(type(tensor_out[row][col][depth]))
         ## fix the shape of tensor_out
-        print("[DEBUG]Finish MaxPool2D Layer forwarding!!")
+
+        if debug:
+            print("[DEBUG]Finish MaxPool2D Layer forwarding!!")
+
         #print("Feature Map Shape: %ix%ix%i" % tuple(out_shape))
         self._output = tensor_out
         return tensor_out
 
     def getOutput(self):
         return self._output
+
 
 class FlattenLayer:
     def __init__(self):
@@ -257,6 +281,65 @@ class FlattenLayer:
     def getOutput(self):
         return self._output
 
+
+# Define SimpleRNN class
+class SimpleRNNLayer:
+    def __init__(self, input_dim, weights, activation='tanh'):        
+        self.input_dim = input_dim
+        assert activation in (None, "tanh")
+        self.activation = activation
+        self.units = weights[0].shape[1]
+
+        self.w_xh, self.w_hh, self.b_h = (w.tolist() for w in weights)
+
+        # Initialize weights
+#         self.w_hh = [[0 for i in range(units)] for j in range(units)]
+#         self.w_xh = [[0 for i in range(units)] for j in range(input_shape)]
+        
+        # Initialize biases
+#         self.b_h = [0 for i in range(units)]
+        
+        # Initialize hidden state
+        self.h = [0 for i in range(self.units)]
+        self._output = None
+        
+    def call(self, x):
+        # Update hidden state
+        curr_h = self.h.copy()
+        for i in range(self.units):            
+            h_i = 0
+            for j in range(self.units):
+                h_i += curr_h[j] * self.w_hh[j][i]
+                
+            for j in range(self.input_dim):
+                h_i += x[j] * self.w_xh[j][i]
+                
+            h_i += self.b_h[i]
+
+            if self.activation == 'tanh':
+                self.h[i] = act_tanh(h_i)
+        
+        # Return hidden state
+        return self.h
+    
+    def init_state(self):
+        self.h = [0 for i in range(self.units)]
+    
+    def forward(self, X):
+        self.init_state()
+        for i in range(len(X)):
+            output_h = self.call(X[i])
+        self._output = output_h
+
+        if debug:
+            print("[DEBUG]Finish SimpleRNN Layer forwarding!!")
+
+        return output_h
+
+    def getOutput(self):
+        return self._output
+
+
 class NNModel:
     def __init__(self):
         self.layers = []
@@ -264,11 +347,12 @@ class NNModel:
 
     def forward(self, tensor_in):
         # tensor_it = tensor_in
-        print("[DEBUG]DNN start forwarding")
+        logging.info("DNN start forwarding")
         for i, layer in enumerate(self.layers):
             tensor_in = layer.forward(tensor_in)
             #print(tensor_in)
-        print("[DEBUG]DNN finish forwarding")
+
+        logging.info("DNN finish forwarding")
         return tensor_in
 
     def getLayOutput(self, idx):
@@ -307,5 +391,8 @@ class NNModel:
         elif type(layer) == Flatten:
             #print("Flatten")
             self.layers.append(FlattenLayer())
+        elif type(layer) == SimpleRNN:
+            input_dim = layer.input_shape[-1]
+            self.layers.append(SimpleRNNLayer(input_dim, weights=layer.get_weights()))
         else:
             raise NotImplementedError()
