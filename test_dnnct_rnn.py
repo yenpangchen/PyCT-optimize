@@ -64,8 +64,6 @@ create_and_save_test_RNN_model()
 in_dict, con_dict = get_test_input_dict()
 con_dict['v_0_0'] = 1
 con_dict['v_3_0'] = 1
-con_dict['v_6_0'] = 1
-
 
 modpath = os.path.join(PYCT_ROOT, f"dnn_predict_common.py")
 func = "predict"
