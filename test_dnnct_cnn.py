@@ -44,7 +44,7 @@ parser.add_argument("-n", "--is_normalized", dest='norm', help="If normalize inp
 PYCT_ROOT = './'
 MODULE_ROOT = os.path.join(PYCT_ROOT, "dnn_predict_py")
 MODEL_ROOT = os.path.join(MODULE_ROOT, 'model')
-MODEL_NAME = "simple_mnist_m6_09585"
+MODEL_NAME = "mnist_sep_act_m6_9628"
 MODEL_PATH = os.path.join(MODEL_ROOT, f"{MODEL_NAME}.h5")
 
 
@@ -150,7 +150,7 @@ x_test = np.expand_dims(x_test, -1)
 in_dict = dict()
 con_dict = dict()
 
-idx = 511
+idx = 550
 test_img = x_test[idx]
 
 for i,j,k in itertools.product(
@@ -163,8 +163,8 @@ for i,j,k in itertools.product(
     con_dict[key] = 0
     
 # set concolic location
-# con_dict["v_9_14_0"] = 1 # 299
-con_dict["v_22_17_0"] = 1 # 511
+# con_dict["v_21_6_0"] = 1 # 403 # find solution fast
+con_dict["v_13_10_0"] = 1 # 550 # find solution slow
 
 
 # modpath = os.path.join(MODULE_ROOT, f"{MODEL_NAME}.py")

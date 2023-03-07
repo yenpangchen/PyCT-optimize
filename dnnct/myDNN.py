@@ -394,5 +394,8 @@ class NNModel:
         elif type(layer) == SimpleRNN:
             input_dim = layer.input_shape[-1]
             self.layers.append(SimpleRNNLayer(input_dim, weights=layer.get_weights()))
+        elif type(layer) == Activation:
+            activation = layer.get_config()['activation']
+            self.layers.append(ActivationLayer(activation))
         else:
             raise NotImplementedError()
