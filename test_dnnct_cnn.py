@@ -3,6 +3,7 @@
 import argparse, logging, os, sys
 import libct.explore
 from libct.utils import get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
+import run_dnnct
 
 # Our main program starts now!
 # f = argparse.RawTextHelpFormatter._split_lines
@@ -74,159 +75,53 @@ def read_in_file(filepath):
         return in_dict, con_dict
 
 
-def create_dnn_predict_py_file(model_path):
-    import argparse, logging, os, sys
-    from itertools import product
-    from keras.models import load_model
-    from pathlib import Path
-
-    # img_path = "" # "Initial vector/matrix (file) of the Concolic tester. The input should repect the format illustrated in README.md"
-    # model_path = "" # "import path to the target Neural Network in .hd5 format (file) relative to the project root"
-
-    MODELNAME = "myModel"
-    model_name = Path(model_path).stem
-
-    f = argparse.RawTextHelpFormatter._split_lines
-    argparse.RawTextHelpFormatter._split_lines = lambda *args, **kwargs: f(*args, **kwargs) + ['']
-
-
-    with open(f'{PYCT_ROOT}/dnnct/template.py', "r") as f:
-        f_temp = f.read()
-
-    f_temp = f_temp.replace("REPLACEME", f"model/{Path(model_path).name}")
-    model = load_model(model_path)
-    img_shape = model.input_shape[1:]
-
-    with open(f'{PYCT_ROOT}/dnn_predict_py/{model_name}.py', "w+") as f_pred:
-        f_pred.write(f_temp) # model construction
-        f_pred.write("\ndef predict(")
-        args_str = ""
-        for i, j, k in product( range(0, img_shape[0]),
-                                range(0, img_shape[1]),
-                                range(0, img_shape[2])):
-            if i or j or k: args_str += ", "
-            arg_name = "p_{row}_{col}_{ch}".format(row=i, col=j, ch=k)
-            args_str += arg_name
-
-        f_pred.write(args_str); f_pred.write("):\n")
-        
-        ## function body
-        f_pred.write("\timg_in = np.zeros(({row}, {col}, {ch})).tolist()\n".format(row=img_shape[0], col=img_shape[1], ch=img_shape[2]))
-        for i, j, k in product( range(0, img_shape[0]),
-                                range(0, img_shape[1]),
-                                range(0, img_shape[2])):
-            f_pred.write("\timg_in[{row}][{col}][{ch}]=p_{row}_{col}_{ch}\n".format(row=i, col=j, ch=k) )
-
-        f_pred.write("\tout_val={model}.forward(img_in)\n".format(model=MODELNAME))
-        f_pred.write("\tmax_val, ret_class = -100.0, 0\n")
-        f_pred.write("\tfor i,cl_val in enumerate(out_val):\n")
-        f_pred.write("\t\tif cl_val > max_val:\n")
-        f_pred.write("\t\t\tmax_val, ret_class = cl_val, i\n")
-        f_pred.write("\tprint(\"[DEBUG]predicted class:\", ret_class)\n")
-        f_pred.write("\treturn ret_class")
-
-
-
-# create_dnn_predict_py_file(MODEL_PATH)
-
-
 ##########################################
 # in_dict, con_dict = read_in_file(f'{PYCT_ROOT}/dnn_example/mnist/0_12_random.in')
 
-import itertools
-from tensorflow import keras
-import numpy as np
-# Load the data and split it between train and test sets
-(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-
-# Scale images to the [0, 1] range
-x_train = x_train.astype("float32") / 255
-x_test = x_test.astype("float32") / 255
-
-# Make sure images have shape (28, 28, 1)
-x_train = np.expand_dims(x_train, -1)
-x_test = np.expand_dims(x_test, -1)
-
-in_dict = dict()
-con_dict = dict()
-
-idx = 550
-test_img = x_test[idx]
-
-for i,j,k in itertools.product(
-    range(test_img.shape[0]),
-    range(test_img.shape[1]),
-    range(test_img.shape[2])
-):
-    key = f"v_{i}_{j}_{k}"
-    in_dict[key] = float(test_img[i][j][k])
-    con_dict[key] = 0
+def get_mnist_test_data(idx, ):
+    import itertools
+    from tensorflow import keras
+    import numpy as np
     
-# set concolic location
+    # Load the data and split it between train and test sets
+    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+
+    # Scale images to the [0, 1] range
+    x_train = x_train.astype("float32") / 255
+    x_test = x_test.astype("float32") / 255
+
+    # Make sure images have shape (28, 28, 1)
+    x_train = np.expand_dims(x_train, -1)
+    x_test = np.expand_dims(x_test, -1)
+
+    in_dict = dict()
+    con_dict = dict()
+
+    test_img = x_test[idx]
+
+    for i,j,k in itertools.product(
+        range(test_img.shape[0]),
+        range(test_img.shape[1]),
+        range(test_img.shape[2])
+    ):
+        key = f"v_{i}_{j}_{k}"
+        in_dict[key] = float(test_img[i][j][k])
+        con_dict[key] = 0
+    
+    return in_dict, con_dict
+    
+
+
+in_dict, con_dict = get_mnist_test_data(idx=550)
+
+### set concolic location
 # con_dict["v_21_6_0"] = 1 # 403 # find solution fast
 con_dict["v_13_10_0"] = 1 # 550 # find solution slow
 
-
-# modpath = os.path.join(MODULE_ROOT, f"{MODEL_NAME}.py")
-
-modpath = os.path.join(PYCT_ROOT, f"dnn_predict_common.py")
-func = "predict"
-funcname = t if (t:=func) else modpath.split('.')[-1]
-
-
-dump_projstats = False
-file_as_total = False
-formula = None
-include_exception = False
-max_iter = 0
-lib = None
-logfile = None
-root = os.path.dirname(__file__)
-safety = 0
-single_timeout = 900
-timeout = 900
-total_timeout = 900
-verbose = 1 # 5:all, 3:>=DEBUG. 2:including SMT, 1: >=INFO
-norm = True
-
-
-statsdir = None
-if dump_projstats:
-    statsdir = os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), "project_statistics",
-         os.path.abspath(root).split('/')[-1], modpath, funcname)
-
-
-module = get_module_from_rootdir_and_modpath(root, modpath)
-func_init_model = get_function_from_module_and_funcname(module, "init_model")
-execute = get_function_from_module_and_funcname(module, funcname)
-func_init_model(MODEL_PATH)
-
-##############################################################################
-# This section creates an explorer instance and starts our analysis procedure!
-
-engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=timeout, safety=safety,
-                                           store=formula, verbose=verbose, logfile=logfile,
-                                           statsdir=statsdir, module_=module, execute_=execute)
-
-# con_dict = eval(args.concolic_dict) if args.concolic_dict else {}
-
-result = engine.explore(
-     modpath, in_dict, root=root, funcname=func, max_iterations=max_iter,
-     single_timeout=single_timeout, total_timeout=total_timeout, deadcode=set(),
-     include_exception=include_exception, lib=lib,
-     file_as_total=file_as_total, concolic_dict=con_dict, norm=norm)
+result = run_dnnct.run(MODEL_NAME, in_dict, con_dict, norm=True, max_iter=0,
+                       total_timeout=1800, single_timeout=1800, timeout=1800)
 
 explore_stats = result[1]
 print("\nTotal iterations:", result[0])
-##############################################################################
 
-################################################################
-# This section prints the generated inputs and coverage results.
-# print("\nGenerated inputs")
-# print(engine.inputs)
-# if len(engine.errors) > 0: print("\nError inputs"); print(engine.errors)
-# engine.print_coverage() # Line coverage + Missing lines
-# if result_list := list(zip(engine.inputs, engine.results)):
-#     print("# of input vectors:", len(result_list)); print(result_list); print()
-################################################################
+
