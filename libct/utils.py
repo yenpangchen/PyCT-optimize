@@ -96,3 +96,16 @@ def get_function_from_module_and_funcname(module, funcname, enforce=True):
         # return func
     except Exception as e:
         print(e); import traceback; traceback.print_exc(); return None
+
+
+def get_in_dict_shape(in_dict):
+    max_idx = None
+    max_sum_idx = 0
+    for k in in_dict.keys():
+        idx = [int(i) for i in k.split('_')[1:]]
+        if sum(idx) > max_sum_idx:
+            max_idx = idx
+            max_sum_idx = sum(idx)
+    
+    max_idx = [i+1 for i in max_idx]
+    return tuple(max_idx)
