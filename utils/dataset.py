@@ -38,3 +38,13 @@ class MnistDataset:
         return in_dict, con_dict
     
     
+    def get_mnist_test_data_and_set_condict(self, idx, attack_pixels):
+        in_dict, con_dict = self.get_mnist_test_data(idx)
+        
+        for i,j,k in attack_pixels:
+            key = f"v_{i}_{j}_{k}"
+            con_dict[key] = 1
+        
+        return in_dict, con_dict
+        
+    
