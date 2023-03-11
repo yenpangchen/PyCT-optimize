@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse, logging, os, sys
-import libct.explore
-from libct.utils import get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
 import run_dnnct
 
 # Our main program starts now!
@@ -40,135 +38,111 @@ parser.add_argument("-n", "--is_normalized", dest='norm', help="If normalize inp
 # args = parser.parse_args()
 
 
-def get_mnist_test_data(idx):
-    import itertools
-    from tensorflow import keras
-    import numpy as np
-    
-    # Load the data and split it between train and test sets
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-
-    # Scale images to the [0, 1] range
-    x_train = x_train.astype("float32") / 255
-    x_test = x_test.astype("float32") / 255
-
-    # Make sure images have shape (28, 28, 1)
-    x_train = np.expand_dims(x_train, -1)
-    x_test = np.expand_dims(x_test, -1)
-
-    in_dict = dict()
-    con_dict = dict()
-
-    test_img = x_test[idx]
-
-    for i,j,k in itertools.product(
-        range(test_img.shape[0]),
-        range(test_img.shape[1]),
-        range(test_img.shape[2])
-    ):
-        key = f"v_{i}_{j}_{k}"
-        in_dict[key] = float(test_img[i][j][k])
-        con_dict[key] = 0
-    
-    return in_dict, con_dict
-
 ##########################################
 
 model_name = "mnist_sep_act_m6_9628"
 
+if __name__ == "__main__":
+    from utils.dataset import MnistDataset
+    
+    mnist_dataset = MnistDataset()
 
-# idx = 550
-# in_dict, con_dict = get_mnist_test_data(idx=idx)
-# # set concolic location
-# con_dict["v_13_10_0"] = 1 # 550 # find solution slow
+    ########################################
+    def test_solve_all_ctr():
+        idx = 123
+        in_dict, con_dict = mnist_dataset.get_mnist_test_data(idx=idx)
+        con_dict["v_0_0_0"] = 1 # # 123 Cannot attack
 
-# save_exp = {
-#     "input_name": f"mnist_test_{idx}",
-#     "exp_name": "test/random_1"
-# }
+        save_exp = {
+            "input_name": f"mnist_test_{idx}",
+            "exp_name": "test/random_1"
+        }
+        
+        use_stack = False
+        result = run_dnnct.run(
+            model_name, in_dict, con_dict,
+            save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+            max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
+        
+        recorder = result[1]
+        assert recorder.solve_all_ctr
+    test_solve_all_ctr()
 
-# result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=False
-#                        max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
-# explore_stats = result[1]
+    # ########################################
+    # # test timeout
+    def test_timeout():
+        idx = 246
+        in_dict, con_dict = mnist_dataset.get_mnist_test_data(idx=idx)
+        con_dict["v_0_0_0"] = 1 # # 246 Cannot attack
+        con_dict["v_9_27_0"] = 1 # # 246 Cannot attack
+        con_dict["v_5_3_0"] = 1 # # 246 Cannot attack
 
+        save_exp = {
+            "input_name": f"mnist_test_{idx}",
+            "exp_name": "test/random_3"
+        }
+        use_stack = False
+        result = run_dnnct.run(
+            model_name, in_dict, con_dict,
+            save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+            max_iter=0, total_timeout=10, single_timeout=10, timeout=10)
+        
+        recorder = result[1]
+        assert recorder.is_timeout
+    test_timeout()
+    
+    ########################################
+    def test_queue_result():
+        idx = 403
+        in_dict, con_dict = mnist_dataset.get_mnist_test_data(idx=idx)
+        con_dict["v_21_6_0"] = 1 # 403 # find solution fast
 
-########################################
-# idx = 123
-# in_dict, con_dict = get_mnist_test_data(idx=idx)
-# con_dict["v_0_0_0"] = 1 # # 123 Cannot attack
+        save_exp = {
+            "input_name": f"mnist_test_{idx}",
+            "exp_name": "test/random_1"
+        }
+        use_stack = False
+        result = run_dnnct.run(
+            model_name, in_dict, con_dict,
+            save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+            max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
 
-# save_exp = {
-#     "input_name": f"mnist_test_{idx}",
-#     "exp_name": "test/random_1"
-# }
-# use_stack = False
-# result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
-#                        max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
+        # check whether PyCT works properly when using queue
+        recorder = result[1]
+        assert recorder.total_iter == 1
+        assert recorder.original_label == 8
+        assert recorder.attack_label == 9
+        assert recorder.sat == [0, 1]
+        assert recorder.unsat == [0, 0]
+        assert recorder.unknown == [0, 0]
+        assert recorder.gen_constraint == [81, 100]
+        assert recorder.solve_constraint == [0, 1]
+    test_queue_result()
+    
+    ########################################
+    def test_stack_result():
+        idx = 403
+        in_dict, con_dict = mnist_dataset.get_mnist_test_data(idx=idx)
+        con_dict["v_21_6_0"] = 1 # 403 # find solution slow
 
+        save_exp = {
+            "input_name": f"mnist_test_{idx}",
+            "exp_name": "test/random_1"
+        }
+        use_stack = True
+        result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+                            max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
 
-# ########################################
-# # test timeout
-# idx = 246
-# in_dict, con_dict = get_mnist_test_data(idx=idx)
-# con_dict["v_0_0_0"] = 1 # # 246 Cannot attack
-# con_dict["v_9_27_0"] = 1 # # 246 Cannot attack
-# con_dict["v_5_3_0"] = 1 # # 246 Cannot attack
-
-# save_exp = {
-#     "input_name": f"mnist_test_{idx}",
-#     "exp_name": "test/random_3"
-# }
-# use_stack = False
-# result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
-#                        max_iter=0, total_timeout=2, single_timeout=1800, timeout=1800)
-
-
-########################################
-idx = 403
-in_dict, con_dict = get_mnist_test_data(idx=idx)
-con_dict["v_21_6_0"] = 1 # 403 # find solution fast
-
-save_exp = {
-    "input_name": f"mnist_test_{idx}",
-    "exp_name": "test/random_1"
-}
-use_stack = False
-result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
-                       max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
-
-# check whether PyCT works properly when using queue
-recorder = result[1]
-assert recorder.total_iter == 1
-assert recorder.original_label == 8
-assert recorder.attack_label == 9
-assert recorder.sat == [0, 1]
-assert recorder.unsat == [0, 0]
-assert recorder.unknown == [0, 0]
-assert recorder.gen_constraint == [81, 100]
-assert recorder.solve_constraint == [0, 1]
-
-########################################
-idx = 403
-in_dict, con_dict = get_mnist_test_data(idx=idx)
-con_dict["v_21_6_0"] = 1 # 403 # find solution slow
-
-save_exp = {
-    "input_name": f"mnist_test_{idx}",
-    "exp_name": "test/random_1"
-}
-use_stack = True
-result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
-                       max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
-
-# check whether PyCT works properly when using stack
-recorder = result[1]
-assert recorder.total_iter == 9
-assert recorder.original_label == 8
-assert recorder.attack_label == 9
-assert recorder.sat == [0,1,1,2,1,1,1,1,1,1]
-assert recorder.unsat == [0,62,62,56,6,29,29,58,58,92]
-assert recorder.unknown == [0,0,0,0,0,0,0,0,0,0]
-assert recorder.gen_constraint == [81,86,64,0,61,0,57,68,58,96]
-assert recorder.solve_constraint == [0,63,63,58,7,30,30,59,59,93]
-
-# print("\nTotal iterations:", result[0])
+        # check whether PyCT works properly when using stack
+        recorder = result[1]
+        assert recorder.total_iter == 9
+        assert recorder.original_label == 8
+        assert recorder.attack_label == 9
+        assert recorder.sat == [0,1,1,2,1,1,1,1,1,1]
+        assert recorder.unsat == [0,62,62,56,6,29,29,58,58,92]
+        assert recorder.unknown == [0,0,0,0,0,0,0,0,0,0]
+        assert recorder.gen_constraint == [81,86,64,0,61,0,57,68,58,96]
+        assert recorder.solve_constraint == [0,63,63,58,7,30,30,59,59,93]
+    test_stack_result()
+    
+    # print("\nTotal iterations:", result[0])
