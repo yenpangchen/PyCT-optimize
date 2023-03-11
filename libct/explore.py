@@ -2,11 +2,9 @@ import builtins, coverage, func_timeout, inspect, logging, multiprocessing, os, 
 from libct.constraint import Constraint
 from libct.path import PathToConstraint
 from libct.solver import Solver
-from libct.utils import ConcolicObject, unwrap
+from libct.utils import ConcolicObject, unwrap, get_in_dict_shape
 from libct.record import ConcolicTestRecorder
 import cProfile
-
-
 
 
 
@@ -102,72 +100,88 @@ class ExplorationEngine:
         recorder.execution_end()
         recorder.iter_end(Solver.stats, 0)
         recorder.gen_constraint.append(len(self.constraints_to_solve))
-                
+        recorder.first_execution_end()
+
+        # first self.previous_result is the original label
+        recorder.original_label = self.previous_result
+        
         # After First execution, no constr to solve
         if len(self.constraints_to_solve) == 0:
             print('[FIRST_NO_CONSTR]: After First execution, no constr to solve')
             return 0
 
 
-        while cont and (max_iterations==0 or iterations<=max_iterations):
+        while cont and (max_iterations==0 or iterations<max_iterations):
             ##############################################################
             # In each iteration, we take one constraint out of the queue
             # and try to solve for it. After that we'll obtain a model as
-            # a list of arguments and continue the next iteration with it.
-            iterations += 1                        
-            log.info(f"=== Iterations: {iterations} ===")
+            # a list of arguments and continue the next iteration with it.            
+            log.info(f"=== Iterations: {iterations+1} ===")
             recorder.iter_start()
 
             recorder.solve_constr_start()
             solve_constr_num = len(self.constraints_to_solve)
             while len(self.constraints_to_solve) > 0:
-                constraint = self.constraints_to_solve.pop(0) # queue
-                # NOTE stack is used instead of queue for DNN
-                # constraint = self.constraints_to_solve.pop() # stack            
-
+                
+                if self.solve_order_stack:
+                    # NOTE stack is used instead of queue for DNN
+                    constraint = self.constraints_to_solve.pop() # stack
+                else:
+                    constraint = self.constraints_to_solve.pop(0) # queue
+                
                 model = Solver.find_model_from_constraint(self, constraint)
             
                 if model is not None:
+                    # sat
                     all_args.update(model) # from model to argument
                     if all_args not in tried_input_args:
+                        # sat and this input args have not used
                         tried_input_args.append(all_args.copy()) # .copy() is important!!
                         break
 
-            recorder.solve_constr_end()            
+            recorder.solve_constr_end()
             solve_constr_num = solve_constr_num - len(self.constraints_to_solve)
 
             # solve new input and use it to execute
-            gen_constr_num = len(self.constraints_to_solve)            
+            gen_constr_num = len(self.constraints_to_solve)
             recorder.execution_start()
             cont = self._one_execution(all_args, concolic_dict)
             recorder.execution_end()
             gen_constr_num = len(self.constraints_to_solve) - gen_constr_num
             recorder.gen_constraint.append(gen_constr_num)
-
+            
+            iterations += 1
             recorder.iter_end(Solver.stats, solve_constr_num)
+            ##############################################################
 
             if len(self.constraints_to_solve) == 0:
+                recorder.no_ctr_to_solve()                
                 print('[SOLVED_ALL_CONSTR]: There is no constr to solve')
                 break
                         
-            ##############################################################
-
-        recorder.end(iterations)
-        return iterations
+        recorder.end()
 
 
-    def explore(self, modpath, all_args={}, /, *, root='.', funcname=None, max_iterations=0, single_timeout=15, total_timeout=900, deadcode=set(), 
-                include_exception=False, lib=None, single_coverage=True, file_as_total=False, concolic_dict={}, norm=False):
+    def explore(
+        self, modpath, all_args={}, /, *, root='.', funcname=None,
+        max_iterations=0, single_timeout=15, total_timeout=900,
+        deadcode=set(), include_exception=False, lib=None, single_coverage=True,
+        file_as_total=False, concolic_dict={}, norm=False, solve_order_stack=False):
         
         self.modpath = modpath; self.funcname = funcname
         self.single_timeout = single_timeout; self.total_timeout = total_timeout
         self.include_exception = include_exception; self.deadcode = deadcode
         self.lib = lib; self.file_as_total = file_as_total; self.normalize = norm
+        self.solve_order_stack = solve_order_stack
 
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
+        
         self.__init2__()
+        recorder.input_shape = get_in_dict_shape(all_args)
+        
         self.root = os.path.abspath(root)
         self.target_file = os.path.join(self.root, self.modpath.replace('./', ''))
+        
         
 
         self.single_coverage = single_coverage
@@ -183,13 +197,20 @@ class ExplorationEngine:
         self.can_use_concolic_wrapper = self._can_use_concolic_wrapper(self.root, self.modpath)
         
         try:
-            iterations = func_timeout.func_timeout(
+            func_timeout.func_timeout(
                 self.total_timeout, self._execution_loop, args=(max_iterations, all_args, concolic_dict)
             )
+        except func_timeout.exceptions.FunctionTimedOut:
+            recorder.total_timeout()
+            log.info('[TOTAL TIMEOUT]: Total Timeout happened')
+            
         except BaseException as e: # importantly note that func_timeout.FunctionTimedOut is NOT inherited from the (general) Exception class.
-            print('Was this exception triggered by total_timeout? ' + str(e))
-            iterations = 0 # usually catches timeout exceptions
-            traceback.print_exc()    
+            print(type(e))
+            traceback.print_exc()
+        
+        # After finishing self._execution_loop, we can get total iteration from recorder
+        iteration = recorder.total_iter
+        
 
         os.chdir(now_dir); del sys.path[0]
         if self.lib: del sys.path[0]
@@ -210,8 +231,7 @@ class ExplorationEngine:
                 f.write(f'unsat,{Solver.stats["unsat_number"]},{Solver.stats["unsat_time"]}\n')
                 f.write(f'otherwise,{Solver.stats["otherwise_number"]},{Solver.stats["otherwise_time"]}\n')
         
-        explore_stats = recorder.output_stats_dict()
-        return iterations-1, explore_stats
+        return iteration, recorder
 
     def _one_execution(self, all_args, concolic_dict):
         result = self._one_execution_concolic(all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.        
@@ -239,10 +259,7 @@ class ExplorationEngine:
             print('[Result Change]: self.previous_result != result')
             print('#'*60)
 
-            # TODO save adversarial input
-            # with open("./atk/0_12_random.atk", 'wb') as f:
-            #     pickle.dump(all_args, f)
-                
+            recorder.find_adversarial_input(all_args, result)
             return False
 
         self.previous_result = result

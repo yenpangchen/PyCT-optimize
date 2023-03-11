@@ -40,45 +40,7 @@ parser.add_argument("-n", "--is_normalized", dest='norm', help="If normalize inp
 # args = parser.parse_args()
 
 
-
-# PYCT_ROOT = 'PyCT-optimize'
-PYCT_ROOT = './'
-MODULE_ROOT = os.path.join(PYCT_ROOT, "dnn_predict_py")
-MODEL_ROOT = os.path.join(MODULE_ROOT, 'model')
-MODEL_NAME = "mnist_sep_act_m6_9628"
-MODEL_PATH = os.path.join(MODEL_ROOT, f"{MODEL_NAME}.h5")
-
-
-def read_in_file(filepath):
-    with open(filepath, 'r') as f:
-        w, h, c, concolic_num = eval(f.readline())
-        in_dict = dict()
-        con_dict = dict()
-
-        for i in range(h):
-            for j in range(w):
-                for k in range(c):
-                    in_dict[f'p_{i}_{j}_{k}'] = 0.0
-                    con_dict[f'p_{i}_{j}_{k}'] = 0
-
-        for i in range(h):
-            # only 1 channel
-            k = 0
-            for j, pixel in enumerate(f.readline().strip().split(' ')):
-                pixel = float(pixel)
-                in_dict[f'p_{i}_{j}_{k}'] = pixel
-
-        for _ in range(concolic_num):
-            i,j,k = f.readline().strip().split(' ')
-            con_dict[f'p_{i}_{j}_{k}'] = 1
-
-        return in_dict, con_dict
-
-
-##########################################
-# in_dict, con_dict = read_in_file(f'{PYCT_ROOT}/dnn_example/mnist/0_12_random.in')
-
-def get_mnist_test_data(idx, ):
+def get_mnist_test_data(idx):
     import itertools
     from tensorflow import keras
     import numpy as np
@@ -109,19 +71,104 @@ def get_mnist_test_data(idx, ):
         con_dict[key] = 0
     
     return in_dict, con_dict
-    
+
+##########################################
+
+model_name = "mnist_sep_act_m6_9628"
 
 
-in_dict, con_dict = get_mnist_test_data(idx=550)
+# idx = 550
+# in_dict, con_dict = get_mnist_test_data(idx=idx)
+# # set concolic location
+# con_dict["v_13_10_0"] = 1 # 550 # find solution slow
 
-### set concolic location
-# con_dict["v_21_6_0"] = 1 # 403 # find solution fast
-con_dict["v_13_10_0"] = 1 # 550 # find solution slow
+# save_exp = {
+#     "input_name": f"mnist_test_{idx}",
+#     "exp_name": "test/random_1"
+# }
 
-result = run_dnnct.run(MODEL_NAME, in_dict, con_dict, norm=True, max_iter=0,
-                       total_timeout=1800, single_timeout=1800, timeout=1800)
-
-explore_stats = result[1]
-print("\nTotal iterations:", result[0])
+# result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=False
+#                        max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
+# explore_stats = result[1]
 
 
+########################################
+# idx = 123
+# in_dict, con_dict = get_mnist_test_data(idx=idx)
+# con_dict["v_0_0_0"] = 1 # # 123 Cannot attack
+
+# save_exp = {
+#     "input_name": f"mnist_test_{idx}",
+#     "exp_name": "test/random_1"
+# }
+# use_stack = False
+# result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+#                        max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
+
+
+# ########################################
+# # test timeout
+# idx = 246
+# in_dict, con_dict = get_mnist_test_data(idx=idx)
+# con_dict["v_0_0_0"] = 1 # # 246 Cannot attack
+# con_dict["v_9_27_0"] = 1 # # 246 Cannot attack
+# con_dict["v_5_3_0"] = 1 # # 246 Cannot attack
+
+# save_exp = {
+#     "input_name": f"mnist_test_{idx}",
+#     "exp_name": "test/random_3"
+# }
+# use_stack = False
+# result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+#                        max_iter=0, total_timeout=2, single_timeout=1800, timeout=1800)
+
+
+########################################
+idx = 403
+in_dict, con_dict = get_mnist_test_data(idx=idx)
+con_dict["v_21_6_0"] = 1 # 403 # find solution fast
+
+save_exp = {
+    "input_name": f"mnist_test_{idx}",
+    "exp_name": "test/random_1"
+}
+use_stack = False
+result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+                       max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
+
+# check whether PyCT works properly when using queue
+recorder = result[1]
+assert recorder.total_iter == 1
+assert recorder.original_label == 8
+assert recorder.attack_label == 9
+assert recorder.sat == [0, 1]
+assert recorder.unsat == [0, 0]
+assert recorder.unknown == [0, 0]
+assert recorder.gen_constraint == [81, 100]
+assert recorder.solve_constraint == [0, 1]
+
+########################################
+idx = 403
+in_dict, con_dict = get_mnist_test_data(idx=idx)
+con_dict["v_21_6_0"] = 1 # 403 # find solution slow
+
+save_exp = {
+    "input_name": f"mnist_test_{idx}",
+    "exp_name": "test/random_1"
+}
+use_stack = True
+result = run_dnnct.run(model_name, in_dict, con_dict, save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+                       max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800)
+
+# check whether PyCT works properly when using stack
+recorder = result[1]
+assert recorder.total_iter == 9
+assert recorder.original_label == 8
+assert recorder.attack_label == 9
+assert recorder.sat == [0,1,1,2,1,1,1,1,1,1]
+assert recorder.unsat == [0,62,62,56,6,29,29,58,58,92]
+assert recorder.unknown == [0,0,0,0,0,0,0,0,0,0]
+assert recorder.gen_constraint == [81,86,64,0,61,0,57,68,58,96]
+assert recorder.solve_constraint == [0,63,63,58,7,30,30,59,59,93]
+
+# print("\nTotal iterations:", result[0])
