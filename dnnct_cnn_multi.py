@@ -8,12 +8,13 @@ TIMEOUT = 1800
 
 if __name__ == "__main__":
     from utils.pyct_attack_exp import pyct_shap_3_5_10_hard, run_multi_attack
+     
+    from utils.pyct_attack_exp import pyct_shap_1_test, pyct_shap_1_test_20_3tak    
+    # exp test shap 1 - idx 7, 261, 352, 420, 443, 559 will attack succesfully
+    # but pyct can only attack 18
+    inputs = pyct_shap_1_test_20_3tak(model_name)
     
-    # from utils.pyct_attack_exp import pyct_shap_1_test
-    # inputs = pyct_shap_1_test(model_name)
-    
-    
-    inputs = pyct_shap_3_5_10_hard(model_name, first_n_img=400)
+    # inputs = pyct_shap_3_5_10_hard(model_name, first_n_img=400)
     
     print("#"*40, f"number of inputs: {len(inputs)}", "#"*40)
     time.sleep(3)
