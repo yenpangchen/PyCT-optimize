@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import argparse, logging, os, sys
+import os
 import libct.explore
 import json
 from libct.utils import get_module_from_rootdir_and_modpath, get_function_from_module_and_funcname
-
+from utils.pyct_attack_exp import get_save_dir_from_save_exp
 
 PYCT_ROOT = './'
 MODEL_ROOT = os.path.join(PYCT_ROOT, 'model')
@@ -67,8 +67,9 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
             s_or_q = "stack"
         else:
             s_or_q = "queue"
+            
         
-        save_dir = os.path.join("exp", model_name, s_or_q, save_exp['exp_name'], save_exp['input_name'])
+        save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)        
         
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
