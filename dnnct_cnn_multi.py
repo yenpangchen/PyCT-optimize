@@ -3,18 +3,19 @@ from multiprocessing import Process
 
 model_name = "mnist_sep_act_m6_9628"
 
-NUM_PROCESS = 4
-TIMEOUT = 1800
+NUM_PROCESS = 25
+TIMEOUT = 600
 
 if __name__ == "__main__":
-    from utils.pyct_attack_exp import pyct_shap_3_5_10_hard, run_multi_attack
+    from utils.pyct_attack_exp import pyct_shap_1_4_8_16_32, run_multi_attack
      
-    from utils.pyct_attack_exp import pyct_shap_1_test, pyct_shap_1_test_20_3tak    
+    # from utils.pyct_attack_exp import pyct_shap_1_test, pyct_shap_1_test_20_3tak    
     # exp test shap 1 - idx 7, 261, 352, 420, 443, 559 will attack succesfully
     # but pyct can only attack 18
-    inputs = pyct_shap_1_test_20_3tak(model_name)
+    # inputs = pyct_shap_1_test_20_3tak(model_name)
     
-    # inputs = pyct_shap_3_5_10_hard(model_name, first_n_img=400)
+    
+    inputs = pyct_shap_1_4_8_16_32(model_name, first_n_img=400)
     
     print("#"*40, f"number of inputs: {len(inputs)}", "#"*40)
     time.sleep(3)
@@ -35,7 +36,7 @@ if __name__ == "__main__":
         p = Process(target=run_multi_attack, args=(sub_tasks, TIMEOUT, ))
         p.start()
         running_processes.append(p)
-        time.sleep(2) # subprocess start 的間隔時間
+        time.sleep(1) # subprocess start 的間隔時間
        
     for p in running_processes:
         p.join()

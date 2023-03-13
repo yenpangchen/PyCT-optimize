@@ -172,3 +172,49 @@ def pyct_shap_3_5_10_hard(model_name, first_n_img):
                 
     return inputs
 
+
+# exp 2 only use queue for SHAP 1,4,8,16,32
+def pyct_shap_1_4_8_16_32(model_name, first_n_img):
+    from utils.dataset import MnistDataset
+    mnist_dataset = MnistDataset()
+        
+    ### SHAP and hard image index
+    test_shap_pixel_sorted = np.load('./shap_value/mnist_sep_act_m6_9628/mnist_sort_shap_pixel.npy')
+    
+    inputs = []
+
+    for solve_order_stack in [False]:
+        if solve_order_stack:
+            s_or_q = "stack"
+        else:
+            s_or_q = "queue"
+
+        for ton_n_shap in [3, 5, 10]:
+            
+            for idx in range(first_n_img):
+                save_exp = {
+                    "input_name": f"mnist_test_{idx}",
+                    "exp_name": f"shap_{ton_n_shap}"
+                }
+
+                save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)
+                if os.path.exists(save_dir):
+                    # 已經有紀錄的圖跳過
+                    continue
+                                
+                attack_pixels = test_shap_pixel_sorted[idx, :ton_n_shap].tolist()
+                in_dict, con_dict = mnist_dataset.get_mnist_test_data_and_set_condict(idx, attack_pixels)
+                
+                
+                one_input = {
+                    'model_name': model_name,
+                    'in_dict': in_dict,
+                    'con_dict': con_dict,
+                    'solve_order_stack': solve_order_stack,
+                    'save_exp': save_exp,
+                }
+
+                inputs.append(one_input)
+                
+    return inputs
+
