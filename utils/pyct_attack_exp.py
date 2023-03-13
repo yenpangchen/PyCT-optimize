@@ -189,7 +189,7 @@ def pyct_shap_1_4_8_16_32(model_name, first_n_img):
         else:
             s_or_q = "queue"
 
-        for ton_n_shap in [3, 5, 10]:
+        for ton_n_shap in [1,4,8,16,32]:
             
             for idx in range(first_n_img):
                 save_exp = {
