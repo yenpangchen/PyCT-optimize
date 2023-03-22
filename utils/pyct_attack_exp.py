@@ -263,3 +263,97 @@ def pyct_random_1_4_8_16_32(model_name, first_n_img):
                 inputs.append(one_input)
                 
     return inputs
+
+
+### copy exp2, set upper and lower bound for smt variable ###
+def pyct_shap_1_4_8_16_32_limit(model_name, first_n_img, limit_p):
+    from utils.dataset import MnistDataset
+    mnist_dataset = MnistDataset()
+        
+    ### SHAP
+    test_shap_pixel_sorted = np.load('./shap_value/mnist_sep_act_m6_9628/mnist_sort_shap_pixel.npy')
+    
+    inputs = []
+
+    for solve_order_stack in [False]:
+        if solve_order_stack:
+            s_or_q = "stack"
+        else:
+            s_or_q = "queue"
+
+        for ton_n_shap in [1,4,8,16,32]:
+            
+            for idx in range(first_n_img):
+                save_exp = {
+                    "input_name": f"mnist_test_{idx}",
+                    "exp_name": f"limit_{limit_p}/shap_{ton_n_shap}"
+                }
+
+                save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)
+                if os.path.exists(save_dir):
+                    # 已經有紀錄的圖跳過
+                    continue
+                                
+                attack_pixels = test_shap_pixel_sorted[idx, :ton_n_shap].tolist()
+                in_dict, con_dict = mnist_dataset.get_mnist_test_data_and_set_condict(idx, attack_pixels)
+                
+                
+                one_input = {
+                    'model_name': model_name,
+                    'in_dict': in_dict,
+                    'con_dict': con_dict,
+                    'solve_order_stack': solve_order_stack,
+                    'save_exp': save_exp,
+                    'limit_change_percentage': limit_p,
+                }
+
+                inputs.append(one_input)
+                
+    return inputs
+
+
+### copy exp 3, set upper and lower bound for smt variable ###
+def pyct_random_1_4_8_16_32_limit(model_name, first_n_img, limit_p):
+    from utils.dataset import MnistDataset
+    from utils.gen_random_pixel_location import mnist_test_data_10000
+    
+    mnist_dataset = MnistDataset()        
+    random_pixels = mnist_test_data_10000()
+    
+    inputs = []
+
+    for solve_order_stack in [False]:
+        if solve_order_stack:
+            s_or_q = "stack"
+        else:
+            s_or_q = "queue"
+
+        for ton_n in [1,4,8,16,32]:
+            
+            for idx in range(first_n_img):
+                save_exp = {
+                    "input_name": f"mnist_test_{idx}",
+                    "exp_name": f"limit_{limit_p}/random_{ton_n}"
+                }
+
+                save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)
+                if os.path.exists(save_dir):
+                    # 已經有紀錄的圖跳過
+                    continue
+                                
+                attack_pixels = random_pixels[idx, :ton_n].tolist()
+                in_dict, con_dict = mnist_dataset.get_mnist_test_data_and_set_condict(idx, attack_pixels)
+                
+                
+                one_input = {
+                    'model_name': model_name,
+                    'in_dict': in_dict,
+                    'con_dict': con_dict,
+                    'solve_order_stack': solve_order_stack,
+                    'save_exp': save_exp,
+                    'limit_change_percentage': limit_p,
+                }
+
+                inputs.append(one_input)
+                
+    return inputs
