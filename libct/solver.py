@@ -8,7 +8,9 @@ log = logging.getLogger("ct.solver")
 class Solver:
     # options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
     cnt = 1 # for store
-    normalization = True
+    # limit the percentage of variable, if x=100, percentage is 0.1, means that the range of new x is [100*0.9, 100*1.1]
+    limit_change_percentage = None
+    norm = None
 
     @classmethod # similar to our constructor
     def set_basic_configurations(cls, solver, timeout, safety, store, statsdir):
@@ -42,9 +44,9 @@ class Solver:
             cls.cmd += ["--tlimit=" + str(1000 * timeout)]
 
     @classmethod
-    def find_model_from_constraint(cls, engine, constraint):
+    def find_model_from_constraint(cls, engine, constraint, ori_args):
         print("[DEBUG]Finding model ... ")
-        formulas = Solver._build_formulas_from_constraint(engine, constraint, Solver.normalization); log.smtlib2(f"Solving To: {constraint}")
+        formulas = Solver._build_formulas_from_constraint(engine, constraint, ori_args); log.smtlib2(f"Solving To: {constraint}")
         start = time.time()
         try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
         except subprocess.CalledProcessError as e: print(e.output)
@@ -125,17 +127,31 @@ class Solver:
         return model
 
     @staticmethod
-    def _build_formulas_from_constraint(engine, constraint, norm):
+    def _build_formulas_from_constraint(engine, constraint, ori_args):
         # declare_vars = "\n".join(f"(declare-const {name} {_type})" 
         #                for (name, _type) in engine.var_to_types.items()) #if engine.concolic_dict.get(name, 1))
         #NOTE DNN
         declare_vars = "\n".join(f"(declare-const {name} {engine.var_to_types[name]})"                 
                                  for (name) in engine.concolic_name_list)
         queries = "\n".join(assertion.get_formula() for assertion in constraint.get_all_asserts())
-        norm_queries = ""
-        if norm:
+        
+        norm_queries = ""        
+        if Solver.norm: # limit solve range [0,1]
             norm_queries = "\n".join(f"(assert (and (<= {name} 1) (>= {name} 0)))"
                             for (name) in engine.concolic_name_list)
+            
+        if Solver.limit_change_percentage is not None:
+            # limit solve range x +- p%, e.g. p=0.1, [100 * (1-p), 100 * (1+p)]
+            limit_queries = []
+            for name in engine.concolic_name_list:
+                x = ori_args[name[:-4]] # not including _VAR
+                lb = x * (1-Solver.limit_change_percentage)
+                ub = x * (1+Solver.limit_change_percentage)
+                limit_queries.append(f"(assert (and (<= {name} {ub}) (>= {name} {lb})))")
+            
+            norm_queries += "\n".join(limit_queries)
+
+        
         # get_vars = "\n".join(f"(get-value ({name}))" for name in engine.var_to_types.keys())
         #NOTE DNN
         get_vars = "\n".join(f"(get-value ({name}))" for name in engine.concolic_name_list)

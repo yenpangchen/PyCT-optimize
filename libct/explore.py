@@ -83,11 +83,14 @@ class ExplorationEngine:
         self.concolic_name_list = [] ##NOTE for DNN testing
         self.concolic_flag_dict = {} ##NOTE for DNN testing        
         self.previous_result = None
+        self.original_args = None # used to limit variable range
         
 
     def _execution_loop(self, max_iterations, all_args, concolic_dict):
         recorder.start()
-        Solver.normalization = self.normalize
+        Solver.norm = self.normalize
+        Solver.limit_change_percentage = self.limit_change_percentage
+        
         tried_input_args = [all_args.copy()] # .copy() is important!!
         iterations = 0
         cont = True
@@ -129,7 +132,7 @@ class ExplorationEngine:
                 else:
                     constraint = self.constraints_to_solve.pop(0) # queue
                 
-                model = Solver.find_model_from_constraint(self, constraint)
+                model = Solver.find_model_from_constraint(self, constraint, self.original_args)
             
                 if model is not None:
                     # sat
@@ -161,23 +164,26 @@ class ExplorationEngine:
                         
         recorder.end()
 
-
     def explore(
         self, modpath, all_args={}, /, *, root='.', funcname=None,
         max_iterations=0, single_timeout=15, total_timeout=900,
         deadcode=set(), include_exception=False, lib=None, single_coverage=True,
-        file_as_total=False, concolic_dict={}, norm=False, solve_order_stack=False):
+        file_as_total=False, concolic_dict={}, solve_order_stack=False,
+        norm=False, limit_change_percentage=None):
         
         self.modpath = modpath; self.funcname = funcname
         self.single_timeout = single_timeout; self.total_timeout = total_timeout
         self.include_exception = include_exception; self.deadcode = deadcode
         self.lib = lib; self.file_as_total = file_as_total; self.normalize = norm
         self.solve_order_stack = solve_order_stack
+        self.limit_change_percentage = limit_change_percentage
 
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         
         self.__init2__()
+                
         recorder.input_shape = get_in_dict_shape(all_args)
+        self.original_args = all_args.copy()
         
         self.root = os.path.abspath(root)
         self.target_file = os.path.join(self.root, self.modpath.replace('./', ''))
@@ -233,6 +239,7 @@ class ExplorationEngine:
         
         return iteration, recorder
 
+
     def _one_execution(self, all_args, concolic_dict):
         result = self._one_execution_concolic(all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.        
         if not self.single_coverage: # We don't measure coverage in the primitive mode under the non-single coverage setting.
@@ -282,6 +289,7 @@ class ExplorationEngine:
             # execute = get_function_from_module_and_funcname(module, self.funcname)
 
             ccc_args, ccc_kwargs = self._get_concolic_arguments(execute, all_args, concolic_dict) # primitive input arguments "all_args" may be modified here.
+                        
             s1.send((all_args, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict))
             result = self.Exception
             try:
@@ -310,7 +318,8 @@ class ExplorationEngine:
                 s3.send(self.Unpicklable) # may fail if they contain some unpicklable objects
 
         process = multiprocessing.Process(target=child_process); process.start()
-        (all_args2, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict) = r1.recv(); r1.close(); s1.close(); all_args.clear()
+        (all_args2, self.var_to_types, self.concolic_name_list, self.concolic_flag_dict) =\
+            r1.recv(); r1.close(); s1.close(); all_args.clear()            
         all_args.update(all_args2) # update the parameter directly
 
         if not r0.poll(self.single_timeout + 5):
