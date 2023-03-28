@@ -426,7 +426,7 @@ def pyct_random_1_4_8_16_32_limit(model_name, first_n_img, limit):
             for idx in range(first_n_img):
                 save_exp = {
                     "input_name": f"mnist_test_{idx}",
-                    "exp_name": f"random/limit_{limit}/random_{ton_n}"
+                    "exp_name": f"limit_{limit}/random_{ton_n}"
                 }
 
                 save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)
