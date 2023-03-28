@@ -89,7 +89,7 @@ class ExplorationEngine:
     def _execution_loop(self, max_iterations, all_args, concolic_dict):
         recorder.start()
         Solver.norm = self.normalize
-        Solver.limit_change_percentage = self.limit_change_percentage
+        Solver.limit_change_range = self.limit_change_range
         
         tried_input_args = [all_args.copy()] # .copy() is important!!
         iterations = 0
@@ -169,14 +169,14 @@ class ExplorationEngine:
         max_iterations=0, single_timeout=15, total_timeout=900,
         deadcode=set(), include_exception=False, lib=None, single_coverage=True,
         file_as_total=False, concolic_dict={}, solve_order_stack=False,
-        norm=False, limit_change_percentage=None):
+        norm=False, limit_change_range=None):
         
         self.modpath = modpath; self.funcname = funcname
         self.single_timeout = single_timeout; self.total_timeout = total_timeout
         self.include_exception = include_exception; self.deadcode = deadcode
         self.lib = lib; self.file_as_total = file_as_total; self.normalize = norm
         self.solve_order_stack = solve_order_stack
-        self.limit_change_percentage = limit_change_percentage
+        self.limit_change_range = limit_change_range
 
         if self.funcname is None: self.funcname = self.modpath.split('.')[-1]
         

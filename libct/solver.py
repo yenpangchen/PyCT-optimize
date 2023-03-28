@@ -9,7 +9,7 @@ class Solver:
     # options = {"lan": "smt.string_solver=z3str3", "stdin": "-in"}
     cnt = 1 # for store
     # limit the percentage of variable, if x=100, percentage is 0.1, means that the range of new x is [100*0.9, 100*1.1]
-    limit_change_percentage = None
+    limit_change_range = None
     norm = None
 
     @classmethod # similar to our constructor
@@ -140,13 +140,13 @@ class Solver:
             norm_queries = "\n".join(f"(assert (and (<= {name} 1) (>= {name} 0)))"
                             for (name) in engine.concolic_name_list)
             
-        if Solver.limit_change_percentage is not None:
+        if Solver.limit_change_range is not None:
             # limit solve range x +- p%, e.g. p=0.1, [100 * (1-p), 100 * (1+p)]
             limit_queries = []
             for name in engine.concolic_name_list:
                 x = ori_args[name[:-4]] # not including _VAR
-                lb = x * (1-Solver.limit_change_percentage)
-                ub = x * (1+Solver.limit_change_percentage)
+                lb = max(0, x - Solver.limit_change_range/255 ) 
+                ub = min(1, x + Solver.limit_change_range/255 ) 
                 limit_queries.append(f"(assert (and (<= {name} {ub}) (>= {name} {lb})))")
             
             norm_queries += "\n".join(limit_queries)

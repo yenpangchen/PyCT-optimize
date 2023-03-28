@@ -12,7 +12,7 @@ MODEL_ROOT = os.path.join(PYCT_ROOT, 'model')
 
 def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
         max_iter=0, single_timeout=900, timeout=900, total_timeout=900, verbose=1,
-        limit_change_percentage=None):
+        limit_change_range=None):
 
     model_path = os.path.join(MODEL_ROOT, f"{model_name}.h5")
     modpath = os.path.join(PYCT_ROOT, f"dnn_predict_common.py")
@@ -58,7 +58,7 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
         single_timeout=single_timeout, total_timeout=total_timeout, deadcode=set(),
         include_exception=include_exception, lib=lib,
         file_as_total=file_as_total, norm=norm, solve_order_stack=solve_order_stack,
-        limit_change_percentage=limit_change_percentage, 
+        limit_change_range=limit_change_range, 
     )
     
     

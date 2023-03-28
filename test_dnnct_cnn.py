@@ -159,7 +159,7 @@ if __name__ == "__main__":
     #         model_name, in_dict, con_dict,
     #         save_exp=save_exp, norm=True, solve_order_stack=use_stack,
     #         max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800,
-    #         limit_change_percentage=0.1, 
+    #         limit_change_range=10, 
     #     )
 
     #     # check whether PyCT works properly when using queue
@@ -175,7 +175,8 @@ if __name__ == "__main__":
         in_dict, con_dict = mnist_dataset.get_mnist_test_data(idx=idx)
 
         # if no change limit can be attacked in 1 iteration
-        # if set change limit to 0.45 can be attacked in 1 iteration
+        # if set change limit to 100 cannot be attacked in 1 iteration
+        # if set change limit to 110 can be attacked in 1 iteration
         con_dict[f"v_12_7_0"] = 1
         con_dict[f"v_11_7_0"] = 1
         con_dict[f"v_13_9_0"] = 1
@@ -195,7 +196,7 @@ if __name__ == "__main__":
             model_name, in_dict, con_dict,
             save_exp=save_exp, norm=True, solve_order_stack=use_stack,
             max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800,
-            limit_change_percentage=0.45,
+            limit_change_range=110,
         )
 
         # check whether PyCT works properly when using queue
