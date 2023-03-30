@@ -14,9 +14,9 @@ if __name__ == "__main__":
     # but pyct can only attack 18
     # inputs = pyct_shap_1_test_20_3tak(model_name)
     
-    inputs = pyct_random_1_4_8_16_32_limit(model_name, first_n_img=400, limit=30)
+    inputs = pyct_random_1_4_8_16_32_limit(model_name, first_n_img=400, limit=70)
     inputs.extend(
-        pyct_shap_1_4_8_16_32_limit(model_name, first_n_img=400, limit=30))
+        pyct_shap_1_4_8_16_32_limit(model_name, first_n_img=400, limit=70))
     
     print("#"*40, f"number of inputs: {len(inputs)}", "#"*40)
     time.sleep(3)
@@ -34,10 +34,11 @@ if __name__ == "__main__":
 
     running_processes = []
     for sub_tasks in all_subprocess_tasks:
-        p = Process(target=run_multi_attack, args=(sub_tasks, TIMEOUT, ))
-        p.start()
-        running_processes.append(p)
-        time.sleep(1) # subprocess start 的間隔時間
+        if len(sub_tasks) > 0:
+            p = Process(target=run_multi_attack, args=(sub_tasks, TIMEOUT, ))
+            p.start()
+            running_processes.append(p)
+            time.sleep(1) # subprocess start 的間隔時間
        
     for p in running_processes:
         p.join()
