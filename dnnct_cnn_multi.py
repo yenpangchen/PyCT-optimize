@@ -1,7 +1,8 @@
 import time
 from multiprocessing import Process
 
-model_name = "mnist_sep_act_m6_9628"
+# model_name = "mnist_sep_act_m6_9628"
+model_name = "mnist_sep_act_m6_9653_noise"
 
 NUM_PROCESS = 25
 TIMEOUT = 600
