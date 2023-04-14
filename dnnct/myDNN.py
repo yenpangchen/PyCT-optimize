@@ -58,6 +58,9 @@ def act_tanh(x):
         exp_minus_x = math.exp(-x)
         return (exp_x - exp_minus_x) / (exp_x + exp_minus_x)
 
+def act_sigmoid(x):
+    return 1.0 / (1.0 + math.exp(-x))
+
 # https://stackoverflow.com/questions/17531796/find-the-dimensions-of-a-multidimensional-python-array
 # return the dimension of a python list
 def dim(a):
@@ -78,7 +81,7 @@ def actFunc(val, type):
     elif type=='softmax':
         pass
     elif type=='sigmoid':
-        pass
+        return act_sigmoid(val)
     elif type=='tanh':
         return act_tanh(val)
     elif type=='elu':
@@ -338,6 +341,83 @@ class SimpleRNNLayer:
 
     def getOutput(self):
         return self._output
+
+
+class LSTMLayer:
+    def __init__(self, input_size, weights):
+        self.input_size = input_size                
+        W, U, b = (w for w in weights)
+        self.hidden_size = int(W.shape[1] / 4)
+       
+        # load weights
+        self.W_i = W[:, :self.hidden_size].tolist()
+        self.W_f = W[:, self.hidden_size: self.hidden_size * 2].tolist()
+        self.W_c = W[:, self.hidden_size * 2: self.hidden_size * 3].tolist()
+        self.W_o = W[:, self.hidden_size * 3:].tolist()
+       
+        self.U_i = U[:, :self.hidden_size].tolist()
+        self.U_f = U[:, self.hidden_size: self.hidden_size * 2].tolist()
+        self.U_c = U[:, self.hidden_size * 2: self.hidden_size * 3].tolist()
+        self.U_o = U[:, self.hidden_size * 3:].tolist()
+       
+        # load biases
+        self.b_i = b[:self.hidden_size].tolist()
+        self.b_f = b[self.hidden_size: self.hidden_size * 2].tolist()
+        self.b_c = b[self.hidden_size * 2: self.hidden_size * 3].tolist()
+        self.b_o = b[self.hidden_size * 3:].tolist()
+       
+    def forward(self, X):
+        # init states
+        h0 = np.zeros(self.hidden_size).astype('float32').tolist()
+        c0 = np.zeros(self.hidden_size).astype('float32').tolist()
+       
+        for i in range(len(X)):
+            h0, c0 = self.step(X[i], h0, c0)
+           
+        return h0
+       
+    def step(self, x, h, c):                
+        i = [0.0] * self.hidden_size
+        f = [0.0] * self.hidden_size
+        o = [0.0] * self.hidden_size
+        g = [0.0] * self.hidden_size
+           
+        for j in range(self.hidden_size):
+            for k in range(self.input_size):
+                i[j] += x[k] * self.W_i[k][j]
+                f[j] += x[k] * self.W_f[k][j]
+                o[j] += x[k] * self.W_o[k][j]
+                g[j] += x[k] * self.W_c[k][j]
+
+
+            for l in range(self.hidden_size):
+                i[j] += h[l] * self.U_i[l][j]
+                f[j] += h[l] * self.U_f[l][j]
+                o[j] += h[l] * self.U_o[l][j]
+                g[j] += h[l] * self.U_c[l][j]
+       
+            i[j] += self.b_i[j]
+            f[j] += self.b_f[j]
+            o[j] += self.b_o[j]
+            g[j] += self.b_c[j]
+
+
+            i[j] = act_sigmoid(i[j])
+            f[j] = act_sigmoid(f[j])
+            o[j] = act_sigmoid(o[j])
+            g[j] = act_tanh(g[j])
+
+
+        new_c = [0.0] * self.hidden_size
+        new_h = [0.0] * self.hidden_size
+
+
+        for j in range(self.hidden_size):
+            new_c[j] = f[j] * c[j] + i[j] * g[j]
+            new_h[j] = o[j] * act_tanh(new_c[j])
+
+
+        return new_h, new_c
 
 
 class NNModel:
