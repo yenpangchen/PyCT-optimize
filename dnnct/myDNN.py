@@ -471,11 +471,14 @@ class NNModel:
         elif type(layer) == Flatten:
             #print("Flatten")
             self.layers.append(FlattenLayer())
-        elif type(layer) == SimpleRNN:
-            input_dim = layer.input_shape[-1]
-            self.layers.append(SimpleRNNLayer(input_dim, weights=layer.get_weights()))
         elif type(layer) == Activation:
             activation = layer.get_config()['activation']
             self.layers.append(ActivationLayer(activation))
+        elif type(layer) == SimpleRNN:
+            input_dim = layer.input_shape[-1]
+            self.layers.append(SimpleRNNLayer(input_dim, weights=layer.get_weights()))
+        elif type(layer) == LSTM:
+            input_dim = layer.input_shape[-1]
+            self.layers.append(LSTMLayer(input_dim, weights=layer.get_weights()))
         else:
             raise NotImplementedError()
