@@ -15,9 +15,9 @@ if __name__ == "__main__":
     # but pyct can only attack 18
     # inputs = pyct_shap_1_test_20_3tak(model_name)
     
-    inputs = pyct_random_1_4_8_16_32_limit(model_name, first_n_img=400, limit=70)
+    inputs = pyct_random_1_4_8_16_32_limit(model_name, first_n_img=400, limit=10)
     inputs.extend(
-        pyct_shap_1_4_8_16_32_limit(model_name, first_n_img=400, limit=70))
+        pyct_shap_1_4_8_16_32_limit(model_name, first_n_img=400, limit=10))
     
     print("#"*40, f"number of inputs: {len(inputs)}", "#"*40)
     time.sleep(3)
