@@ -11,12 +11,16 @@ class Solver:
     # limit the percentage of variable, if x=100, percentage is 0.1, means that the range of new x is [100*0.9, 100*1.1]
     limit_change_range = None
     norm = None
+    iter = None # for the filename of saveed smt constraint
+    iter_count = 1 # for the filename of saveed smt constraint
 
     @classmethod # similar to our constructor
-    def set_basic_configurations(cls, solver, timeout, safety, store, statsdir):
-        cls.safety = safety; cls.statsdir = statsdir
+    def set_basic_configurations(cls, solver, timeout, safety, store, smtdir):
+        cls.safety = safety; cls.smtdir = smtdir
         cls.stats = {'sat_number': 0, 'sat_time': 0, 'unsat_number': 0, 'unsat_time': 0, 'otherwise_number': 0, 'otherwise_time': 0}
-        if cls.statsdir: os.system(f"mkdir -p '{cls.statsdir}/formula'")
+        if cls.smtdir:            
+            os.makedirs(os.path.join(cls.smtdir, 'formula'))
+            
         if store is not None:
             if not os.path.isdir(store):
                 if not re.compile(r"^\d+$").match(store):
@@ -78,13 +82,17 @@ class Solver:
             else:
                 with open(os.path.join(cls.store, f"{Solver.cnt}_{status}.smt2"), 'w') as f:
                     f.write(formulas)
-        if cls.statsdir:
-            with open(cls.statsdir + f"/formula/{Solver.cnt}_{status}.smt2", 'w') as f:
+        
+        if cls.smtdir:
+            save_smt_filename = f"{Solver.iter}_{Solver.iter_count}_{status}.smt2"
+            with open(os.path.join(cls.smtdir, "formula", save_smt_filename), 'w') as f:
                 f.write(formulas)
+            
         print(status)
         ##########################################################################################
         log.smtlib2(f"SMT-id: {Solver.cnt}／Status: {status}／Model: {model}")
         Solver.cnt += 1
+        Solver.iter_count += 1
         return model
 
     @staticmethod

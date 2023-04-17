@@ -38,10 +38,14 @@ class ConcolicTestRecorder:
         self._pre_unk = 0
 
 
-    def iter_start(self):
-        self._iter_start_wall_time = time.time()        
+    def iter_start(self, solver):
+        self._iter_start_wall_time = time.time()
         self._iter_start_cpu_time = time.process_time()
-
+        
+        solver.iter = self.total_iter+1
+        solver.iter_count = 1
+        
+        
     def iter_end(self, solver_stats, solve_constr_num):
         self.iter_wall_time.append(time.time() - self._iter_start_wall_time)
         self.iter_cpu_time.append(time.process_time() - self._iter_start_cpu_time)

@@ -18,6 +18,8 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
     modpath = os.path.join(PYCT_ROOT, f"dnn_predict_common.py")
     func = "predict"
     funcname = t if (t:=func) else modpath.split('.')[-1]
+    save_dir = None
+    smtdir = None
 
 
     dump_projstats = False
@@ -46,11 +48,21 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
     func_init_model(model_path)
 
     ##############################################################################
-    # This section creates an explorer instance and starts our analysis procedure!
-
+    # This section creates an explorer instance and starts our analysis procedure!    
+    if save_exp is not None:
+        if solve_order_stack:
+            s_or_q = "stack"
+        else:
+            s_or_q = "queue"                    
+        save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)
+        
+        if save_exp.get('save_smt', False):        
+            smtdir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)        
+    
     engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=timeout, safety=safety,
                                             store=formula, verbose=verbose, logfile=logfile,
-                                            statsdir=statsdir, module_=module, execute_=execute)
+                                            statsdir=statsdir, smtdir=smtdir,
+                                            module_=module, execute_=execute)
 
 
     result = engine.explore(
@@ -62,17 +74,10 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
     )
     
     
-    if save_exp is not None:
+    if save_dir is not None:
         recorder = result[1]
         recorder.input_name = save_exp['input_name']
-        if solve_order_stack:
-            s_or_q = "stack"
-        else:
-            s_or_q = "queue"
-            
-        
-        save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)        
-        
+
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         

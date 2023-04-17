@@ -37,7 +37,8 @@ class ExplorationEngine:
     class LazyLoading(metaclass=type('', (type,), {"__repr__": lambda self: '<DEFAULT>'})): pass # lazily loading default values of primitive arguments
 
     def __init__(self, *, solver='cvc4', timeout=20, safety=0, store=None,
-                 verbose=1, logfile=None, statsdir=None, module_, execute_):
+                 verbose=1, logfile=None, statsdir=None, smtdir=None,
+                 module_, execute_):
         global module, execute
 
         module = module_
@@ -46,7 +47,7 @@ class ExplorationEngine:
         self.normalize = None
         self.__init2__(); self.statsdir = statsdir
         if self.statsdir: os.system(f"rm -rf '{statsdir}'"); os.system(f"mkdir -p '{statsdir}'")
-        Solver.set_basic_configurations(solver, timeout, safety, store, statsdir)
+        Solver.set_basic_configurations(solver, timeout, safety, store, smtdir)
         ############################################################
         # This section mainly deals with the logging settings.
         log_level = 25 - 5 * verbose
@@ -97,7 +98,7 @@ class ExplorationEngine:
 
         # this execution only for generating constraints
         log.info(f"=== Iterations: {iterations} ===")
-        recorder.iter_start()
+        recorder.iter_start(Solver)
         recorder.execution_start()
         self._one_execution(all_args, concolic_dict)
         recorder.execution_end()
@@ -120,7 +121,8 @@ class ExplorationEngine:
             # and try to solve for it. After that we'll obtain a model as
             # a list of arguments and continue the next iteration with it.            
             log.info(f"=== Iterations: {iterations+1} ===")
-            recorder.iter_start()
+            recorder.iter_start(Solver)
+            
 
             recorder.solve_constr_start()
             solve_constr_num = len(self.constraints_to_solve)
