@@ -1,9 +1,14 @@
 import time
 import numpy as np
 import cv2
+import os
+import json
 
 class ConcolicTestRecorder:
-    def __init__(self):
+    def __init__(self, save_dir, input_name):
+        # save
+        self.save_dir = save_dir
+        
         # iters
         self.sat = []
         self.unsat = []
@@ -23,7 +28,7 @@ class ConcolicTestRecorder:
         self.total_iter = -1
         
         # meta
-        self.input_name = None
+        self.input_name = input_name
         self.input_shape = None
         self.original_label = None 
         self.attack_label = None
@@ -86,10 +91,12 @@ class ConcolicTestRecorder:
         self._start_wall_time = time.time()
         self._start_cpu_time = time.process_time()
 
-    def end(self):
+    def end(self, constraint_complexity=None):
         self.total_wall_time = time.time() - self._start_wall_time
         self.total_cpu_time = time.process_time() - self._start_cpu_time
         self.is_finish = True
+        
+        self.save_stats_dict(constraint_complexity=constraint_complexity)
 
 
     def total_timeout(self):
@@ -140,6 +147,7 @@ class ConcolicTestRecorder:
             "meta": dict(),
             "total": dict(),
             "iters": dict(),
+            "constraint_complexity": None,
         }
         res['meta']['input_name'] = self.input_name
         res['meta']['original_label'] = self.original_label
@@ -168,4 +176,19 @@ class ConcolicTestRecorder:
 
 
         return res
+
+
+    def save_stats_dict(self, constraint_complexity=None):
+        if self.save_dir:
+            if not os.path.exists(self.save_dir):
+                os.makedirs(self.save_dir)
+            
+            with open(os.path.join(self.save_dir, "stats.json"), 'w') as f:
+                stats_dict = self.output_stats_dict()
+                stats_dict['constraint_complexity'] = constraint_complexity
+                # json.dump(stats_dict, f, indent="\t") # 較容易讀懂但浪費儲存空間
+                json.dump(stats_dict, f) # 最節省儲存空間但不容易讀懂
+            
+            img_name = f"adv_{self.original_label}_to_{self.attack_label}.jpg"
+            self.save_adversarial_input_as_image(os.path.join(self.save_dir, img_name))
 

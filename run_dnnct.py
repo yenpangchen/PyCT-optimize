@@ -12,7 +12,7 @@ MODEL_ROOT = os.path.join(PYCT_ROOT, 'model')
 
 def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
         max_iter=0, single_timeout=900, timeout=900, total_timeout=900, verbose=1,
-        limit_change_range=None):
+        limit_change_range=None, only_first_forward=False):
 
     model_path = os.path.join(MODEL_ROOT, f"{model_name}.h5")
     modpath = os.path.join(PYCT_ROOT, f"dnn_predict_common.py")
@@ -62,7 +62,9 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
     engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=timeout, safety=safety,
                                             store=formula, verbose=verbose, logfile=logfile,
                                             statsdir=statsdir, smtdir=smtdir,
-                                            module_=module, execute_=execute)
+                                            save_dir=save_dir, input_name=save_exp['input_name'],
+                                            module_=module, execute_=execute,
+                                            only_first_forward=only_first_forward)
 
 
     result = engine.explore(
@@ -72,20 +74,6 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
         file_as_total=file_as_total, norm=norm, solve_order_stack=solve_order_stack,
         limit_change_range=limit_change_range, 
     )
-    
-    
-    if save_dir is not None:
-        recorder = result[1]
-        recorder.input_name = save_exp['input_name']
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        
-        with open(os.path.join(save_dir, "stats.json"), 'w') as f:
-            json.dump(recorder.output_stats_dict(), f, indent="\t")
-        
-        img_name = f"adv_{recorder.original_label}_to_{recorder.attack_label}.jpg"
-        recorder.save_adversarial_input_as_image(os.path.join(save_dir, img_name))
         
             
     return result

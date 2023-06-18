@@ -204,8 +204,41 @@ if __name__ == "__main__":
         assert recorder.total_iter == 1
         assert recorder.original_label == 4
         assert recorder.attack_label == 8
+    
+    
+    def test_queue_only_first_forward():
+        idx = 6
+        in_dict, con_dict = mnist_dataset.get_mnist_test_data(idx=idx)
+
+        # if no change limit can be attacked in 1 iteration
+        # if set change limit to 100 cannot be attacked in 1 iteration
+        # if set change limit to 110 can be attacked in 1 iteration
+        con_dict[f"v_12_7_0"] = 1
+        con_dict[f"v_11_7_0"] = 1
+        con_dict[f"v_13_9_0"] = 1
+        con_dict[f"v_13_10_0"] = 1
+        con_dict[f"v_13_8_0"] = 1
+        con_dict[f"v_9_8_0"] = 1
+        con_dict[f"v_8_8_0"] = 1
+        con_dict[f"v_8_20_0"] = 1
+
+        save_exp = {
+            "input_name": f"mnist_test_{idx}",
+            "exp_name": "test_only_first_forward/shap_8"
+        }
         
-    test_queue_result_limit_many_pixels()
+        use_stack = False
+        result = run_dnnct.run(
+            model_name, in_dict, con_dict,
+            save_exp=save_exp, norm=True, solve_order_stack=use_stack,
+            max_iter=0, total_timeout=1800, single_timeout=1800, timeout=1800,
+            only_first_forward=True            
+        )
+
+        # check whether PyCT works properly when using queue
+        recorder = result[1]
+    
+    test_queue_only_first_forward()
     
     
     # print("\nTotal iterations:", result[0])

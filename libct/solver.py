@@ -11,13 +11,18 @@ class Solver:
     # limit the percentage of variable, if x=100, percentage is 0.1, means that the range of new x is [100*0.9, 100*1.1]
     limit_change_range = None
     norm = None
-    iter = None # for the filename of saveed smt constraint
-    iter_count = 1 # for the filename of saveed smt constraint
+    iter = None # for the filename of saved smt constraint
+    iter_count = 1 # for the filename of saved smt constraint
+    
 
     @classmethod # similar to our constructor
     def set_basic_configurations(cls, solver, timeout, safety, store, smtdir):
         cls.safety = safety; cls.smtdir = smtdir
         cls.stats = {'sat_number': 0, 'sat_time': 0, 'unsat_number': 0, 'unsat_time': 0, 'otherwise_number': 0, 'otherwise_time': 0}
+        
+        # assert_len 是一個二維的list，第一個維度是每個iteration，第二個維度是該iteration的每個assert的長度
+        cls.ctr_size = {'type':[], 'time': [], 'byte': [], 'assert_num': [], 'assert_len':[]}
+        
         if cls.smtdir:            
             os.makedirs(os.path.join(cls.smtdir, 'formula'))
             
@@ -55,12 +60,15 @@ class Solver:
         try: completed_process = subprocess.run(cls.cmd, input=formulas.encode(), capture_output=True)
         except subprocess.CalledProcessError as e: print(e.output)
         elapsed = time.time() - start
+        
+        
         output = completed_process.stdout.decode()
         model = None
         if output is None or len(output) == 0:
             status = "UNKNOWN"
         else:
-            outputs = output.splitlines(); status = outputs[0].lower()
+            outputs = output.splitlines()
+            status = outputs[0].lower()
             if "error" in status:
                 print('solver error:', status)
                 print(f"at SMT-id: {Solver.cnt}")
@@ -73,6 +81,29 @@ class Solver:
             else:
                 if "unsat" == status: cls.stats['unsat_number'] += 1; cls.stats['unsat_time'] += elapsed
                 else: status = "UNKNOWN"; cls.stats['otherwise_number'] += 1; cls.stats['otherwise_time'] += elapsed
+        
+        
+        # {'type':[], 'time': [], 'byte': [], 'assert_num': [], 'assert_len':[]}
+        def save_constraint_complexity():
+            file_byte = len(formulas.encode('utf-8'))
+            
+            assert_count = 0  # 计数满足条件的行数
+            assert_lens = []  # 用于存储每行字符串的长度
+            pattern = r'\(assert.*'
+            for match in re.finditer(pattern, formulas):
+                line = match.group()
+                assert_count += 1
+                assert_lens.append(len(line))
+            
+            cls.ctr_size['type'].append(status)
+            cls.ctr_size['time'].append(elapsed)
+            cls.ctr_size['byte'].append(file_byte)            
+            cls.ctr_size['assert_num'].append(assert_count)
+            cls.ctr_size['assert_len'].append(assert_lens)
+            
+        
+        save_constraint_complexity()
+        
         ##########################################################################################
         if cls.store is not None:
             if re.compile(r"^\d+$").match(cls.store):

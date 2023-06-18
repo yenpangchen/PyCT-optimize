@@ -37,12 +37,16 @@ class ExplorationEngine:
     class LazyLoading(metaclass=type('', (type,), {"__repr__": lambda self: '<DEFAULT>'})): pass # lazily loading default values of primitive arguments
 
     def __init__(self, *, solver='cvc4', timeout=20, safety=0, store=None,
-                 verbose=1, logfile=None, statsdir=None, smtdir=None,
-                 module_, execute_):
+                 verbose=1, logfile=None, statsdir=None, smtdir=None, save_dir=None, input_name=None,
+                 module_, execute_, only_first_forward):
         global module, execute
 
         module = module_
         execute = execute_
+        
+        self.save_dir = save_dir
+        self.input_name = input_name
+        self.only_first_forward = only_first_forward
 
         self.normalize = None
         self.__init2__(); self.statsdir = statsdir
@@ -73,7 +77,7 @@ class ExplorationEngine:
 
     def __init2__(self):
         global recorder
-        recorder = ConcolicTestRecorder()
+        recorder = ConcolicTestRecorder(self.save_dir, self.input_name)
 
         self.constraints_to_solve = [] # consists of the constraints that are going to be solved by the solver
         self.path = PathToConstraint()
@@ -108,6 +112,7 @@ class ExplorationEngine:
 
         # first self.previous_result is the original label
         recorder.original_label = self.previous_result
+        recorder.save_stats_dict()
         
         # After First execution, no constr to solve
         if len(self.constraints_to_solve) == 0:
@@ -136,7 +141,7 @@ class ExplorationEngine:
                 
                 model = Solver.find_model_from_constraint(self, constraint, self.original_args)
             
-                if model is not None:
+                if model is not None and not self.only_first_forward:
                     # sat
                     all_args.update(model) # from model to argument
                     if all_args not in tried_input_args:
@@ -148,23 +153,24 @@ class ExplorationEngine:
             solve_constr_num = solve_constr_num - len(self.constraints_to_solve)
 
             # solve new input and use it to execute
-            gen_constr_num = len(self.constraints_to_solve)
-            recorder.execution_start()
-            cont = self._one_execution(all_args, concolic_dict)
-            recorder.execution_end()
-            gen_constr_num = len(self.constraints_to_solve) - gen_constr_num
-            recorder.gen_constraint.append(gen_constr_num)
+            if not self.only_first_forward:
+                gen_constr_num = len(self.constraints_to_solve)
+                recorder.execution_start()
+                cont = self._one_execution(all_args, concolic_dict)
+                recorder.execution_end()
+                gen_constr_num = len(self.constraints_to_solve) - gen_constr_num
+                recorder.gen_constraint.append(gen_constr_num)
             
             iterations += 1
             recorder.iter_end(Solver.stats, solve_constr_num)
+            recorder.save_stats_dict()
             ##############################################################
 
             if len(self.constraints_to_solve) == 0:
-                recorder.no_ctr_to_solve()                
+                recorder.no_ctr_to_solve()
                 print('[SOLVED_ALL_CONSTR]: There is no constr to solve')
                 break
-                        
-        recorder.end()
+
 
     def explore(
         self, modpath, all_args={}, /, *, root='.', funcname=None,
@@ -208,13 +214,17 @@ class ExplorationEngine:
             func_timeout.func_timeout(
                 self.total_timeout, self._execution_loop, args=(max_iterations, all_args, concolic_dict)
             )
-        except func_timeout.exceptions.FunctionTimedOut:
+        except func_timeout.exceptions.FunctionTimedOut:            
             recorder.total_timeout()
             log.info('[TOTAL TIMEOUT]: Total Timeout happened')
             
         except BaseException as e: # importantly note that func_timeout.FunctionTimedOut is NOT inherited from the (general) Exception class.
             print(type(e))
             traceback.print_exc()
+        
+        # 結束後，將所有的統計資料存起來
+        recorder.end(constraint_complexity=Solver.ctr_size)
+        
         
         # After finishing self._execution_loop, we can get total iteration from recorder
         iteration = recorder.total_iter
