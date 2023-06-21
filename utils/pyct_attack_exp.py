@@ -4,8 +4,11 @@ import numpy as np
 
 # all of Generate Inputs functions in this file are only for model "mnist_sep_act_m6_9628"
 
-def get_save_dir_from_save_exp(save_exp, model_name, s_or_q):
-    save_dir = os.path.join("exp", model_name, s_or_q, save_exp['exp_name'], save_exp['input_name'])
+def get_save_dir_from_save_exp(save_exp, model_name, s_or_q, only_first_forward=False):
+    if only_first_forward:
+        save_dir = os.path.join("exp", model_name + "_only_first_forward", s_or_q, save_exp['exp_name'], save_exp['input_name'])
+    else:        
+        save_dir = os.path.join("exp", model_name, s_or_q, save_exp['exp_name'], save_exp['input_name'])
     return save_dir
 
 
@@ -49,8 +52,6 @@ def run_multi_attack_subprocess_cpu_timeout(args, cpu_timeout):
         
             
         
-
-
 ##### Generate Inputs #####
 # exp test shap 1 - idx 18, 261, 352, 420, 443, 559 will attack succesfully
 # but pyct can only attack 18
