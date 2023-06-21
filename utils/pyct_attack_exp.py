@@ -9,7 +9,7 @@ def get_save_dir_from_save_exp(save_exp, model_name, s_or_q):
     return save_dir
 
 
-def run_multi_attack(args, timeout):
+def run_multi_attack_subprocess_wall_timeout(args, timeout):
     import run_dnnct
     
     for one_input in args:
@@ -23,7 +23,7 @@ def run_multi_attack(args, timeout):
         recorder = result[0]
 
 
-def run_multi_attack_subprocess(args, cpu_timeout):
+def run_multi_attack_subprocess_cpu_timeout(args, cpu_timeout):
     import run_dnnct
     import multiprocessing
     
