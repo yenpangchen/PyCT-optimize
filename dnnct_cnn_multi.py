@@ -4,18 +4,18 @@ from multiprocessing import Process
 model_name = "mnist_sep_act_m6_9628"
 # model_name = "mnist_sep_act_m6_9653_noise"
 
-NUM_PROCESS = 2
-TIMEOUT = 4
+NUM_PROCESS = 25
+TIMEOUT = 1800
 
 if __name__ == "__main__":
-    from utils.pyct_attack_exp import pyct_shap_1_4_8_16_32_only_first_forward, run_multi_attack_subprocess_wall_timeout
+    from utils.pyct_attack_exp import run_multi_attack_subprocess_wall_timeout
+    from utils.pyct_attack_exp_research_question import (        
+        pyct_shap_1_4_8_16_32_only_first_forward,
+        pyct_shap_1_4_8_16_32_48_64, pyct_random_1_4_8_16_32_48_64,
+    )
      
-    # from utils.pyct_attack_exp import pyct_shap_1_test, pyct_shap_1_test_20_3tak    
-    # exp test shap 1 - idx 7, 261, 352, 420, 443, 559 will attack succesfully
-    # but pyct can only attack 18
-    # inputs = pyct_shap_1_test_20_3tak(model_name)
-
-    inputs = pyct_shap_1_4_8_16_32_only_first_forward(model_name, first_n_img=50)
+    inputs = pyct_shap_1_4_8_16_32_48_64(model_name, first_n_img=100)
+    # inputs = pyct_random_1_4_8_16_32_48_64(model_name, first_n_img=100)
 
     print("#"*40, f"number of inputs: {len(inputs)}", "#"*40)
     time.sleep(3)
@@ -42,6 +42,4 @@ if __name__ == "__main__":
     for p in running_processes:
         p.join()
 
-
     print('done')
-
