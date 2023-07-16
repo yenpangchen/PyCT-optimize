@@ -54,10 +54,10 @@ def run(model_name, in_dict, con_dict, norm, solve_order_stack, save_exp=None,
             s_or_q = "stack"
         else:
             s_or_q = "queue"                    
-        save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)
+        save_dir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q, only_first_forward=only_first_forward)
         
         if save_exp.get('save_smt', False):        
-            smtdir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q)        
+            smtdir = get_save_dir_from_save_exp(save_exp, model_name, s_or_q, only_first_forward=only_first_forward)        
     
     engine = libct.explore.ExplorationEngine(solver='cvc4', timeout=timeout, safety=safety,
                                             store=formula, verbose=verbose, logfile=logfile,
