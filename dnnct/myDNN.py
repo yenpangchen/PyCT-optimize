@@ -321,7 +321,9 @@ class SimpleRNNLayer:
 
             if self.activation == 'tanh':
                 self.h[i] = act_tanh(h_i)
-        
+            else:
+                self.h[i] = h_i
+                        
         # Return hidden state
         return self.h
     
