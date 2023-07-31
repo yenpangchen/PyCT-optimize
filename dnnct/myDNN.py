@@ -289,7 +289,7 @@ class FlattenLayer:
 class SimpleRNNLayer:
     def __init__(self, input_dim, weights, activation='tanh'):        
         self.input_dim = input_dim
-        assert activation in (None, "tanh")
+        assert activation in ('linear', "tanh")
         self.activation = activation
         self.units = weights[0].shape[1]
 
@@ -478,7 +478,8 @@ class NNModel:
             self.layers.append(ActivationLayer(activation))
         elif type(layer) == SimpleRNN:
             input_dim = layer.input_shape[-1]
-            self.layers.append(SimpleRNNLayer(input_dim, weights=layer.get_weights()))
+            activation = layer.get_config()['activation']
+            self.layers.append(SimpleRNNLayer(input_dim, weights=layer.get_weights(), activation=activation))
         elif type(layer) == LSTM:
             input_dim = layer.input_shape[-1]
             self.layers.append(LSTMLayer(input_dim, weights=layer.get_weights()))
