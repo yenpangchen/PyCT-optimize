@@ -144,6 +144,7 @@ class ExplorationEngine:
                 if model is not None and not self.only_first_forward:
                     # sat
                     all_args.update(model) # from model to argument
+                    recorder.save_sat_input(all_args)
                     if all_args not in tried_input_args:
                         # sat and this input args have not used
                         tried_input_args.append(all_args.copy()) # .copy() is important!!

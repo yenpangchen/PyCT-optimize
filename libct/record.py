@@ -21,6 +21,7 @@ class ConcolicTestRecorder:
         self.execute_cpu_time = []
         self.solve_constraint_wall_time = []
         self.solve_constraint_cpu_time = []
+        self.sat_inputs = []
         
         # total
         self.total_wall_time = None
@@ -133,7 +134,26 @@ class ConcolicTestRecorder:
         self.adversarial_input = adv_input
         self.attack_label = attack_label
         
-    
+        
+    def save_sat_input(self, input_dict):
+        # 儲存solver找到的滿足條件的input
+        sat_input = np.zeros(self.input_shape).astype(np.float32)
+
+        for k, v in input_dict.items():
+            idx = k.split('_')[1:]
+            
+            if len(self.input_shape) == 2:
+                i, j = (int(i) for i in idx)
+                sat_input[i, j] = v
+            elif len(self.input_shape) == 3:
+                i, j, k = (int(i) for i in idx)
+                sat_input[i, j, k] = v
+            elif len(self.input_shape) == 4:
+                i, j, k, l = (int(i) for i in idx)
+                sat_input[i, j, k, l] = v
+        
+        self.sat_inputs.append(sat_input)
+        
     
     def save_adversarial_input_as_image(self, save_path):
         if self.adversarial_input is not None:
@@ -191,4 +211,6 @@ class ConcolicTestRecorder:
             
             img_name = f"adv_{self.original_label}_to_{self.attack_label}.jpg"
             self.save_adversarial_input_as_image(os.path.join(self.save_dir, img_name))
+                        
+            np.save(os.path.join(self.save_dir, "sat_inputs.npy"), np.array(self.sat_inputs))
 
