@@ -33,10 +33,18 @@ def predict(**data):
 			X[i[0]][i[1]][i[2]][i[3]] = data[f"{data_name_prefix}{i[0]}_{i[1]}_{i[2]}_{i[3]}"]
 
 	out_val = myModel.forward(X)
-	max_val, ret_class = out_val[0], 0
-	for i,cl_val in enumerate(out_val):
-		if cl_val > max_val:
-			max_val, ret_class = cl_val, i
+ 
+	# 用一顆神經元做二分類
+	if len(out_val) == 1:
+		if out_val[0] > 0.5:
+			ret_class = 1
+		else:
+			ret_class = 0
+	else:
+		max_val, ret_class = out_val[0], 0
+		for i,cl_val in enumerate(out_val):
+			if cl_val > max_val:
+				max_val, ret_class = cl_val, i
 
 	print("[DEBUG]predicted class:", ret_class)
 	return ret_class
