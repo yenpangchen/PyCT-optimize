@@ -12,18 +12,18 @@ def get_save_dir_from_save_exp(save_exp, model_name, s_or_q, only_first_forward=
     return save_dir
 
 
-def run_multi_attack_subprocess_wall_timeout(args, timeout):
+def run_multi_attack_subprocess_wall_timeout(args, timeout, norm):
     import run_dnnct
     
     for one_input in args:
         print(one_input['save_exp'])
         
         result = run_dnnct.run(
-            **one_input, norm=True,
+            **one_input, norm=norm,
             max_iter=0, total_timeout=timeout, single_timeout=timeout, timeout=timeout
         )
         
-        recorder = result[0]
+        recorder = result[1]
 
 
 def run_multi_attack_subprocess_cpu_timeout(args, cpu_timeout):
