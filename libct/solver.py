@@ -147,13 +147,16 @@ class Solver:
                 else:
                     value = float(value)
             elif engine.var_to_types[name] == "Int":
+                # print(f"value in solver line150:{value}")
                 if "(" in value:
                     if "-" in value:
-                        value = -int(value.replace("(", "").replace(")", "").split(" ")[2])
+                        # value = -int(value.replace("(", "").replace(")", "").replace(" ", "").split(" ")[2])
+                        value = int(value.replace("(", "").replace(")", "").replace(" ", ""))
                     else:
-                        value = int(value.replace("(", "").replace(")", "").split(" ")[1])
+                        value = int(value.replace("(", "").replace(")", "").replace(" ", ""))
                 else:
                     value = int(value)
+                # print(f"value in solver line150:{value}")
             elif engine.var_to_types[name] == "String":
                 assert value.startswith('"') and value.endswith('"')
                 value = value[1:-1]

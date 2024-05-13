@@ -50,22 +50,22 @@ from multiprocessing import Process
 
 
 NORM_01 = True
-# model_name = "mnist_sep_act_m6_9653_noise"
-# model_name = "mnist_sep_act_m7_9876"
-model_name = "mnist_sep_act_m6_9628"
+
 
 NUM_PROCESS = 30
 TIMEOUT = 1800
 
 if __name__ == "__main__":
     from utils.pyct_attack_exp import run_multi_attack_subprocess_wall_timeout
-    from utils.pyct_attack_exp_research_question import (        
-        pyct_shap_1_4_8_16_32_only_first_forward,
-        pyct_shap_1_4_8_16_32, pyct_random_1_4_8_16_32,
-    )
+    from utils.pyct_attack_exp_research_question import pyct_random_1_4_8_16_32_48_64
+    
+    # 決定該次實驗使用的model
+    # model_name = "mnist_sep_act_m6_9653_noise"
+    # model_name = "mnist_sep_act_m7_9876"
+    model_name = "mnist_sep_act_m6_9628"
      
-    inputs = pyct_shap_1_4_8_16_32(model_name, first_n_img=100)
-    # inputs = pyct_random_1_4_8_16_32(model_name, first_n_img=100)
+    #inputs = pyct_shap_1_4_8_16_32_48_64(model_name, first_n_img=10)
+    inputs = pyct_random_1_4_8_16_32_48_64(model_name, first_n_img=1)
 
     print("#"*40, f"number of inputs: {len(inputs)}", "#"*40)
     time.sleep(3)

@@ -1,5 +1,5 @@
 import keras
-from dnnct.myDNN import NNModel 
+from myDNN import NNModel 
 import numpy as np
 import itertools
 
@@ -11,16 +11,21 @@ def init_model(model_path):
 	model = keras.models.load_model(model_path)
 	layers = [l for l in model.layers if type(l).__name__ not in ['Dropout']]
 	myModel = NNModel()
-
+	
 	# 1: is because 1st dim of input shape of Keras model is batch size (None)
 	myModel.input_shape = model.input_shape[1:]
 	for layer in layers:
 		myModel.addLayer(layer)
+	# print("model:",myModel)
 
+# def predict_2(**weight_of_model):
+    #一些方法把**weight參數拼回可以跑的myModel
+    #取一組固定的data X
+    # out_val = myModel.forward(X)
 
 def predict(**data):
 	input_shape = myModel.input_shape
-
+	# print("model:",myModel)
 	iter_args = (range(dim) for dim in input_shape)
 	X = np.zeros(input_shape).tolist()
 	data_name_prefix = "v_"

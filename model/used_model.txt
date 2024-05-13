@@ -1,0 +1,7 @@
+mnist_sep_act_m6_9628
+mnist_lstm_09785
+mnist_rnn_09650
+mnist_sep_act_m6_9653_noise
+mnist_sep_act_m7_9876
+simple_mnist_bad_07685
+simple_mnist_m6_09585

@@ -1,3 +1,5 @@
+import sys
+sys.path.insert(0,'/home/soslab/.local/share/virtualenvs/PyCT-optimize-iAsiglTl/lib/python3.8/site-packages')
 import functools, importlib, inspect, os
 
 def _int(obj):
@@ -62,9 +64,9 @@ def py2smt(x): # convert the Python object into the smtlib2 string constant
 
 def get_module_from_rootdir_and_modpath(rootdir, modpath):
     # filepath = os.path.join(rootdir, modpath.replace('.', '/') + '.py')
+    # print("modpath:",modpath)
     filepath = os.path.join(rootdir, modpath.replace('./', ''))
-    print(filepath)
-    print(modpath)
+    
     spec = importlib.util.spec_from_file_location(modpath, os.path.abspath(filepath))
     module = importlib.util.module_from_spec(spec)
     now_dir = os.getcwd(); os.chdir(os.path.dirname(filepath))

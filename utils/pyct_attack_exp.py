@@ -14,9 +14,8 @@ def get_save_dir_from_save_exp(save_exp, model_name, s_or_q, only_first_forward=
 
 def run_multi_attack_subprocess_wall_timeout(args, timeout, norm):
     import run_dnnct
-    
     for one_input in args:
-        print(one_input['save_exp'])
+        print(one_input)
         
         result = run_dnnct.run(
             **one_input, norm=norm,
@@ -24,6 +23,7 @@ def run_multi_attack_subprocess_wall_timeout(args, timeout, norm):
         )
         
         recorder = result[1]
+        print(recorder.output_stats_dict())
 
 
 def run_multi_attack_subprocess_cpu_timeout(args, cpu_timeout):

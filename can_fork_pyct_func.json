@@ -1,0 +1,117 @@
+{
+	"/home/soslab/PyCT-optimize/branch_testcase.py": {
+		"branch_test_kwarg": {
+			"c": 3,
+			"a": 3,
+			"b": 4
+		}
+	},
+	"/home/soslab/PyCT-optimize/myDNN.py": {
+		"dim": {
+			"a": 0.0
+		},
+		"actFunc": {
+			"val": -0.5409192442893982,
+			"type": "linear"
+		}
+	},
+	"trace_test.py": {
+		"branch_test": {
+			"b": 5,
+			"a": 0
+		},
+		"branch_test_matrix": {
+			"a": "NOT_PRIMITIVE"
+		}
+	},
+	"/home/soslab/PyCT-optimize/trace_test.py": {
+		"branch_test": {
+			"b": 5,
+			"a": 0
+		},
+		"branch_test_arg": {
+			"*args": [
+				3,
+				2,
+				5,
+				6
+			]
+		},
+		"branch_test_kwarg": {
+			"a": 3,
+			"kw": 0
+		},
+		"branch_test_type": {
+			"b": 10,
+			"c": 10,
+			"d": 5
+		}
+	},
+	"/usr/lib/python3.8/logging/__init__.py": {
+		"info": {
+			"msg": "DNN start forwarding"
+		},
+		"getLevelName": {
+			"level": 20
+		},
+		"debug": {
+			"msg": "forwarding layer:1"
+		}
+	},
+	"/usr/lib/python3.8/importlib/resources.py": {
+		"path": {
+			"package": "NOT_PRIMITIVE",
+			"resource": "cacert.pem"
+		}
+	},
+	"/home/soslab/PyCT-optimize/load_model_testcase.py": {
+		"predict": {
+			"model_name": "mnist_sep_act_m6_9628",
+			"in_dict": "NOT_PRIMITIVE",
+			"con_dict": "NOT_PRIMITIVE",
+			"solve_order_stack": false,
+			"save_exp": "NOT_PRIMITIVE"
+		}
+	},
+	"/usr/lib/python3.8/posixpath.py": {
+		"normcase": {
+			"s": "/usr/lib/python3.8/logging/__init__.py"
+		},
+		"basename": {
+			"p": "/home/soslab/PyCT-optimize/myDNN.py"
+		},
+		"_get_sep": {
+			"path": "/home/soslab/PyCT-optimize/myDNN.py"
+		},
+		"splitext": {
+			"p": "myDNN.py"
+		}
+	},
+	"/usr/lib/python3.8/genericpath.py": {
+		"_splitext": {
+			"p": "myDNN.py",
+			"sep": "/",
+			"altsep": "NOT_PRIMITIVE",
+			"extsep": "."
+		}
+	},
+	"/usr/lib/python3.8/_collections_abc.py": {
+		"_check_methods": {
+			"C": "NOT_PRIMITIVE",
+			"*args": [
+				"__iter__"
+			]
+		}
+	},
+	"/usr/lib/python3.8/multiprocessing/util.py": {
+		"info": {
+			"msg": "process shutting down"
+		},
+		"debug": {
+			"msg": "running all \"atexit\" finalizers with priority >= 0"
+		},
+		"_run_finalizers": {
+			"minpriority": 0
+		}
+	}
+}
